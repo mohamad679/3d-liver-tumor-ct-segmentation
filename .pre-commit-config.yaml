@@ -1,0 +1,18 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-lint
+        name: Ruff lint
+        language: system
+        entry: uv run ruff check .
+        pass_filenames: false
+      - id: ruff-format-check
+        name: Ruff format check
+        language: system
+        entry: uv run ruff format --check .
+        pass_filenames: false
+      - id: mypy-src
+        name: mypy
+        language: system
+        entry: uv run mypy src
+        pass_filenames: false
