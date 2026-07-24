@@ -19,4 +19,3 @@ Planned manifest-level fields:
 - `label_hash`
 
 No real patient identifiers are allowed in repository-tracked manifests or related metadata.
-

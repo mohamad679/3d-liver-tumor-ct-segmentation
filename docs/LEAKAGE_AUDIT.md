@@ -18,4 +18,3 @@ External labels cannot be used for preprocessing fitting, tuning, threshold sele
 LiTS and MSD Task03 Liver are not independent cohorts.
 
 No audit has passed at this stage.
-

@@ -9,4 +9,3 @@ Manifests must contain anonymous identifiers and only relative paths or environm
 Model weights, predictions, DICOM files, NIfTI medical volumes, credentials, and secrets are prohibited from version control.
 
 Only tiny generated synthetic smoke-test data may be used inside this repository, subject to later Phase 0 implementation.
-
