@@ -1,5 +1,13 @@
 """Data helpers for ProtoEM-CT."""
 
+from protoem_ct.data.manifest_validation import (
+    ManifestValidationError,
+    ManifestValidationManifestError,
+    ManifestValidationNiftiError,
+    ManifestValidationOutputError,
+    ManifestValidationPathError,
+    validate_synthetic_manifest,
+)
 from protoem_ct.data.synthetic import (
     IMAGE_DTYPE,
     LABEL_DTYPE,
@@ -30,6 +38,11 @@ __all__ = [
     "IMAGE_DTYPE",
     "InvalidLabelError",
     "LABEL_DTYPE",
+    "ManifestValidationError",
+    "ManifestValidationManifestError",
+    "ManifestValidationNiftiError",
+    "ManifestValidationOutputError",
+    "ManifestValidationPathError",
     "NiftiValidationError",
     "NonFiniteValueError",
     "PairValidationResult",
@@ -46,4 +59,5 @@ __all__ = [
     "synthetic_config_hash_payload",
     "synthetic_manifest_hash_payload",
     "validate_nifti_pair",
+    "validate_synthetic_manifest",
 ]

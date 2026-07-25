@@ -7,6 +7,10 @@ from typing import Annotated
 
 import typer
 
+from protoem_ct.data.manifest_validation import (
+    ManifestValidationError,
+    validate_synthetic_manifest,
+)
 from protoem_ct.data.synthetic import (
     SyntheticDataError,
     create_synthetic_dataset,
@@ -71,6 +75,72 @@ def create_data(
     typer.echo(f"manifest path: {result.manifest_relative_path.as_posix()}")
     typer.echo(f"config hash: {result.config_hash}")
     typer.echo(f"manifest hash: {result.manifest_hash}")
+
+
+@app.command("validate-data")
+def validate_data(
+    manifest_path: Annotated[
+        Path,
+        typer.Option(
+            "--manifest",
+            help="Path to the synthetic manifest JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    data_root: Annotated[
+        Path,
+        typer.Option(
+            "--data-root",
+            help="Root directory beneath which manifest image and label paths are resolved.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output_path: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            help="Path to the validation artifact JSON file to create.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    git_commit: Annotated[
+        str,
+        typer.Option(
+            "--git-commit",
+            help="Explicit Git commit recorded in the validation artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    created_at_utc: Annotated[
+        str,
+        typer.Option(
+            "--created-at-utc",
+            help="Explicit UTC creation timestamp recorded in the validation artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    affine_tolerance: Annotated[
+        float,
+        typer.Option(
+            "--affine-tolerance",
+            help="Absolute tolerance for affine and spacing comparisons.",
+        ),
+    ] = 1e-5,
+) -> None:
+    """Validate a Phase 1 synthetic manifest and write a validation artifact."""
+    try:
+        artifact = validate_synthetic_manifest(
+            manifest_path,
+            data_root=data_root,
+            output_path=output_path,
+            git_commit=git_commit,
+            created_at_utc=created_at_utc,
+            affine_tolerance=affine_tolerance,
+        )
+    except ManifestValidationError as exc:
+        typer.secho(str(exc), err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1) from None
+
+    typer.echo("validation success")
+    typer.echo(f"valid case count: {artifact.valid_case_count}")
+    typer.echo(f"validation artifact path: {output_path}")
+    typer.echo(f"config hash: {artifact.config_hash}")
+    typer.echo(f"manifest hash: {artifact.manifest_hash}")
 
 
 @app.command("validate-pair")
