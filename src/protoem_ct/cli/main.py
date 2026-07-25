@@ -18,6 +18,10 @@ from protoem_ct.data.synthetic import (
     load_synthetic_config,
 )
 from protoem_ct.data.validation import NiftiValidationError, validate_nifti_pair
+from protoem_ct.evaluation.dummy_inference import (
+    DummyInferenceError,
+    run_dummy_inference,
+)
 
 app = typer.Typer(help="ProtoEM-CT command-line tools.")
 
@@ -224,6 +228,81 @@ def preprocess_data(
     typer.echo(f"preprocessing artifact path: {artifact_output_path}")
     typer.echo(f"config hash: {artifact.config_hash}")
     typer.echo(f"manifest hash: {artifact.manifest_hash}")
+
+
+@app.command("infer-dummy")
+def infer_dummy(
+    preprocess_artifact_path: Annotated[
+        Path,
+        typer.Option(
+            "--preprocess-artifact",
+            help="Path to the preprocessing artifact JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    preprocessed_root: Annotated[
+        Path,
+        typer.Option(
+            "--preprocessed-root",
+            help="Root directory beneath which preprocessed image paths are resolved.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help="Empty or nonexistent root where dummy predictions will be written.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    artifact_output_path: Annotated[
+        Path,
+        typer.Option(
+            "--artifact-output",
+            help="Path to the inference artifact JSON file to create.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    config_path: Annotated[
+        Path,
+        typer.Option(
+            "--config",
+            help="Path to the Phase 1 OmegaConf YAML file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    git_commit: Annotated[
+        str,
+        typer.Option(
+            "--git-commit",
+            help="Explicit Git commit recorded in the inference artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    created_at_utc: Annotated[
+        str,
+        typer.Option(
+            "--created-at-utc",
+            help="Explicit UTC creation timestamp recorded in the inference artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+) -> None:
+    """Run deterministic Phase 1 dummy inference."""
+    try:
+        artifact = run_dummy_inference(
+            preprocess_artifact_path,
+            preprocessed_root=preprocessed_root,
+            output_root=output_root,
+            artifact_output_path=artifact_output_path,
+            config_path=config_path,
+            git_commit=git_commit,
+            created_at_utc=created_at_utc,
+        )
+    except DummyInferenceError as exc:
+        typer.secho(str(exc), err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1) from None
+
+    typer.echo("dummy inference success")
+    typer.echo(f"prediction count: {len(artifact.prediction_case_ids)}")
+    typer.echo(f"inference artifact path: {artifact_output_path}")
+    typer.echo(f"config hash: {artifact.config_hash}")
+    typer.echo(f"manifest hash: {artifact.manifest_hash}")
+    typer.echo(f"method: {artifact.method}")
 
 
 @app.command("validate-pair")

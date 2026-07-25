@@ -201,8 +201,15 @@ def test_all_stage_specific_artifacts_are_constructible() -> None:
         InferenceArtifact(
             stage="infer-dummy",
             prediction_case_ids=("case-001", "case-002"),
+            prediction_paths=(
+                "predictions/case-001.nii",
+                "predictions/case-002.nii",
+            ),
+            prediction_hashes=(HASH, "1" * 64),
             method="dummy",
             deterministic_seed=2718,
+            threshold=0.5,
+            prediction_dtype="uint8",
             **common,
         ),
         EvaluationArtifact(
@@ -272,3 +279,92 @@ def test_preprocess_artifact_requires_equal_output_lengths() -> None:
             output_label_paths=("labels/case-001.nii", "labels/case-002.nii"),
             **common,
         )
+
+
+def test_inference_artifact_requires_relative_prediction_paths() -> None:
+    common: dict[str, Any] = {
+        "schema_version": ARTIFACT_SCHEMA_VERSION,
+        "stage": "infer-dummy",
+        "created_at_utc": "2026-07-25T00:00:00Z",
+        "git_commit": "abc1234",
+        "config_hash": HASH,
+        "manifest_hash": HASH,
+        "prediction_case_ids": ("case-001",),
+        "prediction_hashes": (HASH,),
+        "method": "dummy",
+        "deterministic_seed": 2718,
+        "threshold": 0.5,
+        "prediction_dtype": "uint8",
+    }
+
+    with pytest.raises(ArtifactValidationError):
+        InferenceArtifact(prediction_paths=("/absolute/case-001.nii",), **common)
+
+
+def test_inference_artifact_requires_prediction_hashes() -> None:
+    common: dict[str, Any] = {
+        "schema_version": ARTIFACT_SCHEMA_VERSION,
+        "stage": "infer-dummy",
+        "created_at_utc": "2026-07-25T00:00:00Z",
+        "git_commit": "abc1234",
+        "config_hash": HASH,
+        "manifest_hash": HASH,
+        "prediction_case_ids": ("case-001",),
+        "prediction_paths": ("predictions/case-001.nii",),
+        "method": "dummy",
+        "deterministic_seed": 2718,
+        "threshold": 0.5,
+        "prediction_dtype": "uint8",
+    }
+
+    with pytest.raises(ArtifactValidationError):
+        InferenceArtifact(prediction_hashes=("not-a-sha256",), **common)
+
+
+def test_inference_artifact_requires_equal_prediction_lengths() -> None:
+    common: dict[str, Any] = {
+        "schema_version": ARTIFACT_SCHEMA_VERSION,
+        "stage": "infer-dummy",
+        "created_at_utc": "2026-07-25T00:00:00Z",
+        "git_commit": "abc1234",
+        "config_hash": HASH,
+        "manifest_hash": HASH,
+        "prediction_case_ids": ("case-001", "case-002"),
+        "prediction_paths": ("predictions/case-001.nii",),
+        "method": "dummy",
+        "deterministic_seed": 2718,
+        "threshold": 0.5,
+        "prediction_dtype": "uint8",
+    }
+
+    with pytest.raises(ArtifactValidationError):
+        InferenceArtifact(prediction_hashes=(HASH, HASH), **common)
+
+
+@pytest.mark.parametrize(
+    ("field_name", "value"),
+    [("threshold", 1.1), ("prediction_dtype", "float32")],
+)
+def test_inference_artifact_rejects_invalid_output_settings(
+    field_name: str,
+    value: object,
+) -> None:
+    common: dict[str, Any] = {
+        "schema_version": ARTIFACT_SCHEMA_VERSION,
+        "stage": "infer-dummy",
+        "created_at_utc": "2026-07-25T00:00:00Z",
+        "git_commit": "abc1234",
+        "config_hash": HASH,
+        "manifest_hash": HASH,
+        "prediction_case_ids": ("case-001",),
+        "prediction_paths": ("predictions/case-001.nii",),
+        "prediction_hashes": (HASH,),
+        "method": "dummy",
+        "deterministic_seed": 2718,
+        "threshold": 0.5,
+        "prediction_dtype": "uint8",
+    }
+    common[field_name] = value
+
+    with pytest.raises(ArtifactValidationError):
+        InferenceArtifact(**common)

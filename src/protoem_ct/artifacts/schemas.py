@@ -164,18 +164,47 @@ class InferenceArtifact(_ArtifactBase):
     """Artifact produced by deterministic dummy inference."""
 
     prediction_case_ids: tuple[str, ...]
+    prediction_paths: tuple[str, ...]
+    prediction_hashes: tuple[str, ...]
     method: str
     deterministic_seed: int
+    threshold: float
+    prediction_dtype: str
 
     _expected_stage: ClassVar[str] = "infer-dummy"
 
     def __post_init__(self) -> None:
         _ArtifactBase.__post_init__(self)
         _require_string_tuple(self.prediction_case_ids, "prediction_case_ids", allow_empty=False)
+        if len(set(self.prediction_case_ids)) != len(self.prediction_case_ids):
+            msg = "prediction_case_ids must be unique"
+            raise ArtifactValidationError(msg)
+        _require_string_tuple(self.prediction_paths, "prediction_paths", allow_empty=False)
+        if len(self.prediction_case_ids) != len(self.prediction_paths):
+            msg = "prediction_case_ids and prediction_paths must have equal lengths"
+            raise ArtifactValidationError(msg)
+        if len(set(self.prediction_paths)) != len(self.prediction_paths):
+            msg = "prediction_paths must be unique"
+            raise ArtifactValidationError(msg)
+        for path in self.prediction_paths:
+            _require_relative_project_path(path)
+        _require_string_tuple(self.prediction_hashes, "prediction_hashes", allow_empty=False)
+        if len(self.prediction_case_ids) != len(self.prediction_hashes):
+            msg = "prediction_case_ids and prediction_hashes must have equal lengths"
+            raise ArtifactValidationError(msg)
+        for prediction_hash in self.prediction_hashes:
+            _require_sha256(prediction_hash, "prediction_hashes")
         if self.method != "dummy":
             msg = "method must be fixed to 'dummy'"
             raise ArtifactValidationError(msg)
         _require_nonnegative_int(self.deterministic_seed, "deterministic_seed")
+        _require_finite_float(self.threshold, "threshold")
+        if self.threshold < 0.0 or self.threshold > 1.0:
+            msg = "threshold must be in [0, 1]"
+            raise ArtifactValidationError(msg)
+        if self.prediction_dtype != "uint8":
+            msg = "prediction_dtype must be fixed to 'uint8'"
+            raise ArtifactValidationError(msg)
 
 
 @dataclass(frozen=True, slots=True)
@@ -260,6 +289,8 @@ _SEQUENCE_FIELDS = {
     "output_label_paths",
     "target_spacing",
     "prediction_case_ids",
+    "prediction_paths",
+    "prediction_hashes",
     "source_artifact_paths",
     "reported_metric_names",
 }
