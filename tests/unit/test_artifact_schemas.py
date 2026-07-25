@@ -186,6 +186,14 @@ def test_all_stage_specific_artifacts_are_constructible() -> None:
         PreprocessArtifact(
             stage="preprocess",
             output_case_ids=("case-001", "case-002"),
+            output_image_paths=(
+                "images/case-001.nii",
+                "images/case-002.nii",
+            ),
+            output_label_paths=(
+                "labels/case-001.nii",
+                "labels/case-002.nii",
+            ),
             target_spacing=(1.5, 1.5, 2.0),
             preprocessing_parameters=MappingProxyType({"clip_min": -1000.0, "clip_max": 1000.0}),
             **common,
@@ -222,3 +230,45 @@ def test_all_stage_specific_artifacts_are_constructible() -> None:
         "evaluate",
         "report",
     ]
+
+
+def test_preprocess_artifact_requires_relative_output_paths() -> None:
+    common: dict[str, Any] = {
+        "schema_version": ARTIFACT_SCHEMA_VERSION,
+        "stage": "preprocess",
+        "created_at_utc": "2026-07-25T00:00:00Z",
+        "git_commit": "abc1234",
+        "config_hash": HASH,
+        "manifest_hash": HASH,
+        "output_case_ids": ("case-001",),
+        "target_spacing": (1.5, 1.5, 2.0),
+        "preprocessing_parameters": MappingProxyType({"clip_min": -1000.0, "clip_max": 1000.0}),
+    }
+
+    with pytest.raises(ArtifactValidationError):
+        PreprocessArtifact(
+            output_image_paths=("/absolute/case-001.nii",),
+            output_label_paths=("labels/case-001.nii",),
+            **common,
+        )
+
+
+def test_preprocess_artifact_requires_equal_output_lengths() -> None:
+    common: dict[str, Any] = {
+        "schema_version": ARTIFACT_SCHEMA_VERSION,
+        "stage": "preprocess",
+        "created_at_utc": "2026-07-25T00:00:00Z",
+        "git_commit": "abc1234",
+        "config_hash": HASH,
+        "manifest_hash": HASH,
+        "output_case_ids": ("case-001", "case-002"),
+        "target_spacing": (1.5, 1.5, 2.0),
+        "preprocessing_parameters": MappingProxyType({"clip_min": -1000.0, "clip_max": 1000.0}),
+    }
+
+    with pytest.raises(ArtifactValidationError):
+        PreprocessArtifact(
+            output_image_paths=("images/case-001.nii",),
+            output_label_paths=("labels/case-001.nii", "labels/case-002.nii"),
+            **common,
+        )

@@ -11,6 +11,7 @@ from protoem_ct.data.manifest_validation import (
     ManifestValidationError,
     validate_synthetic_manifest,
 )
+from protoem_ct.data.preprocessing import PreprocessingError, preprocess_synthetic_dataset
 from protoem_ct.data.synthetic import (
     SyntheticDataError,
     create_synthetic_dataset,
@@ -139,6 +140,88 @@ def validate_data(
     typer.echo("validation success")
     typer.echo(f"valid case count: {artifact.valid_case_count}")
     typer.echo(f"validation artifact path: {output_path}")
+    typer.echo(f"config hash: {artifact.config_hash}")
+    typer.echo(f"manifest hash: {artifact.manifest_hash}")
+
+
+@app.command("preprocess-data")
+def preprocess_data(
+    manifest_path: Annotated[
+        Path,
+        typer.Option(
+            "--manifest",
+            help="Path to the synthetic manifest JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    validation_artifact_path: Annotated[
+        Path,
+        typer.Option(
+            "--validation-artifact",
+            help="Path to the validation artifact JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    data_root: Annotated[
+        Path,
+        typer.Option(
+            "--data-root",
+            help="Root directory beneath which manifest image and label paths are resolved.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help="Empty or nonexistent root where preprocessed outputs will be written.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    artifact_output_path: Annotated[
+        Path,
+        typer.Option(
+            "--artifact-output",
+            help="Path to the preprocessing artifact JSON file to create.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    config_path: Annotated[
+        Path,
+        typer.Option(
+            "--config",
+            help="Path to the Phase 1 OmegaConf YAML file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    git_commit: Annotated[
+        str,
+        typer.Option(
+            "--git-commit",
+            help="Explicit Git commit recorded in the preprocessing artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    created_at_utc: Annotated[
+        str,
+        typer.Option(
+            "--created-at-utc",
+            help="Explicit UTC creation timestamp recorded in the preprocessing artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+) -> None:
+    """Preprocess a validated Phase 1 synthetic manifest."""
+    try:
+        artifact = preprocess_synthetic_dataset(
+            manifest_path,
+            validation_artifact_path,
+            data_root=data_root,
+            output_root=output_root,
+            artifact_output_path=artifact_output_path,
+            config_path=config_path,
+            git_commit=git_commit,
+            created_at_utc=created_at_utc,
+        )
+    except PreprocessingError as exc:
+        typer.secho(str(exc), err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1) from None
+
+    typer.echo("preprocessing success")
+    typer.echo(f"processed case count: {len(artifact.output_case_ids)}")
+    typer.echo(f"preprocessing artifact path: {artifact_output_path}")
     typer.echo(f"config hash: {artifact.config_hash}")
     typer.echo(f"manifest hash: {artifact.manifest_hash}")
 

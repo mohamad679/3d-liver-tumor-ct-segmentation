@@ -133,6 +133,8 @@ class PreprocessArtifact(_ArtifactBase):
     """Artifact produced by synthetic preprocessing."""
 
     output_case_ids: tuple[str, ...]
+    output_image_paths: tuple[str, ...]
+    output_label_paths: tuple[str, ...]
     target_spacing: tuple[float, float, float]
     preprocessing_parameters: Mapping[str, JsonValue]
 
@@ -141,6 +143,18 @@ class PreprocessArtifact(_ArtifactBase):
     def __post_init__(self) -> None:
         _ArtifactBase.__post_init__(self)
         _require_string_tuple(self.output_case_ids, "output_case_ids", allow_empty=False)
+        _require_string_tuple(self.output_image_paths, "output_image_paths", allow_empty=False)
+        _require_string_tuple(self.output_label_paths, "output_label_paths", allow_empty=False)
+        if len(self.output_case_ids) != len(self.output_image_paths) or len(
+            self.output_case_ids
+        ) != len(self.output_label_paths):
+            msg = (
+                "output_case_ids, output_image_paths, and output_label_paths must have "
+                "equal lengths"
+            )
+            raise ArtifactValidationError(msg)
+        for path in (*self.output_image_paths, *self.output_label_paths):
+            _require_relative_project_path(path)
         _require_spacing_3d(self.target_spacing, "target_spacing")
         _require_json_mapping(self.preprocessing_parameters, "preprocessing_parameters")
 
@@ -242,6 +256,8 @@ _SEQUENCE_FIELDS = {
     "spacing",
     "validated_case_ids",
     "output_case_ids",
+    "output_image_paths",
+    "output_label_paths",
     "target_spacing",
     "prediction_case_ids",
     "source_artifact_paths",

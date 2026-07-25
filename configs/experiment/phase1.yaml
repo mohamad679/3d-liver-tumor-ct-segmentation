@@ -4,5 +4,12 @@ generated_artifact_root: generated/phase1/artifacts
 mlflow_tracking_path: generated/phase1/mlruns
 dummy_inference:
   seed: 2718
+preprocessing:
+  clip_min: -1000.0
+  clip_max: 1000.0
+  output_min: 0.0
+  output_max: 1.0
+  image_dtype: float32
+  label_dtype: uint8
 report:
   output_path: generated/phase1/reports/synthetic_report.md
