@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "protoem-ct"
+version = "0.1.0"
+description = "ProtoEM-CT tooling and package scaffolding."
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+  "nibabel",
+  "numpy",
+  "typer",
+]
+
+[project.scripts]
+protoem-ct = "protoem_ct.cli.main:app"
+
+[dependency-groups]
+dev = [
+  "pytest",
+  "hypothesis",
+  "ruff",
+  "mypy",
+  "pre-commit",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.package-data]
+protoem_ct = ["py.typed"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+target-version = "py311"
+src = ["src"]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.format]
+quote-style = "double"
+line-ending = "lf"
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src"]
+mypy_path = "src"
+strict = true
+warn_unreachable = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--import-mode=importlib", "--strict-markers", "--strict-config", "--tb=short"]
