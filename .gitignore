@@ -15,6 +15,9 @@ venv/
 .env.*
 .uv-cache/
 uv-cache/
+generated/
+.snakemake/
+.mlflow/
 mlruns/
 artifacts/
 !src/protoem_ct/artifacts/

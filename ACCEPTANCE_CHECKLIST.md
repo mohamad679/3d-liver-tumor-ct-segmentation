@@ -44,17 +44,42 @@ Gate 0 status: PASSED locally
 
 ## Gate 1
 
-- [ ] Complete synthetic DAG runs from a clean generated-artifact state
-- [ ] Every stage has explicit inputs and outputs
-- [ ] Artifacts use documented schemas
-- [ ] Report is generated only from persisted JSON
-- [ ] Config, manifest, and Git metadata are recorded
-- [ ] Repeated runs are deterministic where expected
-- [ ] Integration test passes
-- [ ] Lint passes
-- [ ] Typing passes
-- [ ] Full tests pass
-- [ ] Smoke tests pass
+- [x] Complete synthetic DAG runs from a clean generated-artifact state
+- [x] Every stage has explicit inputs and outputs
+- [x] Artifacts use documented schemas
+- [x] Report is generated only from persisted JSON
+- [x] Config, manifest, and Git metadata are recorded
+- [x] Repeated runs are deterministic where expected
+- [x] Integration test passes
+- [x] Lint passes
+- [x] Typing passes
+- [x] Full tests pass
+- [x] Smoke tests pass
+
+### Gate 1 Evidence
+
+Gate 1 status: PASSED locally
+
+- Local Snakemake command pattern:
+  `uv run snakemake --snakefile Snakefile --cores 1 --rerun-incomplete --config generated_root=/absolute/external/generated-root git_commit=<explicit-commit> created_at_utc=<explicit-utc-timestamp>`
+- Real empty-root DAG test: PASS via `uv run pytest -q tests/integration/test_phase1_snakemake_dag.py`, `9 passed`
+- Full test suite: PASS via `uv run pytest -q`, `285 passed`
+- Smoke tests: PASS via `make smoke`, `1 passed`
+- `uv lock --check`: PASS
+- `uv run ruff check .`: PASS
+- `uv run ruff format --check .`: PASS
+- `uv run mypy src tests`: PASS
+- `uv run pre-commit validate-config`: PASS
+- `uv run pre-commit run --all-files`: PASS
+- `uv run snakemake --snakefile Snakefile --lint --config generated_root=/tmp/protoem-ct-phase1-lint git_commit=phase1-lint created_at_utc=2026-01-01T00:00:00Z`: PASS
+- `uv run snakemake --snakefile Snakefile --list-rules --config generated_root=/tmp/protoem-ct-phase1-list git_commit=phase1-list created_at_utc=2026-01-01T00:00:00Z`: PASS
+- The complete DAG was verified from an empty existing generated root and a nonexistent generated root under pytest temporary directories.
+- Deleting only the final report directory rebuilt a byte-identical report without modifying upstream artifact bytes or mtimes.
+- Reports from independent generated roots with identical explicit Git commit and timestamp were byte-identical.
+- The report is generated from persisted JSON artifacts and does not depend on MLflow.
+- Local MLflow tracking remains a separate post-report operation and is not a Gate 1 prerequisite.
+- Phase 1 uses synthetic data and deterministic dummy inference for pipeline verification only; it contains no scientific model result.
+- GitHub-hosted CI, PR review, branch merge, and hosted deployment status are not claimed.
 
 ## Gate 2
 

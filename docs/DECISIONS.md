@@ -147,3 +147,26 @@
 - Context: Phase 1 is limited to documentation planning and later synthetic DAG implementation.
 - Decision: Do not begin real-data ingestion, neural-network training, model baselines, few-shot protocol work, robustness evaluation, external validation, or LLM/VLM work in Phase 1.
 - Consequences: Phase 1 remains an engineering reproducibility milestone and cannot produce scientific model claims.
+
+## Phase 1 Close-Out Decisions
+
+### 2026-07-25: Base Gate 1 on an Explicit External Generated Root
+
+- Status: accepted
+- Context: Generated Phase 1 data, predictions, reports, JSON artifacts, Snakemake metadata, and MLflow runs must not become repository source files.
+- Decision: Gate 1 local verification uses an explicit absolute `generated_root` supplied through Snakemake `--config`, preferably beneath a temporary directory outside the repository.
+- Consequences: The Snakefile does not derive output roots, Git commits, or timestamps from the environment or current working directory. Local Gate 1 evidence depends on a clean external generated root.
+
+### 2026-07-25: Keep Report Generation JSON-Only and Independent of MLflow
+
+- Status: accepted
+- Context: The Phase 1 report must be deterministic and traceable to persisted machine-readable artifacts without coupling the report to local MLflow run identifiers or tracking state.
+- Decision: Generate the report only from persisted JSON artifacts and keep MLflow tracking as a separate post-report operation.
+- Consequences: The Snakemake `report` rule does not read NIfTI files, query MLflow, recompute metrics, or depend on `protoem-ct track-run`.
+
+### 2026-07-25: Treat Dummy-Inference Metrics as Pipeline Verification Values
+
+- Status: accepted
+- Context: Phase 1 uses synthetic data and deterministic dummy inference to verify artifact linkage, hashing, evaluation, report generation, and orchestration.
+- Decision: Metrics produced by dummy inference are pipeline-verification values only, not scientific model results.
+- Consequences: Phase 1 close-out must not claim model performance, clinical validity, generalization, or state-of-the-art behavior.

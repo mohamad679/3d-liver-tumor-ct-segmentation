@@ -4,9 +4,9 @@
 
 Phase 0 is completed.
 
-Active phase: Phase 1 synthetic DAG planning.
+Phase 1 is completed locally.
 
-Phase 1 has not yet been implemented.
+Active phase: Phase 2 planning is next but has not started.
 
 ## Phase 0 Scope
 
@@ -83,26 +83,30 @@ Gate 0 is accepted when the standard repository structure exists, Python 3.11 an
 
 ## Phase 1 Scope
 
-Phase 1 will implement a reproducible synthetic end-to-end DAG only. The DAG stages are:
+Phase 1 implements a reproducible synthetic end-to-end DAG only. The DAG stages are:
 
 1. `create-data`
-2. `validate`
-3. `preprocess`
+2. `validate-data`
+3. `preprocess-data`
 4. `infer-dummy`
 5. `evaluate`
 6. `report`
 
-The Phase 1 report must be generated only from saved machine-readable JSON artifacts. Report values must be traceable to those persisted JSON files, not recomputed from in-memory state, transient logs, or human-edited report text.
+The final Snakemake DAG uses six explicit rules in this order: `create_data -> validate -> preprocess -> infer_dummy -> evaluate -> report`.
 
-Phase 1 includes local MLflow tracking only. No remote MLflow tracking server is in scope.
+The Phase 1 report is generated only from saved machine-readable JSON artifacts. Report values are traceable to those persisted JSON files, not recomputed from in-memory state, transient logs, NIfTI files, MLflow, or human-edited report text.
+
+Phase 1 includes separate local MLflow tracking only. MLflow is not a prerequisite for Gate 1 or for report generation. No remote MLflow tracking server is in scope.
 
 Phase 1 includes config hashing and manifest hashing so generated outputs can be traced to the exact configuration and artifact manifest used to create them.
 
-Phase 1 will include CLI commands for synthetic DAG operations, including creation of synthetic inputs, DAG execution support, validation, dummy inference, evaluation, and report generation.
+Phase 1 includes CLI commands for synthetic DAG operations, including creation of synthetic inputs, validation, preprocessing, dummy inference, evaluation, report generation, and separate local MLflow run tracking.
 
-Phase 1 will include an integration test that rebuilds the final synthetic report from an empty generated-artifact directory.
+Phase 1 includes integration tests that rebuild the final synthetic report from an empty generated-artifact directory and from a nonexistent generated root.
 
 Phase 1 must not include real-data ingestion, neural-network training, model baseline implementation, few-shot protocol work, robustness evaluation, external validation, or LLM/VLM work.
+
+Phase 1 uses deterministic synthetic data and deterministic dummy inference for pipeline verification only. It contains no scientific model result.
 
 ## Phase 1 Planned Files and Directories
 
@@ -117,28 +121,27 @@ Phase 1 must not include real-data ingestion, neural-network training, model bas
 - `tests/smoke/`
 - `reports/templates/`
 
-## Phase 1 Planned Dependencies
+## Phase 1 Dependency Status
 
-These dependencies may be required for Phase 1:
+Phase 1 uses dependencies that are already present in the locked environment:
 
 - `snakemake`
 - `mlflow`
-- `hydra-core`
-- `omegaconf`
 
-Dependency selection is pending implementation review. Do not add dependencies during the Phase 1 documentation-planning step.
+No dependencies were added or updated for Phase 1 close-out. `hydra-core` and `omegaconf` were not introduced for the Phase 1 DAG.
 
 ## Phase 1 Planned CLI Commands
 
 - `protoem-ct create-data`
-- `protoem-ct validate-pair`
-- `protoem-ct preprocess`
+- `protoem-ct validate-data`
+- `protoem-ct preprocess-data`
 - `protoem-ct infer-dummy`
 - `protoem-ct evaluate`
 - `protoem-ct report`
-- `uv run snakemake --cores 1 --rerun-incomplete`
+- `protoem-ct track-run`
+- `uv run snakemake --snakefile Snakefile --cores 1 --rerun-incomplete --config generated_root=/absolute/external/generated-root git_commit=<explicit-commit> created_at_utc=<explicit-utc-timestamp>`
 
-The exact command names, options, and config wiring remain pending implementation review.
+The Snakemake DAG requires `generated_root`, `git_commit`, and `created_at_utc` through explicit `--config` values. `generated_root` must be an absolute path and is expected to be outside the repository for local Gate 1 verification.
 
 ## Phase 1 Planned Verification Commands
 
@@ -146,7 +149,7 @@ The exact command names, options, and config wiring remain pending implementatio
 - `make lint`
 - `make test`
 - `make smoke`
-- `uv run snakemake --cores 1 --rerun-incomplete`
+- `uv run snakemake --snakefile Snakefile --cores 1 --rerun-incomplete --config generated_root=/absolute/external/generated-root git_commit=<explicit-commit> created_at_utc=<explicit-utc-timestamp>`
 - A clean rebuild of the final synthetic report from an empty generated-artifact directory
 
 ## Phase 1 Risks
@@ -191,3 +194,48 @@ Operational environment note: some uv-backed commands initially failed inside th
 Gate 0 passed locally.
 
 GitHub push and hosted CI verification remain publication tasks, not Phase 0 implementation defects. GitHub-hosted CI status must not be claimed until the workflow runs on GitHub.
+
+### Phase 1 Local Close-Out
+
+Phase 1 implemented the final local Snakemake DAG and local close-out evidence. The DAG has exactly these rules: `all`, `create_data`, `validate`, `preprocess`, `infer_dummy`, `evaluate`, and `report`.
+
+The rule dependency order is `create_data -> validate -> preprocess -> infer_dummy -> evaluate -> report`. Each rule invokes the existing `protoem-ct` CLI command for that stage and does not duplicate Python stage logic inside the Snakefile.
+
+The required local command pattern is:
+
+`uv run snakemake --snakefile Snakefile --cores 1 --rerun-incomplete --config generated_root=/absolute/external/generated-root git_commit=<explicit-commit> created_at_utc=<explicit-utc-timestamp>`
+
+The fixed generated layout under the explicit generated root is:
+
+- `data/`
+- `artifacts/validation.json`
+- `preprocessed/`
+- `artifacts/preprocess.json`
+- `predictions/`
+- `artifacts/inference.json`
+- `artifacts/evaluation.json`
+- `report/phase1_report.md`
+- `report/report_artifact.json`
+
+Verified local outcomes:
+
+- `uv lock --check`: PASS
+- `uv run ruff check .`: PASS
+- `uv run ruff format --check .`: PASS
+- `uv run mypy src tests`: PASS
+- `uv run pytest -q`: PASS, `285 passed`
+- `make smoke`: PASS, `1 passed`
+- `uv run pre-commit validate-config`: PASS
+- `uv run pre-commit run --all-files`: PASS
+- `uv run snakemake --snakefile Snakefile --lint --config generated_root=/tmp/protoem-ct-phase1-lint git_commit=phase1-lint created_at_utc=2026-01-01T00:00:00Z`: PASS
+- `uv run snakemake --snakefile Snakefile --list-rules --config generated_root=/tmp/protoem-ct-phase1-list git_commit=phase1-list created_at_utc=2026-01-01T00:00:00Z`: PASS
+- `uv run pytest -q tests/integration/test_phase1_snakemake_dag.py`: PASS, `9 passed`
+- Additional temporary-directory real DAG execution outside the repository: PASS
+
+The report generation stage remains JSON-only and independent of MLflow. Local MLflow tracking remains available as a separate `protoem-ct track-run` operation after report generation.
+
+Gate 1 passed locally because the real empty-root DAG test passed and the verification checks above passed locally.
+
+Phase 1 uses synthetic data and deterministic dummy inference for pipeline verification only. It contains no model training, no real-data execution, and no scientific model result.
+
+Hosted CI, pull request review, branch merge, and hosted deployment success have not been claimed.
