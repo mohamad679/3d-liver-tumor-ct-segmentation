@@ -15,8 +15,13 @@ venv/
 .env.*
 .uv-cache/
 uv-cache/
+generated/
+.snakemake/
+.mlflow/
 mlruns/
 artifacts/
+!src/protoem_ct/artifacts/
+!src/protoem_ct/artifacts/*.py
 outputs/
 predictions/
 checkpoints/
