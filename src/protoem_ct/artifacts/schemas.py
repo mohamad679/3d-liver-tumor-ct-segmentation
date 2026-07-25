@@ -208,22 +208,139 @@ class InferenceArtifact(_ArtifactBase):
 
 
 @dataclass(frozen=True, slots=True)
-class EvaluationArtifact(_ArtifactBase):
-    """Artifact produced by metric evaluation over persisted predictions."""
+class EvaluationCaseMetrics:
+    """Per-case binary segmentation counts and overlap metrics."""
 
-    metric_name: str
-    per_case_values: Mapping[str, float]
-    aggregate_value: float
-    valid_case_count: int
+    case_id: str
+    true_positives: int
+    false_positives: int
+    false_negatives: int
+    true_negatives: int
+    ground_truth_foreground_voxels: int
+    predicted_foreground_voxels: int
+    dice: float
+    iou: float
+
+    def __post_init__(self) -> None:
+        _require_nonempty_string(self.case_id, "case_id")
+        _require_nonnegative_int(self.true_positives, "true_positives")
+        _require_nonnegative_int(self.false_positives, "false_positives")
+        _require_nonnegative_int(self.false_negatives, "false_negatives")
+        _require_nonnegative_int(self.true_negatives, "true_negatives")
+        _require_nonnegative_int(
+            self.ground_truth_foreground_voxels,
+            "ground_truth_foreground_voxels",
+        )
+        _require_nonnegative_int(
+            self.predicted_foreground_voxels,
+            "predicted_foreground_voxels",
+        )
+        _require_unit_float(self.dice, "dice")
+        _require_unit_float(self.iou, "iou")
+        expected_ground_truth = self.true_positives + self.false_negatives
+        if self.ground_truth_foreground_voxels != expected_ground_truth:
+            msg = "ground_truth_foreground_voxels must equal true_positives + false_negatives"
+            raise ArtifactValidationError(msg)
+        expected_prediction = self.true_positives + self.false_positives
+        if self.predicted_foreground_voxels != expected_prediction:
+            msg = "predicted_foreground_voxels must equal true_positives + false_positives"
+            raise ArtifactValidationError(msg)
+        expected_dice = _dice_from_counts(
+            self.true_positives,
+            self.false_positives,
+            self.false_negatives,
+        )
+        expected_iou = _iou_from_counts(
+            self.true_positives,
+            self.false_positives,
+            self.false_negatives,
+        )
+        _require_close_metric(self.dice, expected_dice, "dice")
+        _require_close_metric(self.iou, expected_iou, "iou")
+
+
+@dataclass(frozen=True, slots=True)
+class EvaluationArtifact(_ArtifactBase):
+    """Artifact produced by metric evaluation over persisted dummy predictions."""
+
+    method: str
+    case_ids: tuple[str, ...]
+    case_metrics: tuple[EvaluationCaseMetrics, ...]
+    macro_mean_dice: float
+    macro_mean_iou: float
+    micro_dice: float
+    micro_iou: float
+    total_true_positives: int
+    total_false_positives: int
+    total_false_negatives: int
+    total_true_negatives: int
+    evaluated_case_count: int
 
     _expected_stage: ClassVar[str] = "evaluate"
 
     def __post_init__(self) -> None:
         _ArtifactBase.__post_init__(self)
-        _require_nonempty_string(self.metric_name, "metric_name")
-        _require_float_mapping(self.per_case_values, "per_case_values", allow_empty=False)
-        _require_finite_float(self.aggregate_value, "aggregate_value")
-        _require_nonnegative_int(self.valid_case_count, "valid_case_count")
+        if self.method != "dummy":
+            msg = "method must be fixed to 'dummy'"
+            raise ArtifactValidationError(msg)
+        _require_string_tuple(self.case_ids, "case_ids", allow_empty=False)
+        if len(set(self.case_ids)) != len(self.case_ids):
+            msg = "case_ids must be unique"
+            raise ArtifactValidationError(msg)
+        _require_case_metrics_tuple(self.case_metrics)
+        if len(self.case_ids) != len(self.case_metrics):
+            msg = "case_ids and case_metrics must have equal lengths"
+            raise ArtifactValidationError(msg)
+        if self.case_ids != tuple(metric.case_id for metric in self.case_metrics):
+            msg = "case_ids must match case_metrics case_id values in order"
+            raise ArtifactValidationError(msg)
+        _require_unit_float(self.macro_mean_dice, "macro_mean_dice")
+        _require_unit_float(self.macro_mean_iou, "macro_mean_iou")
+        _require_unit_float(self.micro_dice, "micro_dice")
+        _require_unit_float(self.micro_iou, "micro_iou")
+        _require_nonnegative_int(self.total_true_positives, "total_true_positives")
+        _require_nonnegative_int(self.total_false_positives, "total_false_positives")
+        _require_nonnegative_int(self.total_false_negatives, "total_false_negatives")
+        _require_nonnegative_int(self.total_true_negatives, "total_true_negatives")
+        _require_nonnegative_int(self.evaluated_case_count, "evaluated_case_count")
+        if self.evaluated_case_count != len(self.case_ids):
+            msg = "evaluated_case_count must match case_ids length"
+            raise ArtifactValidationError(msg)
+
+        total_true_positives = sum(metric.true_positives for metric in self.case_metrics)
+        total_false_positives = sum(metric.false_positives for metric in self.case_metrics)
+        total_false_negatives = sum(metric.false_negatives for metric in self.case_metrics)
+        total_true_negatives = sum(metric.true_negatives for metric in self.case_metrics)
+        if self.total_true_positives != total_true_positives:
+            msg = "total_true_positives must equal summed per-case true_positives"
+            raise ArtifactValidationError(msg)
+        if self.total_false_positives != total_false_positives:
+            msg = "total_false_positives must equal summed per-case false_positives"
+            raise ArtifactValidationError(msg)
+        if self.total_false_negatives != total_false_negatives:
+            msg = "total_false_negatives must equal summed per-case false_negatives"
+            raise ArtifactValidationError(msg)
+        if self.total_true_negatives != total_true_negatives:
+            msg = "total_true_negatives must equal summed per-case true_negatives"
+            raise ArtifactValidationError(msg)
+
+        case_count = len(self.case_metrics)
+        expected_macro_dice = sum(metric.dice for metric in self.case_metrics) / case_count
+        expected_macro_iou = sum(metric.iou for metric in self.case_metrics) / case_count
+        expected_micro_dice = _dice_from_counts(
+            total_true_positives,
+            total_false_positives,
+            total_false_negatives,
+        )
+        expected_micro_iou = _iou_from_counts(
+            total_true_positives,
+            total_false_positives,
+            total_false_negatives,
+        )
+        _require_close_metric(self.macro_mean_dice, expected_macro_dice, "macro_mean_dice")
+        _require_close_metric(self.macro_mean_iou, expected_macro_iou, "macro_mean_iou")
+        _require_close_metric(self.micro_dice, expected_micro_dice, "micro_dice")
+        _require_close_metric(self.micro_iou, expected_micro_iou, "micro_iou")
 
 
 @dataclass(frozen=True, slots=True)
@@ -291,10 +408,11 @@ _SEQUENCE_FIELDS = {
     "prediction_case_ids",
     "prediction_paths",
     "prediction_hashes",
+    "case_metrics",
     "source_artifact_paths",
     "reported_metric_names",
 }
-_MAPPING_FIELDS = {"preprocessing_parameters", "per_case_values"}
+_MAPPING_FIELDS = {"preprocessing_parameters"}
 
 
 def artifact_to_dict(artifact: Artifact) -> dict[str, JsonValue]:
@@ -382,7 +500,12 @@ def _construct_artifact(raw: dict[str, object], artifact_type: type[Artifact]) -
 
     kwargs: dict[str, object] = {}
     for key, value in raw.items():
-        if key in _SEQUENCE_FIELDS:
+        if key == "case_metrics":
+            if not isinstance(value, list):
+                msg = "case_metrics must be a JSON array"
+                raise ArtifactValidationError(msg)
+            kwargs[key] = tuple(_construct_case_metrics(item) for item in value)
+        elif key in _SEQUENCE_FIELDS:
             if not isinstance(value, list):
                 msg = f"{key} must be a JSON array"
                 raise ArtifactValidationError(msg)
@@ -419,6 +542,8 @@ def _jsonify(value: object, location: str) -> JsonValue:
             msg = f"{location} must not contain NaN or Infinity"
             raise ArtifactSerializationError(msg)
         return value
+    if isinstance(value, EvaluationCaseMetrics):
+        return _jsonify_evaluation_case_metrics(value)
     if isinstance(value, tuple):
         return [_jsonify(item, f"{location}[{index}]") for index, item in enumerate(value)]
     if isinstance(value, Mapping):
@@ -431,6 +556,30 @@ def _jsonify(value: object, location: str) -> JsonValue:
         return result
     msg = f"{location} is not JSON-compatible: {type(value).__name__}"
     raise ArtifactSerializationError(msg)
+
+
+def _construct_case_metrics(value: object) -> EvaluationCaseMetrics:
+    if not isinstance(value, dict):
+        msg = "case_metrics entries must be JSON objects"
+        raise ArtifactValidationError(msg)
+    expected_fields = {field.name for field in fields(EvaluationCaseMetrics)}
+    raw = cast(dict[str, object], value)
+    extra_fields = set(raw) - expected_fields
+    missing_fields = expected_fields - set(raw)
+    if extra_fields:
+        msg = f"unexpected fields for EvaluationCaseMetrics: {sorted(extra_fields)}"
+        raise ArtifactValidationError(msg)
+    if missing_fields:
+        msg = f"missing fields for EvaluationCaseMetrics: {sorted(missing_fields)}"
+        raise ArtifactValidationError(msg)
+    return cast(EvaluationCaseMetrics, cast(Any, EvaluationCaseMetrics)(**raw))
+
+
+def _jsonify_evaluation_case_metrics(value: EvaluationCaseMetrics) -> JsonValue:
+    result: dict[str, JsonValue] = {}
+    for field in fields(EvaluationCaseMetrics):
+        result[field.name] = _jsonify(getattr(value, field.name), field.name)
+    return result
 
 
 def _require_exact_schema_version(value: object) -> None:
@@ -466,6 +615,46 @@ def _require_nonnegative_int(value: object, field_name: str) -> None:
 def _require_finite_float(value: object, field_name: str) -> None:
     if isinstance(value, bool) or not isinstance(value, float) or not math.isfinite(value):
         msg = f"{field_name} must be a finite float"
+        raise ArtifactValidationError(msg)
+
+
+def _require_unit_float(value: object, field_name: str) -> None:
+    _require_finite_float(value, field_name)
+    numeric_value = cast(float, value)
+    if numeric_value < 0.0 or numeric_value > 1.0:
+        msg = f"{field_name} must be in [0, 1]"
+        raise ArtifactValidationError(msg)
+
+
+def _require_case_metrics_tuple(value: object) -> None:
+    if not isinstance(value, tuple):
+        msg = "case_metrics must be a tuple of EvaluationCaseMetrics"
+        raise ArtifactValidationError(msg)
+    if not value:
+        msg = "case_metrics must not be empty"
+        raise ArtifactValidationError(msg)
+    if any(not isinstance(item, EvaluationCaseMetrics) for item in value):
+        msg = "case_metrics must contain only EvaluationCaseMetrics entries"
+        raise ArtifactValidationError(msg)
+
+
+def _dice_from_counts(true_positives: int, false_positives: int, false_negatives: int) -> float:
+    denominator = (2 * true_positives) + false_positives + false_negatives
+    if denominator == 0:
+        return 1.0
+    return (2 * true_positives) / denominator
+
+
+def _iou_from_counts(true_positives: int, false_positives: int, false_negatives: int) -> float:
+    denominator = true_positives + false_positives + false_negatives
+    if denominator == 0:
+        return 1.0
+    return true_positives / denominator
+
+
+def _require_close_metric(value: float, expected: float, field_name: str) -> None:
+    if not math.isclose(value, expected, rel_tol=0.0, abs_tol=1e-12):
+        msg = f"{field_name} is inconsistent with confusion counts"
         raise ArtifactValidationError(msg)
 
 

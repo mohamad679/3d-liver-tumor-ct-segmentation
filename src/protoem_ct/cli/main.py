@@ -22,6 +22,7 @@ from protoem_ct.evaluation.dummy_inference import (
     DummyInferenceError,
     run_dummy_inference,
 )
+from protoem_ct.evaluation.metrics import EvaluationError, evaluate_predictions
 
 app = typer.Typer(help="ProtoEM-CT command-line tools.")
 
@@ -300,6 +301,83 @@ def infer_dummy(
     typer.echo("dummy inference success")
     typer.echo(f"prediction count: {len(artifact.prediction_case_ids)}")
     typer.echo(f"inference artifact path: {artifact_output_path}")
+    typer.echo(f"config hash: {artifact.config_hash}")
+    typer.echo(f"manifest hash: {artifact.manifest_hash}")
+    typer.echo(f"method: {artifact.method}")
+
+
+@app.command("evaluate")
+def evaluate(
+    preprocess_artifact_path: Annotated[
+        Path,
+        typer.Option(
+            "--preprocess-artifact",
+            help="Path to the preprocessing artifact JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    inference_artifact_path: Annotated[
+        Path,
+        typer.Option(
+            "--inference-artifact",
+            help="Path to the inference artifact JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    preprocessed_root: Annotated[
+        Path,
+        typer.Option(
+            "--preprocessed-root",
+            help="Root directory beneath which preprocessed label paths are resolved.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    prediction_root: Annotated[
+        Path,
+        typer.Option(
+            "--prediction-root",
+            help="Root directory beneath which prediction paths are resolved.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    artifact_output_path: Annotated[
+        Path,
+        typer.Option(
+            "--artifact-output",
+            help="Path to the evaluation artifact JSON file to create.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    git_commit: Annotated[
+        str,
+        typer.Option(
+            "--git-commit",
+            help="Explicit Git commit recorded in the evaluation artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    created_at_utc: Annotated[
+        str,
+        typer.Option(
+            "--created-at-utc",
+            help="Explicit UTC creation timestamp recorded in the evaluation artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+) -> None:
+    """Evaluate deterministic Phase 1 dummy predictions."""
+    try:
+        artifact = evaluate_predictions(
+            preprocess_artifact_path,
+            inference_artifact_path,
+            preprocessed_root=preprocessed_root,
+            prediction_root=prediction_root,
+            artifact_output_path=artifact_output_path,
+            git_commit=git_commit,
+            created_at_utc=created_at_utc,
+        )
+    except EvaluationError as exc:
+        typer.secho(str(exc), err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1) from None
+
+    typer.echo("evaluation success")
+    typer.echo(f"evaluated case count: {artifact.evaluated_case_count}")
+    typer.echo(f"evaluation artifact path: {artifact_output_path}")
+    typer.echo(f"macro Dice: {artifact.macro_mean_dice}")
+    typer.echo(f"macro IoU: {artifact.macro_mean_iou}")
     typer.echo(f"config hash: {artifact.config_hash}")
     typer.echo(f"manifest hash: {artifact.manifest_hash}")
     typer.echo(f"method: {artifact.method}")

@@ -16,6 +16,7 @@ from protoem_ct.artifacts import (
     ArtifactStageError,
     ArtifactValidationError,
     EvaluationArtifact,
+    EvaluationCaseMetrics,
     InferenceArtifact,
     PreprocessArtifact,
     ReportArtifact,
@@ -28,6 +29,21 @@ from protoem_ct.artifacts import (
 )
 
 HASH = "0" * 64
+
+
+def _case_metric(case_id: str = "case-001", **overrides: object) -> EvaluationCaseMetrics:
+    metric = EvaluationCaseMetrics(
+        case_id=case_id,
+        true_positives=2,
+        false_positives=1,
+        false_negatives=1,
+        true_negatives=4,
+        ground_truth_foreground_voxels=3,
+        predicted_foreground_voxels=3,
+        dice=2 / 3,
+        iou=0.5,
+    )
+    return cast(EvaluationCaseMetrics, cast(Any, replace)(metric, **overrides))
 
 
 def _manifest(**overrides: object) -> SyntheticManifest:
@@ -214,10 +230,41 @@ def test_all_stage_specific_artifacts_are_constructible() -> None:
         ),
         EvaluationArtifact(
             stage="evaluate",
-            metric_name="dice",
-            per_case_values=MappingProxyType({"case-001": 1.0, "case-002": 0.0}),
-            aggregate_value=0.5,
-            valid_case_count=2,
+            method="dummy",
+            case_ids=("case-001", "case-002"),
+            case_metrics=(
+                EvaluationCaseMetrics(
+                    case_id="case-001",
+                    true_positives=2,
+                    false_positives=1,
+                    false_negatives=1,
+                    true_negatives=4,
+                    ground_truth_foreground_voxels=3,
+                    predicted_foreground_voxels=3,
+                    dice=2 / 3,
+                    iou=0.5,
+                ),
+                EvaluationCaseMetrics(
+                    case_id="case-002",
+                    true_positives=0,
+                    false_positives=0,
+                    false_negatives=0,
+                    true_negatives=8,
+                    ground_truth_foreground_voxels=0,
+                    predicted_foreground_voxels=0,
+                    dice=1.0,
+                    iou=1.0,
+                ),
+            ),
+            macro_mean_dice=((2 / 3) + 1.0) / 2,
+            macro_mean_iou=(0.5 + 1.0) / 2,
+            micro_dice=2 / 3,
+            micro_iou=0.5,
+            total_true_positives=2,
+            total_false_positives=1,
+            total_false_negatives=1,
+            total_true_negatives=12,
+            evaluated_case_count=2,
             **common,
         ),
         ReportArtifact(
@@ -368,3 +415,134 @@ def test_inference_artifact_rejects_invalid_output_settings(
 
     with pytest.raises(ArtifactValidationError):
         InferenceArtifact(**common)
+
+
+def test_evaluation_artifact_round_trips_full_machine_readable_metrics() -> None:
+    case_metrics = (
+        _case_metric("case-001"),
+        EvaluationCaseMetrics(
+            case_id="case-002",
+            true_positives=0,
+            false_positives=0,
+            false_negatives=2,
+            true_negatives=6,
+            ground_truth_foreground_voxels=2,
+            predicted_foreground_voxels=0,
+            dice=0.0,
+            iou=0.0,
+        ),
+    )
+    artifact = EvaluationArtifact(
+        schema_version=ARTIFACT_SCHEMA_VERSION,
+        stage="evaluate",
+        created_at_utc="2026-07-25T00:00:00Z",
+        git_commit="abc1234",
+        config_hash=HASH,
+        manifest_hash=HASH,
+        method="dummy",
+        case_ids=("case-001", "case-002"),
+        case_metrics=case_metrics,
+        macro_mean_dice=1 / 3,
+        macro_mean_iou=0.25,
+        micro_dice=0.5,
+        micro_iou=1 / 3,
+        total_true_positives=2,
+        total_false_positives=1,
+        total_false_negatives=3,
+        total_true_negatives=10,
+        evaluated_case_count=2,
+    )
+
+    loaded = artifact_from_json(artifact_to_json(artifact), EvaluationArtifact)
+
+    assert loaded == artifact
+    assert loaded.case_metrics[0].true_positives == 2
+    assert loaded.case_metrics[1].dice == 0.0
+
+
+def test_evaluation_case_metrics_reject_inconsistent_foreground_counts() -> None:
+    with pytest.raises(ArtifactValidationError, match="ground_truth_foreground"):
+        _case_metric(ground_truth_foreground_voxels=2)
+
+    with pytest.raises(ArtifactValidationError, match="predicted_foreground"):
+        _case_metric(predicted_foreground_voxels=2)
+
+
+def test_evaluation_case_metrics_reject_inconsistent_overlap_metrics() -> None:
+    with pytest.raises(ArtifactValidationError, match="dice"):
+        _case_metric(dice=0.25)
+
+    with pytest.raises(ArtifactValidationError, match="iou"):
+        _case_metric(iou=0.25)
+
+
+def test_evaluation_artifact_rejects_non_dummy_method() -> None:
+    with pytest.raises(ArtifactValidationError, match="method"):
+        EvaluationArtifact(
+            schema_version=ARTIFACT_SCHEMA_VERSION,
+            stage="evaluate",
+            created_at_utc="2026-07-25T00:00:00Z",
+            git_commit="abc1234",
+            config_hash=HASH,
+            manifest_hash=HASH,
+            method="other",
+            case_ids=("case-001",),
+            case_metrics=(_case_metric("case-001"),),
+            macro_mean_dice=2 / 3,
+            macro_mean_iou=0.5,
+            micro_dice=2 / 3,
+            micro_iou=0.5,
+            total_true_positives=2,
+            total_false_positives=1,
+            total_false_negatives=1,
+            total_true_negatives=4,
+            evaluated_case_count=1,
+        )
+
+
+def test_evaluation_artifact_rejects_inconsistent_aggregate_counts() -> None:
+    with pytest.raises(ArtifactValidationError, match="total_true_positives"):
+        EvaluationArtifact(
+            schema_version=ARTIFACT_SCHEMA_VERSION,
+            stage="evaluate",
+            created_at_utc="2026-07-25T00:00:00Z",
+            git_commit="abc1234",
+            config_hash=HASH,
+            manifest_hash=HASH,
+            method="dummy",
+            case_ids=("case-001",),
+            case_metrics=(_case_metric("case-001"),),
+            macro_mean_dice=2 / 3,
+            macro_mean_iou=0.5,
+            micro_dice=2 / 3,
+            micro_iou=0.5,
+            total_true_positives=3,
+            total_false_positives=1,
+            total_false_negatives=1,
+            total_true_negatives=4,
+            evaluated_case_count=1,
+        )
+
+
+def test_evaluation_artifact_rejects_inconsistent_case_order() -> None:
+    with pytest.raises(ArtifactValidationError, match="case_ids"):
+        EvaluationArtifact(
+            schema_version=ARTIFACT_SCHEMA_VERSION,
+            stage="evaluate",
+            created_at_utc="2026-07-25T00:00:00Z",
+            git_commit="abc1234",
+            config_hash=HASH,
+            manifest_hash=HASH,
+            method="dummy",
+            case_ids=("case-002",),
+            case_metrics=(_case_metric("case-001"),),
+            macro_mean_dice=2 / 3,
+            macro_mean_iou=0.5,
+            micro_dice=2 / 3,
+            micro_iou=0.5,
+            total_true_positives=2,
+            total_false_positives=1,
+            total_false_negatives=1,
+            total_true_negatives=4,
+            evaluated_case_count=1,
+        )
