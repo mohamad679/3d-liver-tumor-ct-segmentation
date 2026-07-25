@@ -43,6 +43,7 @@ GIT_COMMIT = "728d38b"
 CREATED_AT_UTC = "2026-07-25T01:00:00Z"
 VALIDATION_CREATED_AT_UTC = "2026-07-25T01:05:00Z"
 PREPROCESS_CREATED_AT_UTC = "2026-07-25T01:10:00Z"
+NIFTI1_HEADER_AND_EXTENDER_SIZE = 352
 
 
 def _synthetic_config(**overrides: object) -> SyntheticDataConfig:
@@ -197,12 +198,15 @@ def _array(path: Path) -> np.ndarray[Any, Any]:
     return cast(np.ndarray[Any, Any], np.asanyarray(_load_nifti(path).dataobj))
 
 
-def _overwrite_image_with_nan(path: Path) -> None:
-    image = _load_nifti(path)
-    data = np.asarray(image.dataobj, dtype=np.float32)
-    data[0, 0, 0] = np.nan
-    corrupted = nib.Nifti1Image(data, image.affine)  # type: ignore[no-untyped-call]
-    nib.save(corrupted, str(path))
+def _corrupt_nifti_header(path: Path) -> None:
+    """Replace the NIfTI-1 header without truncating the test input."""
+    payload = path.read_bytes()
+    if len(payload) < NIFTI1_HEADER_AND_EXTENDER_SIZE:
+        msg = f"test NIfTI is unexpectedly short: {path}"
+        raise AssertionError(msg)
+    path.write_bytes(
+        bytes(NIFTI1_HEADER_AND_EXTENDER_SIZE) + payload[NIFTI1_HEADER_AND_EXTENDER_SIZE:]
+    )
 
 
 def test_valid_preprocessing_configuration() -> None:
@@ -505,7 +509,11 @@ def test_failed_processing_leaves_no_partial_output_or_artifact(tmp_path: Path) 
     result = _dataset(tmp_path)
     validation_path, _validation = _validate(result, tmp_path)
     data_root = _data_root(result, tmp_path)
-    _overwrite_image_with_nan(data_root / result.manifest.image_paths[1])
+    _corrupt_nifti_header(data_root / result.manifest.image_paths[1])
+    input_hashes = {
+        relative_path: sha256_file(data_root / relative_path)
+        for relative_path in [*result.manifest.image_paths, *result.manifest.label_paths]
+    }
     output_root = tmp_path / "preprocessed"
     artifact_output_path = tmp_path / "artifacts" / "preprocess.json"
 
@@ -521,3 +529,7 @@ def test_failed_processing_leaves_no_partial_output_or_artifact(tmp_path: Path) 
     assert not output_root.exists()
     assert not artifact_output_path.exists()
     assert not any(path.name.startswith(f".{output_root.name}.tmp-") for path in tmp_path.iterdir())
+    assert input_hashes == {
+        relative_path: sha256_file(data_root / relative_path)
+        for relative_path in [*result.manifest.image_paths, *result.manifest.label_paths]
+    }

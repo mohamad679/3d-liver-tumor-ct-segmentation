@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Any, cast
 
 import nibabel as nib
-import numpy as np
 import pytest
+from nibabel.filebasedimages import ImageFileError
 from typer.testing import CliRunner
 
 from protoem_ct.artifacts import PreprocessArtifact, SyntheticManifest, artifact_from_json
@@ -25,6 +25,7 @@ GIT_COMMIT = "728d38b"
 CREATED_AT_UTC = "2026-07-25T01:00:00Z"
 VALIDATION_CREATED_AT_UTC = "2026-07-25T01:05:00Z"
 PREPROCESS_CREATED_AT_UTC = "2026-07-25T01:10:00Z"
+NIFTI1_HEADER_AND_EXTENDER_SIZE = 352
 
 
 def _invoke_preprocess_data(*args: str) -> Any:
@@ -85,12 +86,15 @@ def _assert_nonzero_without_traceback(result: Any) -> str:
     return error_output
 
 
-def _overwrite_image_with_nan(path: Path) -> None:
-    image = cast(Any, nib.load(str(path)))
-    data = np.asarray(image.dataobj, dtype=np.float32)
-    data[0, 0, 0] = np.nan
-    corrupted = nib.Nifti1Image(data, image.affine)  # type: ignore[no-untyped-call]
-    nib.save(corrupted, str(path))
+def _corrupt_nifti_header(path: Path) -> None:
+    """Replace the NIfTI-1 header without truncating the test input."""
+    payload = path.read_bytes()
+    if len(payload) < NIFTI1_HEADER_AND_EXTENDER_SIZE:
+        msg = f"test NIfTI is unexpectedly short: {path}"
+        raise AssertionError(msg)
+    path.write_bytes(
+        bytes(NIFTI1_HEADER_AND_EXTENDER_SIZE) + payload[NIFTI1_HEADER_AND_EXTENDER_SIZE:]
+    )
 
 
 def test_preprocess_data_cli_success_writes_outputs_and_readable_artifact(
@@ -125,7 +129,11 @@ def test_preprocess_data_cli_corrupted_image_exits_nonzero_without_traceback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     manifest, _manifest_path, _validation_path = _create_and_validate(tmp_path)
-    _overwrite_image_with_nan(tmp_path / "data-root" / manifest.image_paths[0])
+    corrupted_image_path = tmp_path / "data-root" / manifest.image_paths[0]
+    _corrupt_nifti_header(corrupted_image_path)
+    corrupted_image_bytes = corrupted_image_path.read_bytes()
+    with pytest.raises(ImageFileError):
+        nib.load(str(corrupted_image_path))
     config_path = Path("configs/experiment/phase1.yaml").resolve()
     monkeypatch.chdir(tmp_path)
 
@@ -135,6 +143,7 @@ def test_preprocess_data_cli_corrupted_image_exits_nonzero_without_traceback(
     assert "failed input NIfTI validation" in error_output
     assert not (tmp_path / "preprocessed").exists()
     assert not (tmp_path / "artifacts" / "preprocess.json").exists()
+    assert corrupted_image_path.read_bytes() == corrupted_image_bytes
 
 
 def test_preprocess_data_cli_inconsistent_validation_artifact_exits_nonzero_without_traceback(
