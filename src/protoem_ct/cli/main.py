@@ -24,6 +24,7 @@ from protoem_ct.evaluation.dummy_inference import (
 )
 from protoem_ct.evaluation.metrics import EvaluationError, evaluate_predictions
 from protoem_ct.reporting import ReportGenerationError, generate_synthetic_report
+from protoem_ct.tracking import LocalMlflowTrackingError, track_synthetic_run
 
 app = typer.Typer(help="ProtoEM-CT command-line tools.")
 
@@ -505,3 +506,105 @@ def validate_pair(
     typer.echo("validation success")
     typer.echo(f"shape: {result.shape}")
     typer.echo(f"label values: {list(result.label_values)}")
+
+
+@app.command("track-run")
+def track_run(
+    manifest_path: Annotated[
+        Path,
+        typer.Option(
+            "--manifest",
+            help="Path to the synthetic manifest JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    validation_artifact_path: Annotated[
+        Path,
+        typer.Option(
+            "--validation-artifact",
+            help="Path to the validation artifact JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    preprocess_artifact_path: Annotated[
+        Path,
+        typer.Option(
+            "--preprocess-artifact",
+            help="Path to the preprocessing artifact JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    inference_artifact_path: Annotated[
+        Path,
+        typer.Option(
+            "--inference-artifact",
+            help="Path to the inference artifact JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    evaluation_artifact_path: Annotated[
+        Path,
+        typer.Option(
+            "--evaluation-artifact",
+            help="Path to the evaluation artifact JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    report_path: Annotated[
+        Path,
+        typer.Option(
+            "--report",
+            help="Path to the Markdown report file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    report_artifact_path: Annotated[
+        Path,
+        typer.Option(
+            "--report-artifact",
+            help="Path to the report artifact JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    tracking_root: Annotated[
+        Path,
+        typer.Option(
+            "--tracking-root",
+            help="Explicit absolute local filesystem root for MLflow tracking.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    experiment_name: Annotated[
+        str,
+        typer.Option(
+            "--experiment-name",
+            help="Explicit MLflow experiment name.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    run_name: Annotated[
+        str,
+        typer.Option(
+            "--run-name",
+            help="Explicit MLflow run name.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+) -> None:
+    """Track a Phase 1 synthetic pipeline verification run in local MLflow."""
+    try:
+        result = track_synthetic_run(
+            manifest_path,
+            validation_artifact_path,
+            preprocess_artifact_path,
+            inference_artifact_path,
+            evaluation_artifact_path,
+            report_path,
+            report_artifact_path,
+            tracking_root=tracking_root,
+            experiment_name=experiment_name,
+            run_name=run_name,
+        )
+    except LocalMlflowTrackingError as exc:
+        typer.secho(str(exc), err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1) from None
+
+    typer.echo("local MLflow tracking success")
+    typer.echo(f"experiment name: {result.experiment_name}")
+    typer.echo(f"run name: {result.run_name}")
+    typer.echo(f"run ID: {result.run_id}")
+    typer.echo(f"logged metric count: {len(result.logged_metric_names)}")
+    typer.echo(f"logged artifact count: {len(result.logged_artifact_names)}")
+    typer.echo(f"config hash: {result.config_hash}")
+    typer.echo(f"manifest hash: {result.manifest_hash}")
+    typer.echo("synthetic pipeline verification only")
