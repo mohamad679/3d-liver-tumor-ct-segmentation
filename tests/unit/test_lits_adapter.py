@@ -24,6 +24,7 @@ from protoem_ct.data import (
     MissingDatasetPathError,
     NonRegularDatasetFileError,
 )
+from protoem_ct.data.adapters import LiTSStyleAdapter as AdapterPackageLiTSStyleAdapter
 
 LEGACY_LAYOUT = AdapterLayoutSpec(
     image_pattern="volume-*.nii*",
@@ -428,9 +429,22 @@ def test_adapter_protocol_and_serialization_boundaries(tmp_path: Path) -> None:
     assert "1" not in str(error.value)
 
 
-def test_no_concrete_3d_ircadb_adapter_exists() -> None:
+def test_lits_public_export_and_behavior_remain_unchanged(tmp_path: Path) -> None:
     import protoem_ct.data.adapters as adapters
 
     names = set(adapters.__all__)
 
-    assert "IRCAD" not in "".join(names).upper()
+    assert "LiTSStyleAdapter" in names
+    assert AdapterPackageLiTSStyleAdapter is LiTSStyleAdapter
+
+    _write_placeholder(tmp_path / "volume-1.nii")
+    _write_placeholder(tmp_path / "segmentation-1.nii")
+
+    inventory = LiTSStyleAdapter(
+        LiTSFilenameConvention("volume-", "segmentation-", (".nii",))
+    ).discover(
+        tmp_path,
+        AdapterLayoutSpec("volume-*.nii", "segmentation-*.nii", recursive=False),
+    )
+
+    assert _source_keys(inventory) == ("1",)
