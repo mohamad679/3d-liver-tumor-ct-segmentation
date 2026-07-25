@@ -96,3 +96,54 @@
 - Context: Phase 1 depends on the completed Phase 0 environment contract and repository workflow.
 - Decision: Phase 1 cannot begin until the Phase 0 branch is committed, pushed, reviewed, and integrated according to the repository workflow.
 - Consequences: Phase 1 remains the next phase, but it must not start from unintegrated Phase 0 close-out work.
+
+## Phase 1 Planning Decisions
+
+### 2026-07-25: Use Snakemake for the Synthetic DAG
+
+- Status: accepted
+- Context: Phase 1 needs a reproducible synthetic end-to-end DAG with explicit stage inputs and outputs.
+- Decision: Use Snakemake to orchestrate the Phase 1 synthetic DAG.
+- Consequences: The implementation review must confirm Snakemake dependency selection and macOS x86_64 compatibility before adding dependencies.
+
+### 2026-07-25: Use Local MLflow Tracking Only
+
+- Status: accepted
+- Context: Phase 1 needs experiment metadata capture without introducing remote infrastructure or credentials.
+- Decision: Use local MLflow tracking only; do not use a remote tracking server in Phase 1.
+- Consequences: Phase 1 must avoid remote tracking configuration and guard against leaking machine-specific local paths into tracked files or reports.
+
+### 2026-07-25: Generate Reports from Machine-Readable Artifacts
+
+- Status: accepted
+- Context: Scientific claims and report values must be traceable to persisted artifacts rather than transient process state or edited prose.
+- Decision: Generate Phase 1 reports only from validated machine-readable artifacts.
+- Consequences: Report generation must read saved JSON artifacts and preserve traceability from report values back to artifact schemas.
+
+### 2026-07-25: Use Deterministic Synthetic Inputs and Dummy Inference
+
+- Status: accepted
+- Context: Phase 1 validates pipeline mechanics without beginning model development or scientific evaluation.
+- Decision: Use deterministic synthetic inputs and deterministic dummy inference.
+- Consequences: The DAG can test reproducibility, hashing, evaluation, and reporting while deferring real-data and model work.
+
+### 2026-07-25: Treat Generated Artifacts as Disposable
+
+- Status: accepted
+- Context: Generated artifacts can become stale, large, or machine-specific and must not be mistaken for source truth.
+- Decision: Treat Phase 1 generated artifacts as disposable and excluded from Git.
+- Consequences: Gate 1 requires clean rebuild testing from an empty generated-artifact directory.
+
+### 2026-07-25: Require Clean Rebuild Testing Before Gate 1
+
+- Status: accepted
+- Context: Stale generated artifacts can cause false success in DAG and report checks.
+- Decision: Require a clean rebuild test before accepting Gate 1.
+- Consequences: Gate 1 cannot pass unless the final synthetic report is regenerated from an empty generated-artifact state.
+
+### 2026-07-25: Defer Real-Data and Model Work
+
+- Status: accepted
+- Context: Phase 1 is limited to documentation planning and later synthetic DAG implementation.
+- Decision: Do not begin real-data ingestion, neural-network training, model baselines, few-shot protocol work, robustness evaluation, external validation, or LLM/VLM work in Phase 1.
+- Consequences: Phase 1 remains an engineering reproducibility milestone and cannot produce scientific model claims.

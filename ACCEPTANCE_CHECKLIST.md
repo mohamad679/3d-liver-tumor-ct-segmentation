@@ -44,7 +44,17 @@ Gate 0 status: PASSED locally
 
 ## Gate 1
 
-- [ ] Pending definition.
+- [ ] Complete synthetic DAG runs from a clean generated-artifact state
+- [ ] Every stage has explicit inputs and outputs
+- [ ] Artifacts use documented schemas
+- [ ] Report is generated only from persisted JSON
+- [ ] Config, manifest, and Git metadata are recorded
+- [ ] Repeated runs are deterministic where expected
+- [ ] Integration test passes
+- [ ] Lint passes
+- [ ] Typing passes
+- [ ] Full tests pass
+- [ ] Smoke tests pass
 
 ## Gate 2
 

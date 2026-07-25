@@ -4,7 +4,9 @@
 
 Phase 0 is completed.
 
-Next phase: Phase 1. Phase 1 has not begun.
+Active phase: Phase 1 synthetic DAG planning.
+
+Phase 1 has not yet been implemented.
 
 ## Phase 0 Scope
 
@@ -78,6 +80,88 @@ Training code, real-data ingestion, model implementation, and Phase 1 work are e
 ## Gate 0 Acceptance Criteria
 
 Gate 0 is accepted when the standard repository structure exists, Python 3.11 and uv packaging are configured, ruff, mypy, pytest, hypothesis, pre-commit, Makefile, and CPU-only GitHub Actions are present, tiny synthetic NIfTI CT and tumor-mask fixtures exist, the `protoem-ct validate-pair` CLI is available, mismatch and invalid-data tests cover shape mismatch, affine mismatch, invalid labels, and NaNs, and linting, formatting check, typing, tests, and smoke test all pass.
+
+## Phase 1 Scope
+
+Phase 1 will implement a reproducible synthetic end-to-end DAG only. The DAG stages are:
+
+1. `create-data`
+2. `validate`
+3. `preprocess`
+4. `infer-dummy`
+5. `evaluate`
+6. `report`
+
+The Phase 1 report must be generated only from saved machine-readable JSON artifacts. Report values must be traceable to those persisted JSON files, not recomputed from in-memory state, transient logs, or human-edited report text.
+
+Phase 1 includes local MLflow tracking only. No remote MLflow tracking server is in scope.
+
+Phase 1 includes config hashing and manifest hashing so generated outputs can be traced to the exact configuration and artifact manifest used to create them.
+
+Phase 1 will include CLI commands for synthetic DAG operations, including creation of synthetic inputs, DAG execution support, validation, dummy inference, evaluation, and report generation.
+
+Phase 1 will include an integration test that rebuilds the final synthetic report from an empty generated-artifact directory.
+
+Phase 1 must not include real-data ingestion, neural-network training, model baseline implementation, few-shot protocol work, robustness evaluation, external validation, or LLM/VLM work.
+
+## Phase 1 Planned Files and Directories
+
+- `Snakefile`
+- `configs/experiment/`
+- `configs/data/`
+- `src/protoem_ct/cli/`
+- `src/protoem_ct/data/`
+- `src/protoem_ct/evaluation/`
+- `src/protoem_ct/reporting/`
+- `tests/integration/`
+- `tests/smoke/`
+- `reports/templates/`
+
+## Phase 1 Planned Dependencies
+
+These dependencies may be required for Phase 1:
+
+- `snakemake`
+- `mlflow`
+- `hydra-core`
+- `omegaconf`
+
+Dependency selection is pending implementation review. Do not add dependencies during the Phase 1 documentation-planning step.
+
+## Phase 1 Planned CLI Commands
+
+- `protoem-ct create-data`
+- `protoem-ct validate-pair`
+- `protoem-ct preprocess`
+- `protoem-ct infer-dummy`
+- `protoem-ct evaluate`
+- `protoem-ct report`
+- `uv run snakemake --cores 1 --rerun-incomplete`
+
+The exact command names, options, and config wiring remain pending implementation review.
+
+## Phase 1 Planned Verification Commands
+
+- `uv sync`
+- `make lint`
+- `make test`
+- `make smoke`
+- `uv run snakemake --cores 1 --rerun-incomplete`
+- A clean rebuild of the final synthetic report from an empty generated-artifact directory
+
+## Phase 1 Risks
+
+- Nondeterministic artifact content
+- Unstable hashes
+- Hidden dependency on working-directory state
+- Stale generated artifacts causing false success
+- MLflow local-path leakage
+- Report values not traceable to JSON
+- Snakemake compatibility on macOS x86_64
+
+## Gate 1 Acceptance Criteria
+
+Gate 1 is accepted when the complete synthetic DAG runs from a clean generated-artifact state, every stage has explicit inputs and outputs, artifacts use documented schemas, the report is generated only from persisted JSON, config, manifest, and Git metadata are recorded, repeated runs are deterministic where expected, the integration test passes, and lint, typing, full tests, and smoke tests pass.
 
 ## Implementation Notes and Command Results
 
