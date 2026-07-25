@@ -83,7 +83,36 @@ Gate 1 status: PASSED locally
 
 ## Gate 2
 
-- [ ] Pending definition.
+- [ ] Real LiTS development-cohort manifest is produced from an explicit dataset root
+- [ ] Deterministic patient-level train, validation, and immutable internal-test split
+      artifacts are produced
+- [ ] Pairwise patient-overlap and case-overlap tests are all zero
+- [ ] Machine-readable per-case, patient-level, and development dataset-level QA artifacts
+      are reproducible
+- [ ] Development Markdown QA report is reproducibly generated from saved QA artifacts
+- [ ] LiTS-style and 3D-IRCADb-style adapters have synthetic format and edge-case tests
+- [ ] Geometry, label, finite-value, connected-component, histogram, empty-tumor, duplicate,
+      missing, ambiguous, and unsafe-path edge cases are covered by synthetic tests
+- [ ] No medical data, PHI-bearing manifest, prediction, derived volume, or machine-specific
+      dataset path is tracked
+- [ ] Real 3D-IRCADb-01 external data was not accessed, scanned, QA'd, split, tuned on, or
+      summarized
+- [ ] Lint passes
+- [ ] Typing passes
+- [ ] Full tests pass
+- [ ] Smoke tests pass
+- [ ] GitHub-hosted CI passes
+- [ ] Leakage audit is completed with no unresolved critical finding
+
+### Gate 2 Evidence
+
+Gate 2 status: NOT EVALUATED
+
+Evidence must be recorded only after the approved Phase 2 implementation and real LiTS
+development execution. Do not enter estimated case counts, overlap counts, dataset availability,
+command results, or hosted-CI results. Gate 2 cannot pass until the real LiTS manifest, split,
+development QA artifacts, generated Markdown report, completed leakage audit, and all local and
+hosted checks exist.
 
 ## Gate 3
 

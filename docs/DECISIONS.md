@@ -170,3 +170,115 @@
 - Context: Phase 1 uses synthetic data and deterministic dummy inference to verify artifact linkage, hashing, evaluation, report generation, and orchestration.
 - Decision: Metrics produced by dummy inference are pipeline-verification values only, not scientific model results.
 - Consequences: Phase 1 close-out must not claim model performance, clinical validity, generalization, or state-of-the-art behavior.
+
+## Phase 2 Planning Decisions
+
+### 2026-07-25: Separate Development and External Cohorts
+
+- Status: accepted
+- Context: Development QA and protocol decisions must not consume held-out external information.
+- Decision: Use LiTS labeled training data as the development cohort and reserve real
+  3D-IRCADb-01 exclusively for Phase 8 external validation.
+- Consequences: Phase 2 must not scan, inventory, QA, split, tune on, or summarize real external
+  data, and external labels cannot influence development decisions.
+
+### 2026-07-25: Treat LiTS and MSD Task03 Liver as Non-Independent
+
+- Status: accepted
+- Context: MSD Task03 Liver is derived from LiTS and can represent the same cases in a different
+  layout.
+- Decision: Never count or analyze LiTS and MSD Task03 Liver as independent cohorts.
+- Consequences: Alternate MSD-style layout support cannot create an additional cohort, validation
+  set, or external test set; duplicate and overlap controls must enforce this boundary.
+
+### 2026-07-25: Keep the External Cohort Untouched Until Phase 8
+
+- Status: accepted
+- Context: Even unlabeled inventory or QA statistics from the external cohort could influence
+  development protocol choices.
+- Decision: Permit a 3D-IRCADb-style adapter interface in Phase 2 only when exercised with synthetic
+  fixtures; real 3D-IRCADb-01 remains untouched until Phase 8.
+- Consequences: Phase 2 commands, tests, manifests, reports, and leakage checks cannot require,
+  discover, or access the real external root.
+
+### 2026-07-25: Use Anonymous Deterministic Manifest Identifiers
+
+- Status: accepted
+- Context: Reproducible manifests need stable case identity without retaining identifying source
+  values.
+- Decision: Use deterministic anonymous patient and case IDs containing no raw patient name,
+  medical-record identifier, birth date, accession number, or original DICOM identifier. If stable
+  source mapping is necessary, use a one-way deterministic project namespace with explicit collision
+  checks and do not commit a reverse mapping.
+- Consequences: Reversible pseudonymization is not prescribed; schemas and tests must reject unsafe
+  identifiers, collisions, duplicate IDs, and source-identifier mappings in tracked artifacts.
+
+### 2026-07-25: Require Explicit External Data and Generated Roots
+
+- Status: accepted
+- Context: Dataset discovery based on current working directory or machine-wide search can access the
+  wrong data and leak machine-specific paths.
+- Decision: Supply dataset roots only by explicit CLI argument or ignored local configuration, and
+  write all outputs only beneath an explicit external generated root.
+- Consequences: No absolute local path is committed; adapters cannot search the computer, infer a
+  dataset location, write into source roots, or follow symlinks outside the explicit root.
+
+### 2026-07-25: Split Development Data at Patient Level Only
+
+- Status: accepted
+- Context: Volume- or slice-level assignment can place observations from one patient into multiple
+  partitions.
+- Decision: Create train, validation, and immutable internal-test assignments at patient level using
+  an explicit seed and versioned policy, deterministic ordering, complete assignment, and zero
+  patient and case overlap.
+- Consequences: Split artifacts link to the source manifest hash and must be byte-identical for
+  identical approved inputs. Final ratios and stratification details require approval before real
+  split generation.
+
+### 2026-07-25: Keep QA Read-Only
+
+- Status: accepted
+- Context: Phase 2 QA is intended to characterize source data, not transform it.
+- Decision: QA performs no resampling, reorientation, normalization, clipping, repair, label
+  remapping, interpolation, or preprocessing fitting and never modifies source files.
+- Consequences: QA artifacts describe the data as found, and any later preprocessing is a separate
+  versioned phase and artifact chain.
+
+### 2026-07-25: Use Fixed Histogram Bins and Explicit 3D Connectivity
+
+- Status: accepted
+- Context: Per-cohort fitted histograms and implicit component connectivity make summaries
+  incomparable or ambiguous.
+- Decision: Use histogram bins from tracked configuration shared across development QA and a
+  documented explicit 3D connected-component connectivity.
+- Consequences: Bins are never fitted per cohort. Proposed 26-connectivity, final histogram limits
+  and bins, and the connectivity choice require explicit approval before real QA.
+
+### 2026-07-25: Report Invalid Cases Without Auto-Repair
+
+- Status: accepted
+- Context: Silent correction or omission would hide data quality failures and make cohort counts
+  irreproducible.
+- Decision: Invalid cases fail QA and remain represented with stable explicit failure reasons; they
+  are not silently corrected or skipped.
+- Consequences: Dataset and Markdown reports must expose failures and distinguish unavailable fields
+  from valid zero-valued measurements.
+
+### 2026-07-25: Prevent Preprocessing Fit Leakage
+
+- Status: accepted
+- Context: Fitting preprocessing on held-out partitions or external data would leak information into
+  development.
+- Decision: Fit no preprocessing before or during split creation and never fit preprocessing on
+  validation, immutable internal-test, or external data.
+- Consequences: Any future fit uses the development training partition only and records its source
+  split and manifest hashes; external labels never affect fitted parameters.
+
+### 2026-07-25: Use Synthetic Fixtures for All Hosted-CI Tests
+
+- Status: accepted
+- Context: Hosted CI cannot lawfully or reliably depend on local medical datasets.
+- Decision: Generate all adapter, manifest, split, QA, report, and leakage-test inputs synthetically
+  under temporary test directories.
+- Consequences: Hosted CI requires no real dataset, medical image, external label, machine-specific
+  path, network data download, or committed generated volume.
