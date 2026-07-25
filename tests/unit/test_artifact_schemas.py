@@ -268,10 +268,18 @@ def test_all_stage_specific_artifacts_are_constructible() -> None:
             **common,
         ),
         ReportArtifact(
-            stage="report",
+            stage="reporting",
             source_artifact_paths=("generated/phase1/artifacts/evaluation.json",),
             report_path="generated/phase1/reports/synthetic_report.md",
-            reported_metric_names=("dice",),
+            report_format="markdown",
+            report_sha256=HASH,
+            evaluated_case_count=2,
+            method="dummy",
+            macro_mean_dice=0.75,
+            macro_mean_iou=0.5,
+            micro_dice=0.8,
+            micro_iou=2 / 3,
+            reported_metric_names=("dice", "iou"),
             **common,
         ),
     ]
@@ -282,7 +290,7 @@ def test_all_stage_specific_artifacts_are_constructible() -> None:
         "preprocess",
         "infer-dummy",
         "evaluate",
-        "report",
+        "reporting",
     ]
 
 
@@ -546,3 +554,77 @@ def test_evaluation_artifact_rejects_inconsistent_case_order() -> None:
             total_true_negatives=4,
             evaluated_case_count=1,
         )
+
+
+def test_report_artifact_round_trips_full_machine_readable_summary() -> None:
+    artifact = ReportArtifact(
+        schema_version=ARTIFACT_SCHEMA_VERSION,
+        stage="reporting",
+        created_at_utc="2026-07-25T00:00:00Z",
+        git_commit="abc1234",
+        config_hash=HASH,
+        manifest_hash=HASH,
+        source_artifact_paths=(
+            "artifacts/manifest.json",
+            "artifacts/validation.json",
+            "artifacts/preprocess.json",
+            "artifacts/inference.json",
+            "artifacts/evaluation.json",
+        ),
+        report_path="reports/synthetic_report.md",
+        report_format="markdown",
+        report_sha256=HASH,
+        evaluated_case_count=2,
+        method="dummy",
+        macro_mean_dice=0.75,
+        macro_mean_iou=0.5,
+        micro_dice=0.8,
+        micro_iou=2 / 3,
+        reported_metric_names=("dice", "iou"),
+    )
+
+    loaded = artifact_from_json(artifact_to_json(artifact), ReportArtifact)
+
+    assert loaded == artifact
+    assert loaded.report_format == "markdown"
+    assert loaded.report_sha256 == HASH
+
+
+@pytest.mark.parametrize(
+    ("field_name", "value"),
+    [
+        ("report_format", "html"),
+        ("report_sha256", "not-a-sha256"),
+        ("evaluated_case_count", 0),
+        ("method", "model"),
+        ("macro_mean_dice", 1.1),
+        ("reported_metric_names", ("dice",)),
+    ],
+)
+def test_report_artifact_rejects_invalid_summary_fields(
+    field_name: str,
+    value: object,
+) -> None:
+    common: dict[str, Any] = {
+        "schema_version": ARTIFACT_SCHEMA_VERSION,
+        "stage": "reporting",
+        "created_at_utc": "2026-07-25T00:00:00Z",
+        "git_commit": "abc1234",
+        "config_hash": HASH,
+        "manifest_hash": HASH,
+        "source_artifact_paths": ("artifacts/evaluation.json",),
+        "report_path": "reports/synthetic_report.md",
+        "report_format": "markdown",
+        "report_sha256": HASH,
+        "evaluated_case_count": 2,
+        "method": "dummy",
+        "macro_mean_dice": 0.75,
+        "macro_mean_iou": 0.5,
+        "micro_dice": 0.8,
+        "micro_iou": 2 / 3,
+        "reported_metric_names": ("dice", "iou"),
+    }
+    common[field_name] = value
+
+    with pytest.raises(ArtifactValidationError):
+        ReportArtifact(**common)

@@ -349,9 +349,17 @@ class ReportArtifact(_ArtifactBase):
 
     source_artifact_paths: tuple[str, ...]
     report_path: str
+    report_format: str
+    report_sha256: str
+    evaluated_case_count: int
+    method: str
+    macro_mean_dice: float
+    macro_mean_iou: float
+    micro_dice: float
+    micro_iou: float
     reported_metric_names: tuple[str, ...]
 
-    _expected_stage: ClassVar[str] = "report"
+    _expected_stage: ClassVar[str] = "reporting"
 
     def __post_init__(self) -> None:
         _ArtifactBase.__post_init__(self)
@@ -363,11 +371,26 @@ class ReportArtifact(_ArtifactBase):
         for path in self.source_artifact_paths:
             _require_relative_project_path(path)
         _require_relative_project_path(self.report_path)
+        if self.report_format != "markdown":
+            msg = "report_format must be fixed to 'markdown'"
+            raise ArtifactValidationError(msg)
+        _require_sha256(self.report_sha256, "report_sha256")
+        _require_positive_int(self.evaluated_case_count, "evaluated_case_count")
+        if self.method != "dummy":
+            msg = "method must be fixed to 'dummy'"
+            raise ArtifactValidationError(msg)
+        _require_unit_float(self.macro_mean_dice, "macro_mean_dice")
+        _require_unit_float(self.macro_mean_iou, "macro_mean_iou")
+        _require_unit_float(self.micro_dice, "micro_dice")
+        _require_unit_float(self.micro_iou, "micro_iou")
         _require_string_tuple(
             self.reported_metric_names,
             "reported_metric_names",
             allow_empty=False,
         )
+        if self.reported_metric_names != ("dice", "iou"):
+            msg = "reported_metric_names must be fixed to ('dice', 'iou')"
+            raise ArtifactValidationError(msg)
 
 
 Artifact: TypeAlias = (
@@ -609,6 +632,12 @@ def _require_sha256(value: object, field_name: str) -> None:
 def _require_nonnegative_int(value: object, field_name: str) -> None:
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         msg = f"{field_name} must be a nonnegative integer"
+        raise ArtifactValidationError(msg)
+
+
+def _require_positive_int(value: object, field_name: str) -> None:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        msg = f"{field_name} must be a positive integer"
         raise ArtifactValidationError(msg)
 
 

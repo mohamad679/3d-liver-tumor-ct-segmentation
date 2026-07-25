@@ -23,6 +23,7 @@ from protoem_ct.evaluation.dummy_inference import (
     run_dummy_inference,
 )
 from protoem_ct.evaluation.metrics import EvaluationError, evaluate_predictions
+from protoem_ct.reporting import ReportGenerationError, generate_synthetic_report
 
 app = typer.Typer(help="ProtoEM-CT command-line tools.")
 
@@ -378,6 +379,101 @@ def evaluate(
     typer.echo(f"evaluation artifact path: {artifact_output_path}")
     typer.echo(f"macro Dice: {artifact.macro_mean_dice}")
     typer.echo(f"macro IoU: {artifact.macro_mean_iou}")
+    typer.echo(f"config hash: {artifact.config_hash}")
+    typer.echo(f"manifest hash: {artifact.manifest_hash}")
+    typer.echo(f"method: {artifact.method}")
+
+
+@app.command("report")
+def report(
+    manifest_path: Annotated[
+        Path,
+        typer.Option(
+            "--manifest",
+            help="Path to the synthetic manifest JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    validation_artifact_path: Annotated[
+        Path,
+        typer.Option(
+            "--validation-artifact",
+            help="Path to the validation artifact JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    preprocess_artifact_path: Annotated[
+        Path,
+        typer.Option(
+            "--preprocess-artifact",
+            help="Path to the preprocessing artifact JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    inference_artifact_path: Annotated[
+        Path,
+        typer.Option(
+            "--inference-artifact",
+            help="Path to the inference artifact JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    evaluation_artifact_path: Annotated[
+        Path,
+        typer.Option(
+            "--evaluation-artifact",
+            help="Path to the evaluation artifact JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    report_output_path: Annotated[
+        Path,
+        typer.Option(
+            "--report-output",
+            help="Path to the Markdown report file to create.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    artifact_output_path: Annotated[
+        Path,
+        typer.Option(
+            "--artifact-output",
+            help="Path to the report artifact JSON file to create.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    git_commit: Annotated[
+        str,
+        typer.Option(
+            "--git-commit",
+            help="Explicit Git commit recorded in the report artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    created_at_utc: Annotated[
+        str,
+        typer.Option(
+            "--created-at-utc",
+            help="Explicit UTC creation timestamp recorded in the report artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+) -> None:
+    """Generate the deterministic Phase 1 synthetic report."""
+    try:
+        artifact = generate_synthetic_report(
+            manifest_path,
+            validation_artifact_path,
+            preprocess_artifact_path,
+            inference_artifact_path,
+            evaluation_artifact_path,
+            report_output_path=report_output_path,
+            artifact_output_path=artifact_output_path,
+            git_commit=git_commit,
+            created_at_utc=created_at_utc,
+        )
+    except ReportGenerationError as exc:
+        typer.secho(str(exc), err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1) from None
+
+    typer.echo("report generation success")
+    typer.echo(f"report path: {report_output_path}")
+    typer.echo(f"report artifact path: {artifact_output_path}")
+    typer.echo(f"evaluated case count: {artifact.evaluated_case_count}")
+    typer.echo(f"macro Dice: {artifact.macro_mean_dice}")
+    typer.echo(f"macro IoU: {artifact.macro_mean_iou}")
+    typer.echo(f"report SHA-256: {artifact.report_sha256}")
     typer.echo(f"config hash: {artifact.config_hash}")
     typer.echo(f"manifest hash: {artifact.manifest_hash}")
     typer.echo(f"method: {artifact.method}")
