@@ -1,0 +1,48 @@
+name: Phase 0 CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: CPU checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8
+
+      - name: Set up Python 3.11
+        run: uv python install 3.11
+
+      - name: Install locked environment
+        run: uv sync --frozen --python 3.11 --all-groups
+
+      - name: Check lockfile
+        run: uv lock --check
+
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+      - name: Mypy
+        run: uv run mypy src tests
+
+      - name: Pytest
+        run: uv run pytest -q
+
+      - name: Smoke tests
+        run: uv run pytest -q tests/smoke
