@@ -102,7 +102,7 @@ Verified local outcomes:
 - No tracked NIfTI, DICOM, model weights, checkpoints, predictions, credentials, or generated binary artifacts
 - Synthetic NIfTI files are created dynamically under pytest temporary directories only
 
-Operational environment note: some uv-backed commands initially failed inside the managed Codex sandbox because it could not access `/Users/mohsenshamsijazeb/.cache/uv`. The exact commands passed after approved normal filesystem access. This is not a project defect.
+Operational environment note: some uv-backed commands initially failed inside the managed Codex sandbox because it could not access `$HOME/.cache/uv`. The exact commands passed after approved normal filesystem access. This is not a project defect.
 
 Gate 0 passed locally.
 
