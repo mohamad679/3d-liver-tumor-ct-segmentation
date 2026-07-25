@@ -1,0 +1,8 @@
+schema_version: "1"
+data_config: configs/data/synthetic.yaml
+generated_artifact_root: generated/phase1/artifacts
+mlflow_tracking_path: generated/phase1/mlruns
+dummy_inference:
+  seed: 2718
+report:
+  output_path: generated/phase1/reports/synthetic_report.md

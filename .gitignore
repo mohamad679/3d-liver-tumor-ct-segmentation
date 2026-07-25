@@ -17,6 +17,8 @@ venv/
 uv-cache/
 mlruns/
 artifacts/
+!src/protoem_ct/artifacts/
+!src/protoem_ct/artifacts/*.py
 outputs/
 predictions/
 checkpoints/
