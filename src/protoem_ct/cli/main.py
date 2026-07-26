@@ -7,6 +7,18 @@ from typing import Annotated
 
 import typer
 
+from protoem_ct.artifacts import Phase2ArtifactError
+from protoem_ct.data import (
+    SUPPORTED_LITS_SUFFIXES,
+    AdapterLayoutSpec,
+    AnonymousIdConfig,
+    LiTSFilenameConvention,
+    ManifestBuilderError,
+    Phase2PathError,
+    build_lits_development_manifest,
+    dry_run_lits_inventory,
+    read_id_key_file,
+)
 from protoem_ct.data.manifest_validation import (
     ManifestValidationError,
     validate_synthetic_manifest,
@@ -29,9 +41,234 @@ from protoem_ct.tracking import LocalMlflowTrackingError, track_synthetic_run
 app = typer.Typer(help="ProtoEM-CT command-line tools.")
 
 
+def _raise_phase2_lits_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 2 LiTS error that does not reveal local source details."""
+    typer.secho(f"Phase 2 LiTS error: {type(exc).__name__}", err=True, fg=typer.colors.RED)
+    raise typer.Exit(code=1) from None
+
+
 @app.callback()
 def main() -> None:
     """Run ProtoEM-CT command-line tools."""
+
+
+@app.command("inventory-lits")
+def inventory_lits(
+    dataset_root: Annotated[
+        Path,
+        typer.Option(
+            "--dataset-root",
+            help="Explicit absolute LiTS development-cohort dataset root.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    image_pattern: Annotated[
+        str,
+        typer.Option(
+            "--image-pattern",
+            help="Conservative relative POSIX glob for image files.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    label_pattern: Annotated[
+        str,
+        typer.Option(
+            "--label-pattern",
+            help="Conservative relative POSIX glob for label files.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    recursive: Annotated[
+        bool,
+        typer.Option(
+            "--recursive/--no-recursive",
+            help="Whether to traverse recursively beneath the explicit root.",
+        ),
+    ] = False,
+    image_prefix: Annotated[
+        str,
+        typer.Option(
+            "--image-prefix",
+            help="Explicit LiTS-style image filename prefix.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    label_prefix: Annotated[
+        str,
+        typer.Option(
+            "--label-prefix",
+            help="Explicit LiTS-style label filename prefix.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+) -> None:
+    """Dry-run LiTS-style development-cohort discovery without opening or hashing files."""
+    try:
+        result = dry_run_lits_inventory(
+            dataset_root,
+            layout=AdapterLayoutSpec(
+                image_pattern=image_pattern,
+                label_pattern=label_pattern,
+                recursive=recursive,
+            ),
+            convention=LiTSFilenameConvention(
+                image_prefix=image_prefix,
+                label_prefix=label_prefix,
+                allowed_suffixes=SUPPORTED_LITS_SUFFIXES,
+            ),
+        )
+    except (ManifestBuilderError, Phase2PathError) as exc:
+        _raise_phase2_lits_cli_error(exc)
+
+    typer.echo("inventory success")
+    typer.echo(f"adapter: {result.adapter_name}@{result.adapter_version}")
+    typer.echo(f"case count: {result.case_count}")
+    typer.echo(f"image count: {result.image_count}")
+    typer.echo(f"label count: {result.label_count}")
+    typer.echo("no files were opened or hashed")
+
+
+@app.command("build-lits-manifest")
+def build_lits_manifest(
+    dataset_root: Annotated[
+        Path,
+        typer.Option(
+            "--dataset-root",
+            help="Explicit absolute LiTS development-cohort dataset root.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    image_pattern: Annotated[
+        str,
+        typer.Option(
+            "--image-pattern",
+            help="Conservative relative POSIX glob for image files.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    label_pattern: Annotated[
+        str,
+        typer.Option(
+            "--label-pattern",
+            help="Conservative relative POSIX glob for label files.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    recursive: Annotated[
+        bool,
+        typer.Option(
+            "--recursive/--no-recursive",
+            help="Whether to traverse recursively beneath the explicit root.",
+        ),
+    ] = False,
+    image_prefix: Annotated[
+        str,
+        typer.Option(
+            "--image-prefix",
+            help="Explicit LiTS-style image filename prefix.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    label_prefix: Annotated[
+        str,
+        typer.Option(
+            "--label-prefix",
+            help="Explicit LiTS-style label filename prefix.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    dataset_id: Annotated[
+        str,
+        typer.Option(
+            "--dataset-id",
+            help="Explicit development dataset ID to store in the manifest.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    project_namespace: Annotated[
+        str,
+        typer.Option(
+            "--project-namespace",
+            help="Nonsecret namespace for deterministic anonymous IDs.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    patient_id_prefix: Annotated[
+        str,
+        typer.Option(
+            "--patient-id-prefix",
+            help="Safe anonymous patient ID prefix.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    case_id_prefix: Annotated[
+        str,
+        typer.Option(
+            "--case-id-prefix",
+            help="Safe anonymous case ID prefix.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    digest_length: Annotated[
+        int,
+        typer.Option(
+            "--digest-length",
+            help="Number of lowercase HMAC-SHA256 hex characters to retain.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    id_key_file: Annotated[
+        Path,
+        typer.Option(
+            "--id-key-file",
+            help="Explicit absolute regular file containing HMAC key material.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            help="Explicit absolute manifest JSON output path outside the dataset root.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    git_commit: Annotated[
+        str,
+        typer.Option(
+            "--git-commit",
+            help="Explicit Git commit recorded in the manifest.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    generated_at_utc: Annotated[
+        str,
+        typer.Option(
+            "--generated-at-utc",
+            help="Explicit UTC generation timestamp recorded in the manifest.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+) -> None:
+    """Build an anonymous LiTS development manifest from explicit inputs."""
+    try:
+        id_key = read_id_key_file(id_key_file)
+        result = build_lits_development_manifest(
+            dataset_root,
+            layout=AdapterLayoutSpec(
+                image_pattern=image_pattern,
+                label_pattern=label_pattern,
+                recursive=recursive,
+            ),
+            convention=LiTSFilenameConvention(
+                image_prefix=image_prefix,
+                label_prefix=label_prefix,
+                allowed_suffixes=SUPPORTED_LITS_SUFFIXES,
+            ),
+            dataset_id=dataset_id,
+            generated_at_utc=generated_at_utc,
+            git_commit=git_commit,
+            anonymous_id_config=AnonymousIdConfig(
+                project_namespace=project_namespace,
+                patient_id_prefix=patient_id_prefix,
+                case_id_prefix=case_id_prefix,
+                digest_length=digest_length,
+            ),
+            id_key=id_key,
+            output_path=output,
+        )
+    except (ManifestBuilderError, Phase2ArtifactError, Phase2PathError) as exc:
+        _raise_phase2_lits_cli_error(exc)
+
+    typer.echo("manifest generation success")
+    typer.echo(f"dataset ID: {result.dataset_id}")
+    typer.echo(f"case count: {result.case_count}")
+    typer.echo(f"manifest output path: {output}")
+    typer.echo(f"dataset-root fingerprint: {result.dataset_root_fingerprint}")
+    typer.echo(f"manifest hash: {result.manifest_hash}")
+    typer.echo("LiTS development cohort")
+    typer.echo("LiTS and MSD Task03 Liver are not independent cohorts")
 
 
 @app.command("create-data")
