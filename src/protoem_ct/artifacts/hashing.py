@@ -15,6 +15,7 @@ if TYPE_CHECKING:
         DatasetManifest,
         DevelopmentQaArtifact,
         DevelopmentSplitManifest,
+        GeometryLabelQaArtifact,
         LeakageAuditArtifact,
     )
 
@@ -137,6 +138,15 @@ def development_qa_hash_payload(artifact: DevelopmentQaArtifact) -> dict[str, Js
     return payload
 
 
+def geometry_label_qa_hash_payload(artifact: GeometryLabelQaArtifact) -> dict[str, JsonValue]:
+    """Return the geometry-label-QA hash payload, excluding ``qa_artifact_hash``."""
+    from protoem_ct.artifacts.phase2_schemas import phase2_artifact_to_dict
+
+    payload = phase2_artifact_to_dict(artifact)
+    payload.pop("qa_artifact_hash")
+    return payload
+
+
 def leakage_audit_hash_payload(artifact: LeakageAuditArtifact) -> dict[str, JsonValue]:
     """Return the leakage-audit hash payload, excluding ``audit_hash``."""
     from protoem_ct.artifacts.phase2_schemas import phase2_artifact_to_dict
@@ -175,6 +185,11 @@ def hash_development_split(manifest: DevelopmentSplitManifest) -> str:
 def hash_development_qa(artifact: DevelopmentQaArtifact) -> str:
     """Return the lowercase SHA-256 hash for a Phase 2 development QA artifact."""
     return sha256_json(development_qa_hash_payload(artifact))
+
+
+def hash_geometry_label_qa(artifact: GeometryLabelQaArtifact) -> str:
+    """Return the lowercase SHA-256 hash for a Phase 2 geometry-label QA artifact."""
+    return sha256_json(geometry_label_qa_hash_payload(artifact))
 
 
 def hash_leakage_audit(artifact: LeakageAuditArtifact) -> str:

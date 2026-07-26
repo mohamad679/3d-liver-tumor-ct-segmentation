@@ -14,6 +14,8 @@ from protoem_ct.data import (
     AnonymousIdConfig,
     DevelopmentSplitError,
     DevelopmentSplitPolicy,
+    GeometryLabelQaConfig,
+    GeometryLabelQaError,
     LiTSFilenameConvention,
     ManifestBuilderError,
     Phase2PathError,
@@ -21,6 +23,7 @@ from protoem_ct.data import (
     build_lits_development_manifest,
     dry_run_lits_inventory,
     read_id_key_file,
+    run_geometry_label_qa,
 )
 from protoem_ct.data.manifest_validation import (
     ManifestValidationError,
@@ -53,6 +56,16 @@ def _raise_phase2_lits_cli_error(exc: Exception) -> None:
 def _raise_phase2_split_cli_error(exc: Exception) -> None:
     """Exit with a concise Phase 2 split error that does not reveal manifest details."""
     typer.secho(f"Phase 2 split error: {type(exc).__name__}", err=True, fg=typer.colors.RED)
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase2_geometry_qa_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 2 QA error that does not reveal source details."""
+    typer.secho(
+        f"Phase 2 geometry-label QA error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
     raise typer.Exit(code=1) from None
 
 
@@ -373,6 +386,101 @@ def build_development_split_cli(
     typer.echo(f"total case count: {result.total_case_count}")
     typer.echo(f"source manifest hash: {result.source_manifest_hash}")
     typer.echo(f"split hash: {result.split_hash}")
+    typer.echo(f"output path: {output}")
+
+
+@app.command("qa-geometry-labels")
+def qa_geometry_labels(
+    manifest_path: Annotated[
+        Path,
+        typer.Option(
+            "--manifest",
+            help="Explicit absolute anonymous Phase 2 dataset manifest JSON path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    split_path: Annotated[
+        Path,
+        typer.Option(
+            "--split",
+            help="Explicit absolute patient-level development split JSON path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    dataset_root: Annotated[
+        Path,
+        typer.Option(
+            "--dataset-root",
+            help="Explicit absolute dataset root containing manifest-relative source files.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            help="Explicit absolute geometry-label QA JSON output path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    allowed_label_values: Annotated[
+        list[int],
+        typer.Option(
+            "--allowed-label-value",
+            help="Allowed integer label value; repeat this option for every allowed value.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    tumor_label_value: Annotated[
+        int,
+        typer.Option(
+            "--tumor-label-value",
+            help="Explicit integer tumor label value.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    affine_tolerance: Annotated[
+        float,
+        typer.Option(
+            "--affine-tolerance",
+            help="Explicit positive absolute tolerance for affine and spacing comparisons.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    git_commit: Annotated[
+        str,
+        typer.Option(
+            "--git-commit",
+            help="Explicit Git commit recorded in the QA artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    created_at_utc: Annotated[
+        str,
+        typer.Option(
+            "--created-at-utc",
+            help="Explicit UTC creation timestamp recorded in the QA artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+) -> None:
+    """Run Phase 2 geometry and label QA from anonymous manifest and split artifacts."""
+    try:
+        artifact = run_geometry_label_qa(
+            manifest_path,
+            split_path,
+            dataset_root=dataset_root,
+            output_path=output,
+            config=GeometryLabelQaConfig(
+                allowed_label_values=tuple(allowed_label_values),
+                tumor_label_value=tumor_label_value,
+                affine_tolerance=affine_tolerance,
+            ),
+            git_commit=git_commit,
+            created_at_utc=created_at_utc,
+        )
+    except (GeometryLabelQaError, Phase2ArtifactError, Phase2PathError) as exc:
+        _raise_phase2_geometry_qa_cli_error(exc)
+
+    typer.echo("geometry and label QA completed")
+    typer.echo(f"case count: {artifact.case_count}")
+    typer.echo(f"passed case count: {artifact.passed_case_count}")
+    typer.echo(f"failed case count: {artifact.failed_case_count}")
+    typer.echo(f"config hash: {artifact.config_hash}")
+    typer.echo(f"manifest hash: {artifact.manifest_hash}")
+    typer.echo(f"split hash: {artifact.split_hash}")
+    typer.echo(f"QA artifact hash: {artifact.qa_artifact_hash}")
     typer.echo(f"output path: {output}")
 
 

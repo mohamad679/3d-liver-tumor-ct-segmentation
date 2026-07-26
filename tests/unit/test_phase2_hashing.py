@@ -10,6 +10,7 @@ from protoem_ct.artifacts import (
     DATASET_MANIFEST_TYPE,
     DEVELOPMENT_QA_STAGE,
     DEVELOPMENT_SPLIT_MANIFEST_TYPE,
+    GEOMETRY_LABEL_QA_STAGE,
     LEAKAGE_AUDIT_STAGE,
     PHASE2_DEVELOPMENT_COHORT_ROLE,
     PHASE2_SCHEMA_VERSION,
@@ -18,6 +19,8 @@ from protoem_ct.artifacts import (
     DatasetManifest,
     DevelopmentQaArtifact,
     DevelopmentSplitManifest,
+    GeometryLabelQaArtifact,
+    GeometryLabelQaCaseRecord,
     LeakageAuditArtifact,
     LesionSummaryRecord,
     SplitAssignment,
@@ -25,10 +28,12 @@ from protoem_ct.artifacts import (
     dataset_root_fingerprint_payload,
     development_qa_hash_payload,
     development_split_hash_payload,
+    geometry_label_qa_hash_payload,
     hash_dataset_manifest,
     hash_dataset_root_fingerprint,
     hash_development_qa,
     hash_development_split,
+    hash_geometry_label_qa,
     hash_leakage_audit,
     leakage_audit_hash_payload,
     sha256_json,
@@ -205,6 +210,66 @@ def _audit(**overrides: object) -> LeakageAuditArtifact:
     return cast(LeakageAuditArtifact, cast(Any, replace)(artifact, **overrides))
 
 
+def _geometry_case(index: int = 1, **overrides: object) -> GeometryLabelQaCaseRecord:
+    record = GeometryLabelQaCaseRecord(
+        anonymous_patient_id=f"anon-p{index:03d}",
+        anonymous_case_id=f"anon-c{index:03d}",
+        partition="train" if index == 1 else "validation",
+        dimensionality=3,
+        image_shape=(2, 3, 4),
+        label_shape=(2, 3, 4),
+        image_dtype="float32",
+        label_dtype="uint8",
+        image_affine=(
+            (1.0, 0.0, 0.0, 4.0),
+            (0.0, 1.5, 0.0, 5.0),
+            (0.0, 0.0, 2.0, 6.0),
+            (0.0, 0.0, 0.0, 1.0),
+        ),
+        label_affine=(
+            (1.0, 0.0, 0.0, 4.0),
+            (0.0, 1.5, 0.0, 5.0),
+            (0.0, 0.0, 2.0, 6.0),
+            (0.0, 0.0, 0.0, 1.0),
+        ),
+        image_orientation=("R", "A", "S"),
+        label_orientation=("R", "A", "S"),
+        image_spacing=(1.0, 1.5, 2.0),
+        label_spacing=(1.0, 1.5, 2.0),
+        image_finite=True,
+        label_finite=True,
+        observed_label_values=(0, 1),
+        allowed_label_values=(0, 1),
+        image_label_shape_match=True,
+        image_label_affine_match=True,
+        tumor_label_value=1,
+        tumor_voxel_count=2,
+        empty_tumor=False,
+        qa_passed=True,
+        failure_reasons=(),
+    )
+    return cast(GeometryLabelQaCaseRecord, cast(Any, replace)(record, **overrides))
+
+
+def _geometry_artifact(**overrides: object) -> GeometryLabelQaArtifact:
+    cases = (_geometry_case(1), _geometry_case(2))
+    artifact = GeometryLabelQaArtifact(
+        schema_version=PHASE2_SCHEMA_VERSION,
+        stage=GEOMETRY_LABEL_QA_STAGE,
+        created_at_utc="2026-07-25T00:00:00Z",
+        git_commit="ae38dca",
+        config_hash=HASH0,
+        manifest_hash=HASH1,
+        split_hash=HASH2,
+        case_count=2,
+        passed_case_count=2,
+        failed_case_count=0,
+        case_records=cases,
+        qa_artifact_hash=HASH5,
+    )
+    return cast(GeometryLabelQaArtifact, cast(Any, replace)(artifact, **overrides))
+
+
 def test_dataset_root_fingerprint_payload_excludes_absolute_root_and_timestamps() -> None:
     payload = dataset_root_fingerprint_payload(
         adapter_name="synthetic-lits-layout",
@@ -257,6 +322,9 @@ def test_own_hash_fields_are_excluded_from_hash_payloads() -> None:
     assert hash_development_qa(_qa_artifact(qa_artifact_hash=HASH3)) == hash_development_qa(
         _qa_artifact(qa_artifact_hash=HASH4)
     )
+    assert hash_geometry_label_qa(
+        _geometry_artifact(qa_artifact_hash=HASH3)
+    ) == hash_geometry_label_qa(_geometry_artifact(qa_artifact_hash=HASH4))
     assert hash_leakage_audit(_audit(audit_hash=HASH4)) == hash_leakage_audit(
         _audit(audit_hash=HASH5)
     )
@@ -266,6 +334,7 @@ def test_hash_payloads_exclude_only_their_own_hash_fields() -> None:
     manifest_payload = dataset_manifest_hash_payload(_manifest())
     split_payload = development_split_hash_payload(_split())
     qa_payload = development_qa_hash_payload(_qa_artifact())
+    geometry_payload = geometry_label_qa_hash_payload(_geometry_artifact())
     audit_payload = leakage_audit_hash_payload(_audit())
 
     assert "manifest_hash" not in manifest_payload
@@ -274,6 +343,8 @@ def test_hash_payloads_exclude_only_their_own_hash_fields() -> None:
     assert "source_manifest_hash" in split_payload
     assert "qa_artifact_hash" not in qa_payload
     assert "manifest_hash" in qa_payload
+    assert "qa_artifact_hash" not in geometry_payload
+    assert "manifest_hash" in geometry_payload
     assert "audit_hash" not in audit_payload
     assert "manifest_hash" in audit_payload
 

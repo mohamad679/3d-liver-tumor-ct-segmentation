@@ -12,6 +12,7 @@ from protoem_ct.artifacts import (
     DATASET_MANIFEST_TYPE,
     DEVELOPMENT_QA_STAGE,
     DEVELOPMENT_SPLIT_MANIFEST_TYPE,
+    GEOMETRY_LABEL_QA_STAGE,
     LEAKAGE_AUDIT_STAGE,
     PHASE2_DEVELOPMENT_COHORT_ROLE,
     PHASE2_SCHEMA_VERSION,
@@ -20,6 +21,8 @@ from protoem_ct.artifacts import (
     DatasetManifest,
     DevelopmentQaArtifact,
     DevelopmentSplitManifest,
+    GeometryLabelQaArtifact,
+    GeometryLabelQaCaseRecord,
     LeakageAuditArtifact,
     LesionSummaryRecord,
     Phase2ArtifactSchemaVersionError,
@@ -214,6 +217,73 @@ def _audit(**overrides: object) -> LeakageAuditArtifact:
     return cast(LeakageAuditArtifact, cast(Any, replace)(artifact, **overrides))
 
 
+def _geometry_case(index: int = 1, **overrides: object) -> GeometryLabelQaCaseRecord:
+    record = GeometryLabelQaCaseRecord(
+        anonymous_patient_id=f"anon-p{index:03d}",
+        anonymous_case_id=f"anon-c{index:03d}",
+        partition="train" if index == 1 else "validation",
+        dimensionality=3,
+        image_shape=(2, 3, 4),
+        label_shape=(2, 3, 4),
+        image_dtype="float32",
+        label_dtype="uint8",
+        image_affine=(
+            (1.0, 0.0, 0.0, 4.0),
+            (0.0, 1.5, 0.0, 5.0),
+            (0.0, 0.0, 2.0, 6.0),
+            (0.0, 0.0, 0.0, 1.0),
+        ),
+        label_affine=(
+            (1.0, 0.0, 0.0, 4.0),
+            (0.0, 1.5, 0.0, 5.0),
+            (0.0, 0.0, 2.0, 6.0),
+            (0.0, 0.0, 0.0, 1.0),
+        ),
+        image_orientation=("R", "A", "S"),
+        label_orientation=("R", "A", "S"),
+        image_spacing=(1.0, 1.5, 2.0),
+        label_spacing=(1.0, 1.5, 2.0),
+        image_finite=True,
+        label_finite=True,
+        observed_label_values=(0, 1),
+        allowed_label_values=(0, 1),
+        image_label_shape_match=True,
+        image_label_affine_match=True,
+        tumor_label_value=1,
+        tumor_voxel_count=2,
+        empty_tumor=False,
+        qa_passed=True,
+        failure_reasons=(),
+    )
+    return cast(GeometryLabelQaCaseRecord, cast(Any, replace)(record, **overrides))
+
+
+def _geometry_artifact(**overrides: object) -> GeometryLabelQaArtifact:
+    cases = (
+        _geometry_case(1),
+        _geometry_case(
+            2,
+            qa_passed=False,
+            failure_reasons=("label_value_not_allowed",),
+        ),
+    )
+    artifact = GeometryLabelQaArtifact(
+        schema_version=PHASE2_SCHEMA_VERSION,
+        stage=GEOMETRY_LABEL_QA_STAGE,
+        created_at_utc="2026-07-25T00:00:00Z",
+        git_commit="ae38dca",
+        config_hash=HASH0,
+        manifest_hash=HASH1,
+        split_hash=HASH2,
+        case_count=2,
+        passed_case_count=1,
+        failed_case_count=1,
+        case_records=cases,
+        qa_artifact_hash=HASH5,
+    )
+    return cast(GeometryLabelQaArtifact, cast(Any, replace)(artifact, **overrides))
+
+
 @pytest.mark.parametrize(
     ("artifact", "artifact_type"),
     [
@@ -224,6 +294,8 @@ def _audit(**overrides: object) -> LeakageAuditArtifact:
         (_lesion(), LesionSummaryRecord),
         (_qa_case(), CaseQaRecord),
         (_qa_artifact(), DevelopmentQaArtifact),
+        (_geometry_case(), GeometryLabelQaCaseRecord),
+        (_geometry_artifact(), GeometryLabelQaArtifact),
         (_audit(), LeakageAuditArtifact),
     ],
 )
@@ -405,6 +477,32 @@ def test_development_qa_rejects_aggregate_mismatches_and_unsorted_cases() -> Non
                 _qa_case(1),
             )
         )
+
+
+def test_geometry_label_qa_schema_rejects_invalid_contract_values() -> None:
+    with pytest.raises(Phase2ArtifactValidationError, match="allowed_label_values"):
+        _geometry_case(allowed_label_values=(1, 0), tumor_label_value=1)
+
+    with pytest.raises(Phase2ArtifactValidationError, match="tumor_label_value"):
+        _geometry_case(tumor_label_value=2)
+
+    with pytest.raises(Phase2ArtifactValidationError, match="empty_tumor"):
+        _geometry_case(empty_tumor=True, tumor_voxel_count=1)
+
+    with pytest.raises(Phase2ArtifactValidationError, match="failure_reasons"):
+        _geometry_case(qa_passed=True, failure_reasons=("image_nonfinite",))
+
+    with pytest.raises(Phase2ArtifactValidationError, match="deterministic"):
+        _geometry_case(
+            qa_passed=False,
+            failure_reasons=("shape_mismatch", "image_nonfinite"),
+        )
+
+    with pytest.raises(Phase2ArtifactStageError, match="stage"):
+        _geometry_artifact(stage=DEVELOPMENT_QA_STAGE)
+
+    with pytest.raises(Phase2ArtifactValidationError, match="case_count"):
+        _geometry_artifact(case_count=3)
 
 
 def test_leakage_audit_cannot_pass_with_overlap_external_access_or_preprocessing_leak() -> None:

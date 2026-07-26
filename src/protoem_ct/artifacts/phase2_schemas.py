@@ -24,10 +24,22 @@ PHASE2_SCHEMA_VERSION = "2"
 PHASE2_DEVELOPMENT_COHORT_ROLE = "development"
 DATASET_MANIFEST_TYPE = "phase2-dataset-manifest"
 DEVELOPMENT_SPLIT_MANIFEST_TYPE = "phase2-development-split-manifest"
+GEOMETRY_LABEL_QA_STAGE = "geometry_label_qa"
 DEVELOPMENT_QA_STAGE = "phase2-development-qa"
 LEAKAGE_AUDIT_STAGE = "phase2-leakage-audit"
 SUPPORTED_SPLIT_PARTITIONS = ("train", "validation", "internal_test")
 SUPPORTED_CONNECTIVITY_VALUES = (6, 18, 26)
+GEOMETRY_LABEL_QA_FAILURE_CODES = (
+    "image_not_3d",
+    "label_not_3d",
+    "image_nonfinite",
+    "label_nonfinite",
+    "label_noninteger",
+    "label_value_not_allowed",
+    "shape_mismatch",
+    "affine_mismatch",
+    "spacing_mismatch",
+)
 
 _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 _SAFE_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]{1,126}[a-z0-9]$")
@@ -403,6 +415,141 @@ class DevelopmentQaArtifact:
 
 
 @dataclass(frozen=True, slots=True)
+class GeometryLabelQaCaseRecord:
+    """Intermediate per-case geometry and label QA record before lesion and histogram QA."""
+
+    anonymous_patient_id: str
+    anonymous_case_id: str
+    partition: str
+    dimensionality: int
+    image_shape: tuple[int, ...]
+    label_shape: tuple[int, ...]
+    image_dtype: str
+    label_dtype: str
+    image_affine: tuple[tuple[float, float, float, float], ...]
+    label_affine: tuple[tuple[float, float, float, float], ...]
+    image_orientation: tuple[str, str, str]
+    label_orientation: tuple[str, str, str]
+    image_spacing: tuple[float, float, float]
+    label_spacing: tuple[float, float, float]
+    image_finite: bool
+    label_finite: bool
+    observed_label_values: tuple[int | float, ...]
+    allowed_label_values: tuple[int, ...]
+    image_label_shape_match: bool
+    image_label_affine_match: bool
+    tumor_label_value: int
+    tumor_voxel_count: int
+    empty_tumor: bool
+    qa_passed: bool
+    failure_reasons: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        _require_safe_anonymous_id(self.anonymous_patient_id, "anonymous_patient_id")
+        _require_safe_anonymous_id(self.anonymous_case_id, "anonymous_case_id")
+        if self.partition not in SUPPORTED_SPLIT_PARTITIONS:
+            msg = f"partition must be one of {SUPPORTED_SPLIT_PARTITIONS!r}"
+            raise Phase2ArtifactValidationError(msg)
+        _require_positive_int(self.dimensionality, "dimensionality")
+        _require_positive_shape(self.image_shape, "image_shape")
+        _require_positive_shape(self.label_shape, "label_shape")
+        _require_nonempty_string(self.image_dtype, "image_dtype")
+        _require_nonempty_string(self.label_dtype, "label_dtype")
+        _require_affine_4x4(self.image_affine, "image_affine")
+        _require_affine_4x4(self.label_affine, "label_affine")
+        _require_orientation(self.image_orientation, "image_orientation")
+        _require_orientation(self.label_orientation, "label_orientation")
+        _require_spacing_3d(self.image_spacing, "image_spacing")
+        _require_spacing_3d(self.label_spacing, "label_spacing")
+        _require_bool(self.image_finite, "image_finite")
+        _require_bool(self.label_finite, "label_finite")
+        _require_observed_label_values(self.observed_label_values, "observed_label_values")
+        _require_allowed_label_values(self.allowed_label_values, "allowed_label_values")
+        _require_bool(self.image_label_shape_match, "image_label_shape_match")
+        _require_bool(self.image_label_affine_match, "image_label_affine_match")
+        if (
+            isinstance(self.tumor_label_value, bool)
+            or not isinstance(self.tumor_label_value, int)
+            or self.tumor_label_value < 0
+        ):
+            msg = "tumor_label_value must be a nonnegative integer"
+            raise Phase2ArtifactValidationError(msg)
+        if self.tumor_label_value not in self.allowed_label_values:
+            msg = "tumor_label_value must be included in allowed_label_values"
+            raise Phase2ArtifactValidationError(msg)
+        _require_nonnegative_int(self.tumor_voxel_count, "tumor_voxel_count")
+        _require_bool(self.empty_tumor, "empty_tumor")
+        if self.empty_tumor != (self.tumor_voxel_count == 0):
+            msg = "empty_tumor must be consistent with tumor_voxel_count"
+            raise Phase2ArtifactValidationError(msg)
+        _require_bool(self.qa_passed, "qa_passed")
+        _require_string_tuple(self.failure_reasons, "failure_reasons", allow_empty=True)
+        _require_geometry_label_failure_reasons(self.failure_reasons)
+        if self.qa_passed and self.failure_reasons:
+            msg = "qa_passed=True requires no failure_reasons"
+            raise Phase2ArtifactValidationError(msg)
+        if not self.qa_passed and not self.failure_reasons:
+            msg = "qa_passed=False requires at least one deterministic failure reason"
+            raise Phase2ArtifactValidationError(msg)
+
+
+@dataclass(frozen=True, slots=True)
+class GeometryLabelQaArtifact:
+    """Intermediate Phase 2 geometry and label QA artifact."""
+
+    schema_version: str
+    stage: str
+    created_at_utc: str
+    git_commit: str
+    config_hash: str
+    manifest_hash: str
+    split_hash: str
+    case_count: int
+    passed_case_count: int
+    failed_case_count: int
+    case_records: tuple[GeometryLabelQaCaseRecord, ...]
+    qa_artifact_hash: str
+
+    _expected_stage: ClassVar[str] = GEOMETRY_LABEL_QA_STAGE
+
+    def __post_init__(self) -> None:
+        _require_phase2_schema_version(self.schema_version)
+        _require_stage(self.stage, self._expected_stage)
+        _require_nonempty_string(self.created_at_utc, "created_at_utc")
+        _require_nonempty_string(self.git_commit, "git_commit")
+        _require_sha256(self.config_hash, "config_hash")
+        _require_sha256(self.manifest_hash, "manifest_hash")
+        _require_sha256(self.split_hash, "split_hash")
+        _require_nonnegative_int(self.case_count, "case_count")
+        _require_nonnegative_int(self.passed_case_count, "passed_case_count")
+        _require_nonnegative_int(self.failed_case_count, "failed_case_count")
+        _require_tuple_of(
+            self.case_records,
+            GeometryLabelQaCaseRecord,
+            "case_records",
+            allow_empty=False,
+        )
+        if self.case_count != len(self.case_records):
+            msg = "case_count must equal the number of case_records"
+            raise Phase2ArtifactValidationError(msg)
+        if self.passed_case_count != sum(1 for case in self.case_records if case.qa_passed):
+            msg = "passed_case_count must equal the number of passing case records"
+            raise Phase2ArtifactValidationError(msg)
+        if self.failed_case_count != sum(1 for case in self.case_records if not case.qa_passed):
+            msg = "failed_case_count must equal the number of failing case records"
+            raise Phase2ArtifactValidationError(msg)
+        if self.case_count != self.passed_case_count + self.failed_case_count:
+            msg = "case_count must equal passed_case_count + failed_case_count"
+            raise Phase2ArtifactValidationError(msg)
+        _require_sorted_case_records(self.case_records)
+        _require_unique_values(
+            (case.anonymous_case_id for case in self.case_records),
+            "anonymous_case_id",
+        )
+        _require_sha256(self.qa_artifact_hash, "qa_artifact_hash")
+
+
+@dataclass(frozen=True, slots=True)
 class LeakageAuditArtifact:
     """Machine-readable Phase 2 leakage-audit evidence."""
 
@@ -510,6 +657,8 @@ Phase2Artifact: TypeAlias = (
     | LesionSummaryRecord
     | CaseQaRecord
     | DevelopmentQaArtifact
+    | GeometryLabelQaCaseRecord
+    | GeometryLabelQaArtifact
     | LeakageAuditArtifact
 )
 Phase2ArtifactT = TypeVar("Phase2ArtifactT", bound=Phase2Artifact)
@@ -522,6 +671,8 @@ _PHASE2_ARTIFACT_TYPES: tuple[type[Phase2Artifact], ...] = (
     LesionSummaryRecord,
     CaseQaRecord,
     DevelopmentQaArtifact,
+    GeometryLabelQaCaseRecord,
+    GeometryLabelQaArtifact,
     LeakageAuditArtifact,
 )
 _MANIFEST_TYPES: dict[str, type[Phase2Artifact]] = {
@@ -529,6 +680,7 @@ _MANIFEST_TYPES: dict[str, type[Phase2Artifact]] = {
     DEVELOPMENT_SPLIT_MANIFEST_TYPE: DevelopmentSplitManifest,
 }
 _STAGE_TYPES: dict[str, type[Phase2Artifact]] = {
+    GEOMETRY_LABEL_QA_STAGE: GeometryLabelQaArtifact,
     DEVELOPMENT_QA_STAGE: DevelopmentQaArtifact,
     LEAKAGE_AUDIT_STAGE: LeakageAuditArtifact,
 }
@@ -543,6 +695,15 @@ _TUPLE_FIELDS = {
     "affine",
     "orientation",
     "spacing",
+    "image_shape",
+    "label_shape",
+    "image_affine",
+    "label_affine",
+    "image_orientation",
+    "label_orientation",
+    "image_spacing",
+    "label_spacing",
+    "observed_label_values",
     "allowed_label_values",
     "histogram_bin_edges",
     "histogram_counts",
@@ -673,11 +834,11 @@ def _construct_phase2_artifact(
 
     kwargs: dict[str, object] = {}
     for key, value in raw.items():
-        if key in _NESTED_RECORD_FIELDS:
+        nested_type = _nested_record_type(artifact_type, key)
+        if nested_type is not None:
             if not isinstance(value, list):
                 msg = f"{key} must be a JSON array"
                 raise Phase2ArtifactValidationError(msg)
-            nested_type = _NESTED_RECORD_FIELDS[key]
             kwargs[key] = tuple(_construct_nested_record(item, nested_type, key) for item in value)
         elif key in _TUPLE_FIELDS:
             if not isinstance(value, list):
@@ -693,6 +854,15 @@ def _construct_phase2_artifact(
             kwargs[key] = value
 
     return cast(Phase2Artifact, cast(Any, artifact_type)(**kwargs))
+
+
+def _nested_record_type(
+    artifact_type: type[Phase2Artifact],
+    field_name: str,
+) -> type[Phase2Artifact] | None:
+    if artifact_type is GeometryLabelQaArtifact and field_name == "case_records":
+        return GeometryLabelQaCaseRecord
+    return _NESTED_RECORD_FIELDS.get(field_name)
 
 
 def _construct_nested_record(
@@ -902,6 +1072,16 @@ def _require_shape_3d(value: object, field_name: str) -> None:
         raise Phase2ArtifactValidationError(msg)
 
 
+def _require_positive_shape(value: object, field_name: str) -> None:
+    if (
+        not isinstance(value, tuple)
+        or not value
+        or any(isinstance(item, bool) or not isinstance(item, int) or item <= 0 for item in value)
+    ):
+        msg = f"{field_name} must contain positive integers"
+        raise Phase2ArtifactValidationError(msg)
+
+
 def _require_spacing_3d(value: object, field_name: str) -> None:
     if (
         not isinstance(value, tuple)
@@ -960,6 +1140,41 @@ def _require_allowed_label_values(value: object, field_name: str) -> None:
     if tuple(sorted(set(value))) != value:
         msg = f"{field_name} must be unique and sorted"
         raise Phase2ArtifactValidationError(msg)
+
+
+def _require_observed_label_values(value: object, field_name: str) -> None:
+    if not isinstance(value, tuple):
+        msg = f"{field_name} must be a tuple"
+        raise Phase2ArtifactValidationError(msg)
+    for item in value:
+        if isinstance(item, bool) or not isinstance(item, int | float) or not math.isfinite(item):
+            msg = f"{field_name} must contain finite numeric label values"
+            raise Phase2ArtifactValidationError(msg)
+        if isinstance(item, float) and item.is_integer():
+            msg = f"{field_name} must store integer-valued labels as integers"
+            raise Phase2ArtifactValidationError(msg)
+    if tuple(sorted(set(value))) != value:
+        msg = f"{field_name} must be unique and sorted"
+        raise Phase2ArtifactValidationError(msg)
+
+
+def _require_geometry_label_failure_reasons(value: tuple[str, ...]) -> None:
+    code_order = {code: index for index, code in enumerate(GEOMETRY_LABEL_QA_FAILURE_CODES)}
+    previous_order = -1
+    seen: set[str] = set()
+    for code in value:
+        if code not in code_order:
+            msg = f"failure_reasons contains unsupported geometry-label QA code: {code!r}"
+            raise Phase2ArtifactValidationError(msg)
+        if code in seen:
+            msg = "failure_reasons must not contain duplicate codes"
+            raise Phase2ArtifactValidationError(msg)
+        seen.add(code)
+        current_order = code_order[code]
+        if current_order <= previous_order:
+            msg = "failure_reasons must follow the deterministic geometry-label code order"
+            raise Phase2ArtifactValidationError(msg)
+        previous_order = current_order
 
 
 def _require_histogram_edges(edges: object, field_name: str) -> None:
@@ -1023,12 +1238,23 @@ def _require_sorted_assignments(assignments: tuple[SplitAssignment, ...]) -> Non
 
 
 def _require_sorted_case_qa_records(case_records: tuple[CaseQaRecord, ...]) -> None:
-    expected = tuple(
-        sorted(case_records, key=lambda case: (case.anonymous_patient_id, case.anonymous_case_id))
-    )
+    expected = tuple(sorted(case_records, key=_case_record_sort_key))
     if case_records != expected:
         msg = "case_records must be ordered by anonymous_patient_id and anonymous_case_id"
         raise Phase2ArtifactValidationError(msg)
+
+
+def _require_sorted_case_records(
+    case_records: tuple[GeometryLabelQaCaseRecord, ...],
+) -> None:
+    expected = tuple(sorted(case_records, key=_case_record_sort_key))
+    if case_records != expected:
+        msg = "case_records must be ordered by anonymous_patient_id and anonymous_case_id"
+        raise Phase2ArtifactValidationError(msg)
+
+
+def _case_record_sort_key(case: CaseQaRecord | GeometryLabelQaCaseRecord) -> tuple[str, str]:
+    return (case.anonymous_patient_id, case.anonymous_case_id)
 
 
 def _require_unique_values(values: Iterable[object], field_name: str) -> None:
