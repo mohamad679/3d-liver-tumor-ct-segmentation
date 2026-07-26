@@ -26,11 +26,13 @@ DATASET_MANIFEST_TYPE = "phase2-dataset-manifest"
 DEVELOPMENT_SPLIT_MANIFEST_TYPE = "phase2-development-split-manifest"
 GEOMETRY_LABEL_QA_STAGE = "geometry_label_qa"
 LESION_COMPONENTS_STAGE = "lesion_components"
+DEVELOPMENT_DATA_SUMMARY_STAGE = "development_data_summary"
 DEVELOPMENT_QA_STAGE = "phase2-development-qa"
 LEAKAGE_AUDIT_STAGE = "phase2-leakage-audit"
 SUPPORTED_SPLIT_PARTITIONS = ("train", "validation", "internal_test")
 SUPPORTED_CONNECTIVITY_VALUES = (6, 18, 26)
 LESION_COMPONENTS_UPSTREAM_FAILURE_REASON = "upstream_geometry_label_qa_failed"
+DEVELOPMENT_DATA_SUMMARY_UPSTREAM_FAILURE_REASON = "upstream_geometry_label_qa_failed"
 GEOMETRY_LABEL_QA_FAILURE_CODES = (
     "image_not_3d",
     "label_not_3d",
@@ -737,6 +739,311 @@ class LesionComponentsArtifact:
 
 
 @dataclass(frozen=True, slots=True)
+class CtHistogramCaseRecord:
+    """Intermediate per-case fixed-bin CT histogram summary record.
+
+    Histogram bins follow NumPy semantics: bins are left-closed and right-open, except
+    the final bin includes its right edge. Values below and above the configured range are
+    counted separately and are never clipped into edge bins.
+    """
+
+    anonymous_patient_id: str
+    anonymous_case_id: str
+    partition: str
+    analysis_performed: bool
+    image_voxel_count: int | None
+    intensity_min: float | None
+    intensity_max: float | None
+    intensity_mean: float | None
+    intensity_std: float | None
+    histogram_counts: tuple[int, ...]
+    below_histogram_range_count: int | None
+    above_histogram_range_count: int | None
+    qa_passed: bool
+    failure_reasons: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        _require_safe_anonymous_id(self.anonymous_patient_id, "anonymous_patient_id")
+        _require_safe_anonymous_id(self.anonymous_case_id, "anonymous_case_id")
+        if self.partition not in SUPPORTED_SPLIT_PARTITIONS:
+            msg = f"partition must be one of {SUPPORTED_SPLIT_PARTITIONS!r}"
+            raise Phase2ArtifactValidationError(msg)
+        _require_bool(self.analysis_performed, "analysis_performed")
+        _require_bool(self.qa_passed, "qa_passed")
+        _require_string_tuple(self.failure_reasons, "failure_reasons", allow_empty=True)
+        _require_nonnegative_int_tuple(self.histogram_counts, "histogram_counts", allow_empty=True)
+        if self.analysis_performed:
+            self._validate_analyzed_measurements()
+            return
+        self._validate_skipped_measurements()
+
+    def _validate_analyzed_measurements(self) -> None:
+        if not self.qa_passed:
+            msg = "analysis_performed=True requires qa_passed=True"
+            raise Phase2ArtifactValidationError(msg)
+        if self.failure_reasons:
+            msg = "analysis_performed=True requires no failure_reasons"
+            raise Phase2ArtifactValidationError(msg)
+        if self.image_voxel_count is None:
+            msg = "analysis_performed=True requires image_voxel_count"
+            raise Phase2ArtifactValidationError(msg)
+        _require_positive_int(self.image_voxel_count, "image_voxel_count")
+        for field_name in (
+            "intensity_min",
+            "intensity_max",
+            "intensity_mean",
+            "intensity_std",
+        ):
+            if getattr(self, field_name) is None:
+                msg = f"analysis_performed=True requires {field_name}"
+                raise Phase2ArtifactValidationError(msg)
+        _require_finite_float(self.intensity_min, "intensity_min")
+        _require_finite_float(self.intensity_max, "intensity_max")
+        _require_finite_float(self.intensity_mean, "intensity_mean")
+        _require_nonnegative_finite_float(self.intensity_std, "intensity_std")
+        if cast(float, self.intensity_min) > cast(float, self.intensity_max):
+            msg = "intensity_min must be less than or equal to intensity_max"
+            raise Phase2ArtifactValidationError(msg)
+        if not self.histogram_counts:
+            msg = "analysis_performed=True requires histogram_counts"
+            raise Phase2ArtifactValidationError(msg)
+        if self.below_histogram_range_count is None:
+            msg = "analysis_performed=True requires below_histogram_range_count"
+            raise Phase2ArtifactValidationError(msg)
+        if self.above_histogram_range_count is None:
+            msg = "analysis_performed=True requires above_histogram_range_count"
+            raise Phase2ArtifactValidationError(msg)
+        _require_nonnegative_int(
+            self.below_histogram_range_count,
+            "below_histogram_range_count",
+        )
+        _require_nonnegative_int(
+            self.above_histogram_range_count,
+            "above_histogram_range_count",
+        )
+        counted_voxels = (
+            sum(self.histogram_counts)
+            + self.below_histogram_range_count
+            + self.above_histogram_range_count
+        )
+        if counted_voxels != self.image_voxel_count:
+            msg = "histogram and out-of-range counts must equal image_voxel_count"
+            raise Phase2ArtifactValidationError(msg)
+
+    def _validate_skipped_measurements(self) -> None:
+        if self.qa_passed:
+            msg = "analysis_performed=False requires qa_passed=False"
+            raise Phase2ArtifactValidationError(msg)
+        if self.failure_reasons != (DEVELOPMENT_DATA_SUMMARY_UPSTREAM_FAILURE_REASON,):
+            msg = "skipped CT histogram records require the fixed upstream QA failure"
+            raise Phase2ArtifactValidationError(msg)
+        if (
+            self.image_voxel_count is not None
+            or self.intensity_min is not None
+            or self.intensity_max is not None
+            or self.intensity_mean is not None
+            or self.intensity_std is not None
+            or self.histogram_counts
+            or self.below_histogram_range_count is not None
+            or self.above_histogram_range_count is not None
+        ):
+            msg = "skipped CT histogram records must not contain fabricated measurements"
+            raise Phase2ArtifactValidationError(msg)
+
+
+@dataclass(frozen=True, slots=True)
+class DevelopmentDataSummaryArtifact:
+    """Intermediate Phase 2 fixed CT histogram and deterministic dataset-summary artifact."""
+
+    schema_version: str
+    stage: str
+    created_at_utc: str
+    git_commit: str
+    config_hash: str
+    manifest_hash: str
+    split_hash: str
+    geometry_qa_artifact_hash: str
+    lesion_artifact_hash: str
+    histogram_bin_edges: tuple[float, ...]
+    histogram_bin_count: int
+    case_count: int
+    analyzed_case_count: int
+    skipped_case_count: int
+    case_records: tuple[CtHistogramCaseRecord, ...]
+    aggregate_image_voxel_count: int
+    aggregate_intensity_min: float | None
+    aggregate_intensity_max: float | None
+    aggregate_intensity_mean: float | None
+    aggregate_intensity_std: float | None
+    aggregate_histogram_counts: tuple[int, ...]
+    aggregate_below_histogram_range_count: int
+    aggregate_above_histogram_range_count: int
+    total_tumor_voxel_count: int
+    total_tumor_physical_volume_mm3: float
+    total_lesion_count: int
+    lesion_volume_min_mm3: float | None
+    lesion_volume_max_mm3: float | None
+    lesion_volume_mean_mm3: float | None
+    lesion_volume_median_mm3: float | None
+    summary_artifact_hash: str
+
+    _expected_stage: ClassVar[str] = DEVELOPMENT_DATA_SUMMARY_STAGE
+
+    def __post_init__(self) -> None:
+        _require_phase2_schema_version(self.schema_version)
+        _require_stage(self.stage, self._expected_stage)
+        _require_nonempty_string(self.created_at_utc, "created_at_utc")
+        _require_nonempty_string(self.git_commit, "git_commit")
+        _require_sha256(self.config_hash, "config_hash")
+        _require_sha256(self.manifest_hash, "manifest_hash")
+        _require_sha256(self.split_hash, "split_hash")
+        _require_sha256(self.geometry_qa_artifact_hash, "geometry_qa_artifact_hash")
+        _require_sha256(self.lesion_artifact_hash, "lesion_artifact_hash")
+        _require_histogram_edges(self.histogram_bin_edges, "histogram_bin_edges")
+        _require_positive_int(self.histogram_bin_count, "histogram_bin_count")
+        if len(self.histogram_bin_edges) != self.histogram_bin_count + 1:
+            msg = "histogram_bin_edges count must equal histogram_bin_count plus one"
+            raise Phase2ArtifactValidationError(msg)
+        _require_nonnegative_int(self.case_count, "case_count")
+        _require_nonnegative_int(self.analyzed_case_count, "analyzed_case_count")
+        _require_nonnegative_int(self.skipped_case_count, "skipped_case_count")
+        _require_tuple_of(
+            self.case_records,
+            CtHistogramCaseRecord,
+            "case_records",
+            allow_empty=False,
+        )
+        self._validate_case_counts()
+        _require_sorted_ct_histogram_records(self.case_records)
+        _require_unique_values(
+            (case.anonymous_case_id for case in self.case_records),
+            "anonymous_case_id",
+        )
+        self._validate_histogram_aggregates()
+        self._validate_intensity_aggregates()
+        self._validate_lesion_aggregates()
+        _require_sha256(self.summary_artifact_hash, "summary_artifact_hash")
+
+    def _validate_case_counts(self) -> None:
+        if self.case_count != len(self.case_records):
+            msg = "case_count must equal the number of case_records"
+            raise Phase2ArtifactValidationError(msg)
+        analyzed = sum(1 for case in self.case_records if case.analysis_performed)
+        skipped = sum(1 for case in self.case_records if not case.analysis_performed)
+        if self.analyzed_case_count != analyzed:
+            msg = "analyzed_case_count must equal analyzed case records"
+            raise Phase2ArtifactValidationError(msg)
+        if self.skipped_case_count != skipped:
+            msg = "skipped_case_count must equal skipped case records"
+            raise Phase2ArtifactValidationError(msg)
+        if self.case_count != self.analyzed_case_count + self.skipped_case_count:
+            msg = "case_count must equal analyzed_case_count + skipped_case_count"
+            raise Phase2ArtifactValidationError(msg)
+
+    def _validate_histogram_aggregates(self) -> None:
+        _require_nonnegative_int(self.aggregate_image_voxel_count, "aggregate_image_voxel_count")
+        _require_nonnegative_int_tuple(
+            self.aggregate_histogram_counts,
+            "aggregate_histogram_counts",
+            allow_empty=False,
+        )
+        if len(self.aggregate_histogram_counts) != self.histogram_bin_count:
+            msg = "aggregate_histogram_counts length must equal histogram_bin_count"
+            raise Phase2ArtifactValidationError(msg)
+        _require_nonnegative_int(
+            self.aggregate_below_histogram_range_count,
+            "aggregate_below_histogram_range_count",
+        )
+        _require_nonnegative_int(
+            self.aggregate_above_histogram_range_count,
+            "aggregate_above_histogram_range_count",
+        )
+        analyzed_records = tuple(case for case in self.case_records if case.analysis_performed)
+        for case in analyzed_records:
+            if len(case.histogram_counts) != self.histogram_bin_count:
+                msg = "analyzed case histogram_counts length must equal histogram_bin_count"
+                raise Phase2ArtifactValidationError(msg)
+        summed_histogram = tuple(
+            sum(case.histogram_counts[index] for case in analyzed_records)
+            for index in range(self.histogram_bin_count)
+        )
+        if self.aggregate_histogram_counts != summed_histogram:
+            msg = "aggregate_histogram_counts must equal the elementwise case histogram sum"
+            raise Phase2ArtifactValidationError(msg)
+        if self.aggregate_image_voxel_count != sum(
+            cast(int, case.image_voxel_count) for case in analyzed_records
+        ):
+            msg = "aggregate_image_voxel_count must equal analyzed case voxel counts"
+            raise Phase2ArtifactValidationError(msg)
+        if self.aggregate_below_histogram_range_count != sum(
+            cast(int, case.below_histogram_range_count) for case in analyzed_records
+        ):
+            msg = "aggregate_below_histogram_range_count must equal analyzed case counts"
+            raise Phase2ArtifactValidationError(msg)
+        if self.aggregate_above_histogram_range_count != sum(
+            cast(int, case.above_histogram_range_count) for case in analyzed_records
+        ):
+            msg = "aggregate_above_histogram_range_count must equal analyzed case counts"
+            raise Phase2ArtifactValidationError(msg)
+
+    def _validate_intensity_aggregates(self) -> None:
+        fields_to_check = (
+            "aggregate_intensity_min",
+            "aggregate_intensity_max",
+            "aggregate_intensity_mean",
+            "aggregate_intensity_std",
+        )
+        if self.analyzed_case_count == 0:
+            if self.aggregate_image_voxel_count != 0 or any(
+                getattr(self, field_name) is not None for field_name in fields_to_check
+            ):
+                msg = "zero analyzed cases require absent aggregate intensity measurements"
+                raise Phase2ArtifactValidationError(msg)
+            return
+        for field_name in fields_to_check:
+            if getattr(self, field_name) is None:
+                msg = f"analyzed cases require {field_name}"
+                raise Phase2ArtifactValidationError(msg)
+        _require_finite_float(self.aggregate_intensity_min, "aggregate_intensity_min")
+        _require_finite_float(self.aggregate_intensity_max, "aggregate_intensity_max")
+        _require_finite_float(self.aggregate_intensity_mean, "aggregate_intensity_mean")
+        _require_nonnegative_finite_float(
+            self.aggregate_intensity_std,
+            "aggregate_intensity_std",
+        )
+        if cast(float, self.aggregate_intensity_min) > cast(float, self.aggregate_intensity_max):
+            msg = "aggregate_intensity_min must be less than or equal to aggregate_intensity_max"
+            raise Phase2ArtifactValidationError(msg)
+
+    def _validate_lesion_aggregates(self) -> None:
+        _require_nonnegative_int(self.total_tumor_voxel_count, "total_tumor_voxel_count")
+        _require_nonnegative_finite_float(
+            self.total_tumor_physical_volume_mm3,
+            "total_tumor_physical_volume_mm3",
+        )
+        _require_nonnegative_int(self.total_lesion_count, "total_lesion_count")
+        lesion_fields = (
+            "lesion_volume_min_mm3",
+            "lesion_volume_max_mm3",
+            "lesion_volume_mean_mm3",
+            "lesion_volume_median_mm3",
+        )
+        if self.total_lesion_count == 0:
+            if any(getattr(self, field_name) is not None for field_name in lesion_fields):
+                msg = "zero total lesions require absent lesion volume summary statistics"
+                raise Phase2ArtifactValidationError(msg)
+            return
+        for field_name in lesion_fields:
+            if getattr(self, field_name) is None:
+                msg = f"nonzero total lesions require {field_name}"
+                raise Phase2ArtifactValidationError(msg)
+            _require_positive_finite_float(getattr(self, field_name), field_name)
+        if cast(float, self.lesion_volume_min_mm3) > cast(float, self.lesion_volume_max_mm3):
+            msg = "lesion_volume_min_mm3 must be less than or equal to lesion_volume_max_mm3"
+            raise Phase2ArtifactValidationError(msg)
+
+
+@dataclass(frozen=True, slots=True)
 class LeakageAuditArtifact:
     """Machine-readable Phase 2 leakage-audit evidence."""
 
@@ -848,6 +1155,8 @@ Phase2Artifact: TypeAlias = (
     | GeometryLabelQaArtifact
     | LesionComponentCaseRecord
     | LesionComponentsArtifact
+    | CtHistogramCaseRecord
+    | DevelopmentDataSummaryArtifact
     | LeakageAuditArtifact
 )
 Phase2ArtifactT = TypeVar("Phase2ArtifactT", bound=Phase2Artifact)
@@ -864,6 +1173,8 @@ _PHASE2_ARTIFACT_TYPES: tuple[type[Phase2Artifact], ...] = (
     GeometryLabelQaArtifact,
     LesionComponentCaseRecord,
     LesionComponentsArtifact,
+    CtHistogramCaseRecord,
+    DevelopmentDataSummaryArtifact,
     LeakageAuditArtifact,
 )
 _MANIFEST_TYPES: dict[str, type[Phase2Artifact]] = {
@@ -873,6 +1184,7 @@ _MANIFEST_TYPES: dict[str, type[Phase2Artifact]] = {
 _STAGE_TYPES: dict[str, type[Phase2Artifact]] = {
     GEOMETRY_LABEL_QA_STAGE: GeometryLabelQaArtifact,
     LESION_COMPONENTS_STAGE: LesionComponentsArtifact,
+    DEVELOPMENT_DATA_SUMMARY_STAGE: DevelopmentDataSummaryArtifact,
     DEVELOPMENT_QA_STAGE: DevelopmentQaArtifact,
     LEAKAGE_AUDIT_STAGE: LeakageAuditArtifact,
 }
@@ -899,6 +1211,7 @@ _TUPLE_FIELDS = {
     "allowed_label_values",
     "histogram_bin_edges",
     "histogram_counts",
+    "aggregate_histogram_counts",
     "failure_reasons",
     "duplicate_image_hash_findings",
     "duplicate_label_hash_findings",
@@ -1056,6 +1369,8 @@ def _nested_record_type(
         return GeometryLabelQaCaseRecord
     if artifact_type is LesionComponentsArtifact and field_name == "case_records":
         return LesionComponentCaseRecord
+    if artifact_type is DevelopmentDataSummaryArtifact and field_name == "case_records":
+        return CtHistogramCaseRecord
     return _NESTED_RECORD_FIELDS.get(field_name)
 
 
@@ -1235,6 +1550,23 @@ def _require_string_tuple(value: object, field_name: str, *, allow_empty: bool) 
         raise Phase2ArtifactValidationError(msg)
     if any(not isinstance(item, str) or not item for item in value):
         msg = f"{field_name} must contain only nonempty strings"
+        raise Phase2ArtifactValidationError(msg)
+
+
+def _require_nonnegative_int_tuple(
+    value: object,
+    field_name: str,
+    *,
+    allow_empty: bool,
+) -> None:
+    if not isinstance(value, tuple):
+        msg = f"{field_name} must be a tuple of nonnegative integers"
+        raise Phase2ArtifactValidationError(msg)
+    if not allow_empty and not value:
+        msg = f"{field_name} must not be empty"
+        raise Phase2ArtifactValidationError(msg)
+    if any(isinstance(item, bool) or not isinstance(item, int) or item < 0 for item in value):
+        msg = f"{field_name} must contain nonnegative integers"
         raise Phase2ArtifactValidationError(msg)
 
 
@@ -1456,8 +1788,19 @@ def _require_sorted_lesion_component_records(
         raise Phase2ArtifactValidationError(msg)
 
 
+def _require_sorted_ct_histogram_records(
+    case_records: tuple[CtHistogramCaseRecord, ...],
+) -> None:
+    expected = tuple(sorted(case_records, key=_case_record_sort_key))
+    if case_records != expected:
+        msg = "case_records must be ordered by anonymous_patient_id and anonymous_case_id"
+        raise Phase2ArtifactValidationError(msg)
+
+
 def _case_record_sort_key(
-    case: CaseQaRecord | GeometryLabelQaCaseRecord | LesionComponentCaseRecord,
+    case: (
+        CaseQaRecord | GeometryLabelQaCaseRecord | LesionComponentCaseRecord | CtHistogramCaseRecord
+    ),
 ) -> tuple[str, str]:
     return (case.anonymous_patient_id, case.anonymous_case_id)
 

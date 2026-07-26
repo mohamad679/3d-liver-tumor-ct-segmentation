@@ -14,6 +14,8 @@ from protoem_ct.data import (
     AnonymousIdConfig,
     DevelopmentSplitError,
     DevelopmentSplitPolicy,
+    DevelopmentSummaryConfig,
+    DevelopmentSummaryError,
     GeometryLabelQaConfig,
     GeometryLabelQaError,
     LesionComponentsConfig,
@@ -25,6 +27,7 @@ from protoem_ct.data import (
     build_lits_development_manifest,
     dry_run_lits_inventory,
     read_id_key_file,
+    run_development_data_summary,
     run_geometry_label_qa,
     run_lesion_component_analysis,
 )
@@ -76,6 +79,16 @@ def _raise_phase2_lesion_cli_error(exc: Exception) -> None:
     """Exit with a concise Phase 2 lesion error that does not reveal source details."""
     typer.secho(
         f"Phase 2 lesion-components error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase2_development_summary_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 2 summary error that does not reveal source details."""
+    typer.secho(
+        f"Phase 2 development-summary error: {type(exc).__name__}",
         err=True,
         fg=typer.colors.RED,
     )
@@ -586,6 +599,112 @@ def summarize_lesions(
     typer.echo(f"manifest hash: {artifact.manifest_hash}")
     typer.echo(f"split hash: {artifact.split_hash}")
     typer.echo(f"lesion artifact hash: {artifact.lesion_artifact_hash}")
+    typer.echo(f"output path: {output}")
+
+
+@app.command("summarize-development-data")
+def summarize_development_data(
+    manifest_path: Annotated[
+        Path,
+        typer.Option(
+            "--manifest",
+            help="Explicit absolute anonymous Phase 2 dataset manifest JSON path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    geometry_qa_artifact_path: Annotated[
+        Path,
+        typer.Option(
+            "--geometry-qa-artifact",
+            help="Explicit absolute geometry-label QA artifact JSON path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    lesion_artifact_path: Annotated[
+        Path,
+        typer.Option(
+            "--lesion-artifact",
+            help="Explicit absolute lesion-components artifact JSON path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    dataset_root: Annotated[
+        Path,
+        typer.Option(
+            "--dataset-root",
+            help="Explicit absolute dataset root containing manifest-relative image files.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            help="Explicit absolute development-summary JSON output path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    histogram_min: Annotated[
+        float,
+        typer.Option(
+            "--histogram-min",
+            help="Explicit fixed histogram lower edge.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    histogram_max: Annotated[
+        float,
+        typer.Option(
+            "--histogram-max",
+            help="Explicit fixed histogram upper edge.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    histogram_bin_count: Annotated[
+        int,
+        typer.Option(
+            "--histogram-bin-count",
+            help="Explicit fixed histogram bin count.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    git_commit: Annotated[
+        str,
+        typer.Option(
+            "--git-commit",
+            help="Explicit Git commit recorded in the summary artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    created_at_utc: Annotated[
+        str,
+        typer.Option(
+            "--created-at-utc",
+            help="Explicit UTC creation timestamp recorded in the summary artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+) -> None:
+    """Summarize fixed CT histograms and deterministic development data statistics."""
+    try:
+        artifact = run_development_data_summary(
+            manifest_path,
+            geometry_qa_artifact_path,
+            lesion_artifact_path,
+            dataset_root=dataset_root,
+            output_path=output,
+            config=DevelopmentSummaryConfig(
+                histogram_min=histogram_min,
+                histogram_max=histogram_max,
+                histogram_bin_count=histogram_bin_count,
+            ),
+            git_commit=git_commit,
+            created_at_utc=created_at_utc,
+        )
+    except (DevelopmentSummaryError, Phase2ArtifactError, Phase2PathError) as exc:
+        _raise_phase2_development_summary_cli_error(exc)
+
+    typer.echo("development data summary completed")
+    typer.echo(f"case count: {artifact.case_count}")
+    typer.echo(f"analyzed case count: {artifact.analyzed_case_count}")
+    typer.echo(f"skipped case count: {artifact.skipped_case_count}")
+    typer.echo(f"aggregate image voxel count: {artifact.aggregate_image_voxel_count}")
+    typer.echo(f"total lesion count: {artifact.total_lesion_count}")
+    typer.echo(f"histogram bin count: {artifact.histogram_bin_count}")
+    typer.echo(f"config hash: {artifact.config_hash}")
+    typer.echo(f"manifest hash: {artifact.manifest_hash}")
+    typer.echo(f"split hash: {artifact.split_hash}")
+    typer.echo(f"summary artifact hash: {artifact.summary_artifact_hash}")
     typer.echo(f"output path: {output}")
 
 

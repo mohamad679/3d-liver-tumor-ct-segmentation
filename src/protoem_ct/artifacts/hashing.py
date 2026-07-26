@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from protoem_ct.artifacts.phase2_schemas import (
         DatasetCaseRecord,
         DatasetManifest,
+        DevelopmentDataSummaryArtifact,
         DevelopmentQaArtifact,
         DevelopmentSplitManifest,
         GeometryLabelQaArtifact,
@@ -157,6 +158,17 @@ def lesion_components_hash_payload(artifact: LesionComponentsArtifact) -> dict[s
     return payload
 
 
+def development_data_summary_hash_payload(
+    artifact: DevelopmentDataSummaryArtifact,
+) -> dict[str, JsonValue]:
+    """Return the development-data-summary hash payload, excluding ``summary_artifact_hash``."""
+    from protoem_ct.artifacts.phase2_schemas import phase2_artifact_to_dict
+
+    payload = phase2_artifact_to_dict(artifact)
+    payload.pop("summary_artifact_hash")
+    return payload
+
+
 def leakage_audit_hash_payload(artifact: LeakageAuditArtifact) -> dict[str, JsonValue]:
     """Return the leakage-audit hash payload, excluding ``audit_hash``."""
     from protoem_ct.artifacts.phase2_schemas import phase2_artifact_to_dict
@@ -205,6 +217,11 @@ def hash_geometry_label_qa(artifact: GeometryLabelQaArtifact) -> str:
 def hash_lesion_components(artifact: LesionComponentsArtifact) -> str:
     """Return the lowercase SHA-256 hash for a Phase 2 lesion-components artifact."""
     return sha256_json(lesion_components_hash_payload(artifact))
+
+
+def hash_development_data_summary(artifact: DevelopmentDataSummaryArtifact) -> str:
+    """Return the lowercase SHA-256 hash for a Phase 2 development-data-summary artifact."""
+    return sha256_json(development_data_summary_hash_payload(artifact))
 
 
 def hash_leakage_audit(artifact: LeakageAuditArtifact) -> str:
