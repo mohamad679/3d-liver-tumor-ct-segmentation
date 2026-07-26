@@ -12,9 +12,12 @@ from protoem_ct.data import (
     SUPPORTED_LITS_SUFFIXES,
     AdapterLayoutSpec,
     AnonymousIdConfig,
+    DevelopmentSplitError,
+    DevelopmentSplitPolicy,
     LiTSFilenameConvention,
     ManifestBuilderError,
     Phase2PathError,
+    build_development_split,
     build_lits_development_manifest,
     dry_run_lits_inventory,
     read_id_key_file,
@@ -44,6 +47,12 @@ app = typer.Typer(help="ProtoEM-CT command-line tools.")
 def _raise_phase2_lits_cli_error(exc: Exception) -> None:
     """Exit with a concise Phase 2 LiTS error that does not reveal local source details."""
     typer.secho(f"Phase 2 LiTS error: {type(exc).__name__}", err=True, fg=typer.colors.RED)
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase2_split_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 2 split error that does not reveal manifest details."""
+    typer.secho(f"Phase 2 split error: {type(exc).__name__}", err=True, fg=typer.colors.RED)
     raise typer.Exit(code=1) from None
 
 
@@ -269,6 +278,102 @@ def build_lits_manifest(
     typer.echo(f"manifest hash: {result.manifest_hash}")
     typer.echo("LiTS development cohort")
     typer.echo("LiTS and MSD Task03 Liver are not independent cohorts")
+
+
+@app.command("build-development-split")
+def build_development_split_cli(
+    manifest_path: Annotated[
+        Path,
+        typer.Option(
+            "--manifest",
+            help="Explicit absolute anonymous Phase 2 dataset manifest JSON path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            help="Explicit absolute development split JSON output path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    policy_version: Annotated[
+        str,
+        typer.Option(
+            "--policy-version",
+            help="Explicit split policy version.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    split_seed: Annotated[
+        int,
+        typer.Option(
+            "--split-seed",
+            help="Explicit nonnegative split seed.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    train_patient_count: Annotated[
+        int,
+        typer.Option(
+            "--train-patient-count",
+            help="Explicit train patient count.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    validation_patient_count: Annotated[
+        int,
+        typer.Option(
+            "--validation-patient-count",
+            help="Explicit validation patient count.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    internal_test_patient_count: Annotated[
+        int,
+        typer.Option(
+            "--internal-test-patient-count",
+            help="Explicit immutable internal-test patient count.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    git_commit: Annotated[
+        str,
+        typer.Option(
+            "--git-commit",
+            help="Explicit Git commit recorded in the split artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    generated_at_utc: Annotated[
+        str,
+        typer.Option(
+            "--generated-at-utc",
+            help="Explicit UTC generation timestamp recorded in the split artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+) -> None:
+    """Build a deterministic patient-level development split from an anonymous manifest."""
+    try:
+        result = build_development_split(
+            manifest_path,
+            policy=DevelopmentSplitPolicy(
+                policy_version=policy_version,
+                split_seed=split_seed,
+                train_patient_count=train_patient_count,
+                validation_patient_count=validation_patient_count,
+                internal_test_patient_count=internal_test_patient_count,
+            ),
+            output_path=output,
+            git_commit=git_commit,
+            generated_at_utc=generated_at_utc,
+        )
+    except (DevelopmentSplitError, Phase2ArtifactError) as exc:
+        _raise_phase2_split_cli_error(exc)
+
+    typer.echo("split generation success")
+    typer.echo(f"policy version: {result.policy_version}")
+    typer.echo(f"split seed: {result.split_seed}")
+    typer.echo(f"train patient count: {result.train_patient_count}")
+    typer.echo(f"validation patient count: {result.validation_patient_count}")
+    typer.echo(f"internal-test patient count: {result.internal_test_patient_count}")
+    typer.echo(f"total case count: {result.total_case_count}")
+    typer.echo(f"source manifest hash: {result.source_manifest_hash}")
+    typer.echo(f"split hash: {result.split_hash}")
+    typer.echo(f"output path: {output}")
 
 
 @app.command("create-data")
