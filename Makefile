@@ -1,4 +1,4 @@
-.PHONY: help setup lint format-check typecheck test smoke check precommit
+.PHONY: help setup lint format-check typecheck test smoke check precommit phase2-synthetic
 
 help:
 	@printf '%s\n' \
@@ -11,7 +11,8 @@ help:
 		'  test          Run pytest -q.' \
 		'  smoke         Run smoke tests from tests/smoke.' \
 		'  check         Run lint and test.' \
-		'  precommit     Run pre-commit on all files.'
+		'  precommit     Run pre-commit on all files.' \
+		'  phase2-synthetic Run the synthetic-only Phase 2 DAG.'
 
 setup:
 	uv sync --python 3.11 --all-groups
@@ -37,3 +38,6 @@ check: lint test
 
 precommit:
 	uv run pre-commit run --all-files
+
+phase2-synthetic:
+	uv run snakemake --cores 1 phase2_synthetic_all --configfile configs/phase2_synthetic.yaml --config phase2_synthetic_git_commit="$$(git rev-parse HEAD)"
