@@ -12,6 +12,8 @@ from protoem_ct.data import (
     SUPPORTED_LITS_SUFFIXES,
     AdapterLayoutSpec,
     AnonymousIdConfig,
+    DevelopmentLeakageAuditConfig,
+    DevelopmentLeakageAuditError,
     DevelopmentQaReportConfig,
     DevelopmentQaReportError,
     DevelopmentSplitError,
@@ -31,6 +33,7 @@ from protoem_ct.data import (
     dry_run_lits_inventory,
     read_id_key_file,
     run_development_data_summary,
+    run_development_leakage_audit,
     run_geometry_label_qa,
     run_lesion_component_analysis,
 )
@@ -102,6 +105,16 @@ def _raise_phase2_development_qa_report_cli_error(exc: Exception) -> None:
     """Exit with a concise Phase 2 final QA report error without artifact-content leakage."""
     typer.secho(
         f"Phase 2 development-QA report error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase2_development_leakage_audit_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 2 leakage-audit error without artifact-content leakage."""
+    typer.secho(
+        f"Phase 2 development leakage-audit error: {type(exc).__name__}",
         err=True,
         fg=typer.colors.RED,
     )
@@ -816,6 +829,99 @@ def build_development_qa_report(
     typer.echo(f"lesion artifact hash: {artifact.lesion_artifact_hash}")
     typer.echo(f"development summary artifact hash: {artifact.development_summary_artifact_hash}")
     typer.echo(f"final QA artifact hash: {artifact.qa_artifact_hash}")
+    typer.echo(f"output path: {output}")
+
+
+@app.command("audit-development-leakage")
+def audit_development_leakage(
+    manifest_path: Annotated[
+        Path,
+        typer.Option(
+            "--manifest",
+            help="Explicit absolute anonymous Phase 2 dataset manifest JSON path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    split_path: Annotated[
+        Path,
+        typer.Option(
+            "--split",
+            help="Explicit absolute Phase 2 development split JSON path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            help="Explicit absolute development leakage-audit JSON output path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    audit_contract_version: Annotated[
+        str,
+        typer.Option(
+            "--audit-contract-version",
+            help="Explicit development leakage-audit contract version.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    git_commit: Annotated[
+        str,
+        typer.Option(
+            "--git-commit",
+            help="Explicit Git commit recorded in the leakage-audit artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    created_at_utc: Annotated[
+        str,
+        typer.Option(
+            "--created-at-utc",
+            help="Explicit UTC creation timestamp recorded in the leakage-audit artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+) -> None:
+    """Generate a deterministic Phase 2 development leakage-audit JSON artifact."""
+    try:
+        artifact = run_development_leakage_audit(
+            manifest_path,
+            split_path,
+            output_path=output,
+            config=DevelopmentLeakageAuditConfig(
+                audit_contract_version=audit_contract_version,
+            ),
+            git_commit=git_commit,
+            created_at_utc=created_at_utc,
+        )
+    except (DevelopmentLeakageAuditError, Phase2ArtifactError) as exc:
+        _raise_phase2_development_leakage_audit_cli_error(exc)
+
+    patient_overlap_total = sum(artifact.pairwise_patient_overlap_counts.values())
+    case_overlap_total = sum(artifact.pairwise_case_overlap_counts.values())
+    typer.echo("development leakage audit completed")
+    typer.echo(f"audit passed: {str(artifact.audit_passed).lower()}")
+    typer.echo(f"manifest case count: {artifact.manifest_case_count}")
+    typer.echo(f"manifest patient count: {artifact.manifest_patient_count}")
+    typer.echo(f"train patient count: {artifact.patient_counts_by_partition['train']}")
+    typer.echo(f"validation patient count: {artifact.patient_counts_by_partition['validation']}")
+    typer.echo(
+        f"internal-test patient count: {artifact.patient_counts_by_partition['internal_test']}"
+    )
+    typer.echo(f"total finding count: {artifact.critical_finding_count}")
+    typer.echo(f"patient-overlap total: {patient_overlap_total}")
+    typer.echo(f"case-overlap total: {case_overlap_total}")
+    typer.echo(
+        "image-hash cross-partition overlap count: "
+        f"{artifact.image_hash_cross_partition_overlap_count}"
+    )
+    typer.echo(
+        "label-hash cross-partition overlap count: "
+        f"{artifact.label_hash_cross_partition_overlap_count}"
+    )
+    typer.echo(
+        "image-label-pair cross-partition overlap count: "
+        f"{artifact.image_label_pair_cross_partition_overlap_count}"
+    )
+    typer.echo(f"audit config hash: {artifact.config_hash}")
+    typer.echo(f"manifest hash: {artifact.manifest_hash}")
+    typer.echo(f"split hash: {artifact.split_hash}")
+    typer.echo(f"leakage-audit hash: {artifact.audit_hash}")
     typer.echo(f"output path: {output}")
 
 

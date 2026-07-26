@@ -31,6 +31,22 @@ DEVELOPMENT_QA_STAGE = "phase2-development-qa"
 LEAKAGE_AUDIT_STAGE = "phase2-leakage-audit"
 SUPPORTED_SPLIT_PARTITIONS = ("train", "validation", "internal_test")
 SUPPORTED_CONNECTIVITY_VALUES = (6, 18, 26)
+LEAKAGE_AUDIT_FINDING_CODES = (
+    "missing_case_assignment",
+    "extra_case_assignment",
+    "patient_id_mismatch",
+    "empty_partition",
+    "patient_partition_overlap",
+    "case_partition_overlap",
+    "image_hash_cross_partition_overlap",
+    "label_hash_cross_partition_overlap",
+    "image_label_pair_cross_partition_overlap",
+    "duplicate_anonymous_patient_id",
+    "duplicate_anonymous_case_id",
+    "duplicate_patient_case_pair",
+    "conflicting_patient_partition",
+    "conflicting_case_partition",
+)
 LESION_COMPONENTS_UPSTREAM_FAILURE_REASON = "upstream_geometry_label_qa_failed"
 DEVELOPMENT_DATA_SUMMARY_UPSTREAM_FAILURE_REASON = "upstream_geometry_label_qa_failed"
 GEOMETRY_LABEL_QA_FAILURE_CODES = (
@@ -1206,16 +1222,24 @@ class LeakageAuditArtifact:
     stage: str
     created_at_utc: str
     git_commit: str
+    config_hash: str
     manifest_hash: str
     split_hash: str
     split_policy_version: str
     split_seed: int
+    manifest_case_count: int
+    manifest_patient_count: int
+    assignment_complete: bool
     patient_counts_by_partition: Mapping[str, int]
     case_counts_by_partition: Mapping[str, int]
     pairwise_patient_overlap_counts: Mapping[str, int]
     pairwise_case_overlap_counts: Mapping[str, int]
+    image_hash_cross_partition_overlap_count: int
+    label_hash_cross_partition_overlap_count: int
+    image_label_pair_cross_partition_overlap_count: int
     duplicate_image_hash_findings: tuple[str, ...]
     duplicate_label_hash_findings: tuple[str, ...]
+    finding_codes: tuple[str, ...]
     near_duplicate_policy: str
     lits_msd_equivalence_warning: str
     external_data_accessed: bool
@@ -1232,10 +1256,14 @@ class LeakageAuditArtifact:
         _require_stage(self.stage, self._expected_stage)
         _require_nonempty_string(self.created_at_utc, "created_at_utc")
         _require_nonempty_string(self.git_commit, "git_commit")
+        _require_sha256(self.config_hash, "config_hash")
         _require_sha256(self.manifest_hash, "manifest_hash")
         _require_sha256(self.split_hash, "split_hash")
         _require_nonempty_string(self.split_policy_version, "split_policy_version")
         _require_nonnegative_int(self.split_seed, "split_seed")
+        _require_positive_int(self.manifest_case_count, "manifest_case_count")
+        _require_positive_int(self.manifest_patient_count, "manifest_patient_count")
+        _require_bool(self.assignment_complete, "assignment_complete")
         patient_counts = _freeze_nonnegative_int_mapping(
             self.patient_counts_by_partition,
             "patient_counts_by_partition",
@@ -1260,6 +1288,18 @@ class LeakageAuditArtifact:
         object.__setattr__(self, "case_counts_by_partition", case_counts)
         object.__setattr__(self, "pairwise_patient_overlap_counts", patient_overlaps)
         object.__setattr__(self, "pairwise_case_overlap_counts", case_overlaps)
+        _require_nonnegative_int(
+            self.image_hash_cross_partition_overlap_count,
+            "image_hash_cross_partition_overlap_count",
+        )
+        _require_nonnegative_int(
+            self.label_hash_cross_partition_overlap_count,
+            "label_hash_cross_partition_overlap_count",
+        )
+        _require_nonnegative_int(
+            self.image_label_pair_cross_partition_overlap_count,
+            "image_label_pair_cross_partition_overlap_count",
+        )
         _require_string_tuple(
             self.duplicate_image_hash_findings,
             "duplicate_image_hash_findings",
@@ -1270,6 +1310,7 @@ class LeakageAuditArtifact:
             "duplicate_label_hash_findings",
             allow_empty=True,
         )
+        _require_leakage_finding_codes(self.finding_codes)
         _require_nonempty_string(self.near_duplicate_policy, "near_duplicate_policy")
         _require_lits_msd_warning(self.lits_msd_equivalence_warning)
         _require_bool(self.external_data_accessed, "external_data_accessed")
@@ -1281,9 +1322,35 @@ class LeakageAuditArtifact:
         _require_nonnegative_int(self.critical_finding_count, "critical_finding_count")
         _require_bool(self.audit_passed, "audit_passed")
         _require_sha256(self.audit_hash, "audit_hash")
+        self._validate_finding_consistency(
+            patient_counts,
+            case_counts,
+            patient_overlaps,
+            case_overlaps,
+        )
         if self.audit_passed:
             _require_all_zero(patient_overlaps, "pairwise_patient_overlap_counts")
             _require_all_zero(case_overlaps, "pairwise_case_overlap_counts")
+            if not self.assignment_complete:
+                msg = "audit_passed=True requires assignment_complete=True"
+                raise Phase2ArtifactValidationError(msg)
+            if any(value == 0 for value in patient_counts.values()) or any(
+                value == 0 for value in case_counts.values()
+            ):
+                msg = "audit_passed=True requires every partition to be nonempty"
+                raise Phase2ArtifactValidationError(msg)
+            if self.image_hash_cross_partition_overlap_count != 0:
+                msg = "audit_passed=True requires zero cross-partition image hash overlap"
+                raise Phase2ArtifactValidationError(msg)
+            if self.label_hash_cross_partition_overlap_count != 0:
+                msg = "audit_passed=True requires zero cross-partition label hash overlap"
+                raise Phase2ArtifactValidationError(msg)
+            if self.image_label_pair_cross_partition_overlap_count != 0:
+                msg = "audit_passed=True requires zero cross-partition image/label pair overlap"
+                raise Phase2ArtifactValidationError(msg)
+            if self.finding_codes:
+                msg = "audit_passed=True requires no finding_codes"
+                raise Phase2ArtifactValidationError(msg)
             if self.critical_finding_count != 0:
                 msg = "audit_passed=True requires critical_finding_count to equal zero"
                 raise Phase2ArtifactValidationError(msg)
@@ -1296,6 +1363,55 @@ class LeakageAuditArtifact:
             if self.preprocessing_fitted_on_nontraining_data:
                 msg = "audit_passed=True requires preprocessing_fitted_on_nontraining_data=False"
                 raise Phase2ArtifactValidationError(msg)
+
+    def _validate_finding_consistency(
+        self,
+        patient_counts: Mapping[str, int],
+        case_counts: Mapping[str, int],
+        patient_overlaps: Mapping[str, int],
+        case_overlaps: Mapping[str, int],
+    ) -> None:
+        if self.critical_finding_count != len(self.finding_codes):
+            msg = "critical_finding_count must equal the number of finding_codes"
+            raise Phase2ArtifactValidationError(msg)
+        if tuple(self.unresolved_findings) != tuple(self.finding_codes):
+            msg = "unresolved_findings must match deterministic finding_codes"
+            raise Phase2ArtifactValidationError(msg)
+        expected_presence = {
+            "empty_partition": any(value == 0 for value in patient_counts.values())
+            or any(value == 0 for value in case_counts.values()),
+            "patient_partition_overlap": any(value != 0 for value in patient_overlaps.values()),
+            "case_partition_overlap": any(value != 0 for value in case_overlaps.values()),
+            "image_hash_cross_partition_overlap": (
+                self.image_hash_cross_partition_overlap_count != 0
+            ),
+            "label_hash_cross_partition_overlap": (
+                self.label_hash_cross_partition_overlap_count != 0
+            ),
+            "image_label_pair_cross_partition_overlap": (
+                self.image_label_pair_cross_partition_overlap_count != 0
+            ),
+        }
+        for code, should_be_present in expected_presence.items():
+            if should_be_present != (code in self.finding_codes):
+                msg = f"finding_codes must consistently represent {code}"
+                raise Phase2ArtifactValidationError(msg)
+        expected_image_findings = (
+            ("image_hash_cross_partition_overlap",)
+            if self.image_hash_cross_partition_overlap_count
+            else ()
+        )
+        if self.duplicate_image_hash_findings != expected_image_findings:
+            msg = "duplicate_image_hash_findings must match image hash overlap count"
+            raise Phase2ArtifactValidationError(msg)
+        expected_label_findings = (
+            ("label_hash_cross_partition_overlap",)
+            if self.label_hash_cross_partition_overlap_count
+            else ()
+        )
+        if self.duplicate_label_hash_findings != expected_label_findings:
+            msg = "duplicate_label_hash_findings must match label hash overlap count"
+            raise Phase2ArtifactValidationError(msg)
 
 
 Phase2Artifact: TypeAlias = (
@@ -1370,6 +1486,7 @@ _TUPLE_FIELDS = {
     "failure_reasons",
     "duplicate_image_hash_findings",
     "duplicate_label_hash_findings",
+    "finding_codes",
     "unresolved_findings",
 }
 _MAPPING_FIELDS = {
@@ -1854,6 +1971,27 @@ def _require_geometry_label_failure_reasons(value: tuple[str, ...]) -> None:
         current_order = code_order[code]
         if current_order <= previous_order:
             msg = "failure_reasons must follow the deterministic geometry-label code order"
+            raise Phase2ArtifactValidationError(msg)
+        previous_order = current_order
+
+
+def _require_leakage_finding_codes(value: object) -> None:
+    _require_string_tuple(value, "finding_codes", allow_empty=True)
+    codes = cast(tuple[str, ...], value)
+    code_order = {code: index for index, code in enumerate(LEAKAGE_AUDIT_FINDING_CODES)}
+    previous_order = -1
+    seen: set[str] = set()
+    for code in codes:
+        if code not in code_order:
+            msg = f"finding_codes contains unsupported leakage-audit code: {code!r}"
+            raise Phase2ArtifactValidationError(msg)
+        if code in seen:
+            msg = "finding_codes must not contain duplicate codes"
+            raise Phase2ArtifactValidationError(msg)
+        seen.add(code)
+        current_order = code_order[code]
+        if current_order <= previous_order:
+            msg = "finding_codes must follow the deterministic leakage-audit code order"
             raise Phase2ArtifactValidationError(msg)
         previous_order = current_order
 
