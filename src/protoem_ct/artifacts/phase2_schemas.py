@@ -275,8 +275,9 @@ class CaseQaRecord:
 
     anonymous_patient_id: str
     anonymous_case_id: str
+    partition: str
     dimensionality: int
-    shape: tuple[int, int, int]
+    shape: tuple[int, ...]
     image_dtype: str
     label_dtype: str
     affine: tuple[tuple[float, float, float, float], ...]
@@ -287,15 +288,15 @@ class CaseQaRecord:
     allowed_label_values: tuple[int, ...]
     image_label_shape_match: bool
     image_label_affine_match: bool
-    intensity_min: float
-    intensity_max: float
-    intensity_mean: float
-    intensity_std: float
+    intensity_min: float | None
+    intensity_max: float | None
+    intensity_mean: float | None
+    intensity_std: float | None
     histogram_bin_edges: tuple[float, ...]
     histogram_counts: tuple[int, ...]
     tumor_voxel_count: int
-    tumor_physical_volume_mm3: float
-    lesion_count: int
+    tumor_physical_volume_mm3: float | None
+    lesion_count: int | None
     lesions: tuple[LesionSummaryRecord, ...]
     empty_tumor: bool
     qa_passed: bool
@@ -304,10 +305,14 @@ class CaseQaRecord:
     def __post_init__(self) -> None:
         _require_safe_anonymous_id(self.anonymous_patient_id, "anonymous_patient_id")
         _require_safe_anonymous_id(self.anonymous_case_id, "anonymous_case_id")
-        if self.dimensionality != 3:
-            msg = "dimensionality must be fixed to 3"
+        if self.partition not in SUPPORTED_SPLIT_PARTITIONS:
+            msg = f"partition must be one of {SUPPORTED_SPLIT_PARTITIONS!r}"
             raise Phase2ArtifactValidationError(msg)
-        _require_shape_3d(self.shape, "shape")
+        _require_positive_int(self.dimensionality, "dimensionality")
+        _require_positive_shape(self.shape, "shape")
+        if self.qa_passed and (self.dimensionality != 3 or len(self.shape) != 3):
+            msg = "qa_passed=True requires 3D dimensionality and shape"
+            raise Phase2ArtifactValidationError(msg)
         _require_nonempty_string(self.image_dtype, "image_dtype")
         _require_nonempty_string(self.label_dtype, "label_dtype")
         _require_affine_4x4(self.affine, "affine")
@@ -318,24 +323,9 @@ class CaseQaRecord:
         _require_allowed_label_values(self.allowed_label_values, "allowed_label_values")
         _require_bool(self.image_label_shape_match, "image_label_shape_match")
         _require_bool(self.image_label_affine_match, "image_label_affine_match")
-        _require_finite_float(self.intensity_min, "intensity_min")
-        _require_finite_float(self.intensity_max, "intensity_max")
-        _require_finite_float(self.intensity_mean, "intensity_mean")
-        _require_nonnegative_finite_float(self.intensity_std, "intensity_std")
-        if self.intensity_min > self.intensity_max:
-            msg = "intensity_min must be less than or equal to intensity_max"
-            raise Phase2ArtifactValidationError(msg)
-        _require_histogram(self.histogram_bin_edges, self.histogram_counts)
+        _require_histogram_edges(self.histogram_bin_edges, "histogram_bin_edges")
         _require_nonnegative_int(self.tumor_voxel_count, "tumor_voxel_count")
-        _require_nonnegative_finite_float(
-            self.tumor_physical_volume_mm3,
-            "tumor_physical_volume_mm3",
-        )
-        _require_nonnegative_int(self.lesion_count, "lesion_count")
         _require_tuple_of(self.lesions, LesionSummaryRecord, "lesions", allow_empty=True)
-        if self.lesion_count != len(self.lesions):
-            msg = "lesion_count must equal the number of lesion records"
-            raise Phase2ArtifactValidationError(msg)
         _require_consecutive_lesion_indices(self.lesions)
         _require_bool(self.empty_tumor, "empty_tumor")
         _require_bool(self.qa_passed, "qa_passed")
@@ -346,12 +336,65 @@ class CaseQaRecord:
         if not self.qa_passed and not self.failure_reasons:
             msg = "qa_passed=False requires at least one failure reason"
             raise Phase2ArtifactValidationError(msg)
-        if self.empty_tumor:
-            if self.tumor_voxel_count != 0 or self.lesion_count != 0 or self.lesions:
-                msg = "empty_tumor=True requires zero tumor voxels and zero lesions"
+        self._validate_optional_measurements()
+        if self.empty_tumor != (self.tumor_voxel_count == 0):
+            msg = "empty_tumor must be consistent with tumor_voxel_count"
+            raise Phase2ArtifactValidationError(msg)
+
+    def _validate_optional_measurements(self) -> None:
+        intensity_fields = (
+            self.intensity_min,
+            self.intensity_max,
+            self.intensity_mean,
+            self.intensity_std,
+        )
+        intensity_available = all(value is not None for value in intensity_fields)
+        if intensity_available:
+            _require_finite_float(self.intensity_min, "intensity_min")
+            _require_finite_float(self.intensity_max, "intensity_max")
+            _require_finite_float(self.intensity_mean, "intensity_mean")
+            _require_nonnegative_finite_float(self.intensity_std, "intensity_std")
+            if cast(float, self.intensity_min) > cast(float, self.intensity_max):
+                msg = "intensity_min must be less than or equal to intensity_max"
                 raise Phase2ArtifactValidationError(msg)
-        elif self.tumor_voxel_count == 0 or self.lesion_count == 0:
-            msg = "empty_tumor=False requires positive tumor voxels and at least one lesion"
+            _require_histogram(self.histogram_bin_edges, self.histogram_counts)
+        else:
+            if any(value is not None for value in intensity_fields) or self.histogram_counts:
+                msg = "unavailable intensity measurements must all be absent together"
+                raise Phase2ArtifactValidationError(msg)
+        lesion_available = (
+            self.tumor_physical_volume_mm3 is not None and self.lesion_count is not None
+        )
+        if lesion_available:
+            _require_nonnegative_finite_float(
+                self.tumor_physical_volume_mm3,
+                "tumor_physical_volume_mm3",
+            )
+            _require_nonnegative_int(self.lesion_count, "lesion_count")
+            if self.lesion_count != len(self.lesions):
+                msg = "lesion_count must equal the number of lesion records"
+                raise Phase2ArtifactValidationError(msg)
+            if self.empty_tumor:
+                if (
+                    self.tumor_voxel_count != 0
+                    or self.tumor_physical_volume_mm3 != 0.0
+                    or self.lesion_count != 0
+                    or self.lesions
+                ):
+                    msg = "empty_tumor=True requires zero tumor voxels, volume, and lesions"
+                    raise Phase2ArtifactValidationError(msg)
+            elif self.tumor_voxel_count == 0 or self.lesion_count == 0:
+                msg = "empty_tumor=False requires positive tumor voxels and at least one lesion"
+                raise Phase2ArtifactValidationError(msg)
+        elif (
+            self.tumor_physical_volume_mm3 is not None
+            or self.lesion_count is not None
+            or self.lesions
+        ):
+            msg = "unavailable lesion measurements must all be absent together"
+            raise Phase2ArtifactValidationError(msg)
+        if self.qa_passed and (not intensity_available or not lesion_available):
+            msg = "qa_passed=True requires complete intensity and lesion measurements"
             raise Phase2ArtifactValidationError(msg)
 
 
@@ -366,13 +409,32 @@ class DevelopmentQaArtifact:
     config_hash: str
     manifest_hash: str
     split_hash: str
+    geometry_qa_artifact_hash: str
+    lesion_artifact_hash: str
+    development_summary_artifact_hash: str
     connectivity: int
-    affine_tolerance: float
+    affine_tolerance: float | None
     histogram_bin_edges: tuple[float, ...]
+    histogram_bin_count: int
     case_count: int
     passed_case_count: int
     failed_case_count: int
     case_records: tuple[CaseQaRecord, ...]
+    aggregate_image_voxel_count: int
+    aggregate_intensity_min: float | None
+    aggregate_intensity_max: float | None
+    aggregate_intensity_mean: float | None
+    aggregate_intensity_std: float | None
+    aggregate_histogram_counts: tuple[int, ...]
+    aggregate_below_histogram_range_count: int
+    aggregate_above_histogram_range_count: int
+    total_tumor_voxel_count: int
+    total_tumor_physical_volume_mm3: float
+    total_lesion_count: int
+    lesion_volume_min_mm3: float | None
+    lesion_volume_max_mm3: float | None
+    lesion_volume_mean_mm3: float | None
+    lesion_volume_median_mm3: float | None
     qa_artifact_hash: str
 
     _expected_stage: ClassVar[str] = DEVELOPMENT_QA_STAGE
@@ -385,11 +447,22 @@ class DevelopmentQaArtifact:
         _require_sha256(self.config_hash, "config_hash")
         _require_sha256(self.manifest_hash, "manifest_hash")
         _require_sha256(self.split_hash, "split_hash")
+        _require_sha256(self.geometry_qa_artifact_hash, "geometry_qa_artifact_hash")
+        _require_sha256(self.lesion_artifact_hash, "lesion_artifact_hash")
+        _require_sha256(
+            self.development_summary_artifact_hash,
+            "development_summary_artifact_hash",
+        )
         if self.connectivity not in SUPPORTED_CONNECTIVITY_VALUES:
             msg = f"connectivity must be one of {SUPPORTED_CONNECTIVITY_VALUES!r}"
             raise Phase2ArtifactValidationError(msg)
-        _require_positive_finite_float(self.affine_tolerance, "affine_tolerance")
+        if self.affine_tolerance is not None:
+            _require_positive_finite_float(self.affine_tolerance, "affine_tolerance")
         _require_histogram_edges(self.histogram_bin_edges, "histogram_bin_edges")
+        _require_positive_int(self.histogram_bin_count, "histogram_bin_count")
+        if len(self.histogram_bin_edges) != self.histogram_bin_count + 1:
+            msg = "histogram_bin_edges count must equal histogram_bin_count plus one"
+            raise Phase2ArtifactValidationError(msg)
         _require_nonnegative_int(self.case_count, "case_count")
         _require_nonnegative_int(self.passed_case_count, "passed_case_count")
         _require_nonnegative_int(self.failed_case_count, "failed_case_count")
@@ -415,7 +488,89 @@ class DevelopmentQaArtifact:
             if case.histogram_bin_edges != self.histogram_bin_edges:
                 msg = "all case histogram_bin_edges must match the QA artifact edges"
                 raise Phase2ArtifactValidationError(msg)
+            if case.histogram_counts and len(case.histogram_counts) != self.histogram_bin_count:
+                msg = "all available case histogram_counts must match histogram_bin_count"
+                raise Phase2ArtifactValidationError(msg)
+        self._validate_summary_aggregates()
         _require_sha256(self.qa_artifact_hash, "qa_artifact_hash")
+
+    def _validate_summary_aggregates(self) -> None:
+        _require_nonnegative_int(self.aggregate_image_voxel_count, "aggregate_image_voxel_count")
+        _require_nonnegative_int_tuple(
+            self.aggregate_histogram_counts,
+            "aggregate_histogram_counts",
+            allow_empty=False,
+        )
+        if len(self.aggregate_histogram_counts) != self.histogram_bin_count:
+            msg = "aggregate_histogram_counts length must equal histogram_bin_count"
+            raise Phase2ArtifactValidationError(msg)
+        _require_nonnegative_int(
+            self.aggregate_below_histogram_range_count,
+            "aggregate_below_histogram_range_count",
+        )
+        _require_nonnegative_int(
+            self.aggregate_above_histogram_range_count,
+            "aggregate_above_histogram_range_count",
+        )
+        aggregate_counted_voxels = (
+            sum(self.aggregate_histogram_counts)
+            + self.aggregate_below_histogram_range_count
+            + self.aggregate_above_histogram_range_count
+        )
+        if aggregate_counted_voxels != self.aggregate_image_voxel_count:
+            msg = "aggregate histogram and out-of-range counts must equal aggregate voxels"
+            raise Phase2ArtifactValidationError(msg)
+        if self.aggregate_image_voxel_count == 0:
+            if any(
+                value is not None
+                for value in (
+                    self.aggregate_intensity_min,
+                    self.aggregate_intensity_max,
+                    self.aggregate_intensity_mean,
+                    self.aggregate_intensity_std,
+                )
+            ):
+                msg = "zero aggregate voxels require absent aggregate intensity measurements"
+                raise Phase2ArtifactValidationError(msg)
+        else:
+            _require_finite_float(self.aggregate_intensity_min, "aggregate_intensity_min")
+            _require_finite_float(self.aggregate_intensity_max, "aggregate_intensity_max")
+            _require_finite_float(self.aggregate_intensity_mean, "aggregate_intensity_mean")
+            _require_nonnegative_finite_float(
+                self.aggregate_intensity_std,
+                "aggregate_intensity_std",
+            )
+            aggregate_min = cast(float, self.aggregate_intensity_min)
+            aggregate_max = cast(float, self.aggregate_intensity_max)
+            if aggregate_min > aggregate_max:
+                msg = (
+                    "aggregate_intensity_min must be less than or equal to aggregate_intensity_max"
+                )
+                raise Phase2ArtifactValidationError(msg)
+        _require_nonnegative_int(self.total_tumor_voxel_count, "total_tumor_voxel_count")
+        _require_nonnegative_finite_float(
+            self.total_tumor_physical_volume_mm3,
+            "total_tumor_physical_volume_mm3",
+        )
+        _require_nonnegative_int(self.total_lesion_count, "total_lesion_count")
+        lesion_fields = (
+            self.lesion_volume_min_mm3,
+            self.lesion_volume_max_mm3,
+            self.lesion_volume_mean_mm3,
+            self.lesion_volume_median_mm3,
+        )
+        if self.total_lesion_count == 0:
+            if any(value is not None for value in lesion_fields):
+                msg = "zero total lesions require absent lesion volume summary statistics"
+                raise Phase2ArtifactValidationError(msg)
+            return
+        for value, field_name in (
+            (self.lesion_volume_min_mm3, "lesion_volume_min_mm3"),
+            (self.lesion_volume_max_mm3, "lesion_volume_max_mm3"),
+            (self.lesion_volume_mean_mm3, "lesion_volume_mean_mm3"),
+            (self.lesion_volume_median_mm3, "lesion_volume_median_mm3"),
+        ):
+            _require_positive_finite_float(value, field_name)
 
 
 @dataclass(frozen=True, slots=True)

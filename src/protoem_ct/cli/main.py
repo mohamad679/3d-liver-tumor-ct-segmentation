@@ -12,6 +12,8 @@ from protoem_ct.data import (
     SUPPORTED_LITS_SUFFIXES,
     AdapterLayoutSpec,
     AnonymousIdConfig,
+    DevelopmentQaReportConfig,
+    DevelopmentQaReportError,
     DevelopmentSplitError,
     DevelopmentSplitPolicy,
     DevelopmentSummaryConfig,
@@ -23,6 +25,7 @@ from protoem_ct.data import (
     LiTSFilenameConvention,
     ManifestBuilderError,
     Phase2PathError,
+    assemble_development_qa_report,
     build_development_split,
     build_lits_development_manifest,
     dry_run_lits_inventory,
@@ -89,6 +92,16 @@ def _raise_phase2_development_summary_cli_error(exc: Exception) -> None:
     """Exit with a concise Phase 2 summary error that does not reveal source details."""
     typer.secho(
         f"Phase 2 development-summary error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase2_development_qa_report_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 2 final QA report error without artifact-content leakage."""
+    typer.secho(
+        f"Phase 2 development-QA report error: {type(exc).__name__}",
         err=True,
         fg=typer.colors.RED,
     )
@@ -705,6 +718,104 @@ def summarize_development_data(
     typer.echo(f"manifest hash: {artifact.manifest_hash}")
     typer.echo(f"split hash: {artifact.split_hash}")
     typer.echo(f"summary artifact hash: {artifact.summary_artifact_hash}")
+    typer.echo(f"output path: {output}")
+
+
+@app.command("build-development-qa-report")
+def build_development_qa_report(
+    manifest_path: Annotated[
+        Path,
+        typer.Option(
+            "--manifest",
+            help="Explicit absolute anonymous Phase 2 dataset manifest JSON path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    split_path: Annotated[
+        Path,
+        typer.Option(
+            "--split",
+            help="Explicit absolute Phase 2 development split JSON path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    geometry_qa_artifact_path: Annotated[
+        Path,
+        typer.Option(
+            "--geometry-qa-artifact",
+            help="Explicit absolute geometry-label QA artifact JSON path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    lesion_artifact_path: Annotated[
+        Path,
+        typer.Option(
+            "--lesion-artifact",
+            help="Explicit absolute lesion-components artifact JSON path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    development_summary_artifact_path: Annotated[
+        Path,
+        typer.Option(
+            "--development-summary-artifact",
+            help="Explicit absolute development-summary artifact JSON path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            help="Explicit absolute final development QA JSON report output path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    report_contract_version: Annotated[
+        str,
+        typer.Option(
+            "--report-contract-version",
+            help="Explicit final QA JSON report contract version.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    git_commit: Annotated[
+        str,
+        typer.Option(
+            "--git-commit",
+            help="Explicit Git commit recorded in the final QA artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    created_at_utc: Annotated[
+        str,
+        typer.Option(
+            "--created-at-utc",
+            help="Explicit UTC creation timestamp recorded in the final QA artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+) -> None:
+    """Assemble the final Phase 2 DevelopmentQaArtifact JSON-only report."""
+    try:
+        artifact = assemble_development_qa_report(
+            manifest_path,
+            split_path,
+            geometry_qa_artifact_path,
+            lesion_artifact_path,
+            development_summary_artifact_path,
+            output_path=output,
+            config=DevelopmentQaReportConfig(
+                report_contract_version=report_contract_version,
+            ),
+            git_commit=git_commit,
+            created_at_utc=created_at_utc,
+        )
+    except (DevelopmentQaReportError, Phase2ArtifactError) as exc:
+        _raise_phase2_development_qa_report_cli_error(exc)
+
+    typer.echo("development QA JSON report completed")
+    typer.echo(f"case count: {artifact.case_count}")
+    typer.echo(f"passed case count: {artifact.passed_case_count}")
+    typer.echo(f"failed case count: {artifact.failed_case_count}")
+    typer.echo(f"report config hash: {artifact.config_hash}")
+    typer.echo(f"manifest hash: {artifact.manifest_hash}")
+    typer.echo(f"split hash: {artifact.split_hash}")
+    typer.echo(f"geometry QA artifact hash: {artifact.geometry_qa_artifact_hash}")
+    typer.echo(f"lesion artifact hash: {artifact.lesion_artifact_hash}")
+    typer.echo(f"development summary artifact hash: {artifact.development_summary_artifact_hash}")
+    typer.echo(f"final QA artifact hash: {artifact.qa_artifact_hash}")
     typer.echo(f"output path: {output}")
 
 
