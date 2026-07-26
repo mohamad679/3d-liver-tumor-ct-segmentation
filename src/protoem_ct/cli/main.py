@@ -16,6 +16,8 @@ from protoem_ct.data import (
     DevelopmentSplitPolicy,
     GeometryLabelQaConfig,
     GeometryLabelQaError,
+    LesionComponentsConfig,
+    LesionComponentsError,
     LiTSFilenameConvention,
     ManifestBuilderError,
     Phase2PathError,
@@ -24,6 +26,7 @@ from protoem_ct.data import (
     dry_run_lits_inventory,
     read_id_key_file,
     run_geometry_label_qa,
+    run_lesion_component_analysis,
 )
 from protoem_ct.data.manifest_validation import (
     ManifestValidationError,
@@ -63,6 +66,16 @@ def _raise_phase2_geometry_qa_cli_error(exc: Exception) -> None:
     """Exit with a concise Phase 2 QA error that does not reveal source details."""
     typer.secho(
         f"Phase 2 geometry-label QA error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase2_lesion_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 2 lesion error that does not reveal source details."""
+    typer.secho(
+        f"Phase 2 lesion-components error: {type(exc).__name__}",
         err=True,
         fg=typer.colors.RED,
     )
@@ -481,6 +494,98 @@ def qa_geometry_labels(
     typer.echo(f"manifest hash: {artifact.manifest_hash}")
     typer.echo(f"split hash: {artifact.split_hash}")
     typer.echo(f"QA artifact hash: {artifact.qa_artifact_hash}")
+    typer.echo(f"output path: {output}")
+
+
+@app.command("summarize-lesions")
+def summarize_lesions(
+    manifest_path: Annotated[
+        Path,
+        typer.Option(
+            "--manifest",
+            help="Explicit absolute anonymous Phase 2 dataset manifest JSON path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    geometry_qa_artifact_path: Annotated[
+        Path,
+        typer.Option(
+            "--geometry-qa-artifact",
+            help="Explicit absolute geometry-label QA artifact JSON path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    dataset_root: Annotated[
+        Path,
+        typer.Option(
+            "--dataset-root",
+            help="Explicit absolute dataset root containing manifest-relative label files.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            help="Explicit absolute lesion-components JSON output path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    connectivity: Annotated[
+        int,
+        typer.Option(
+            "--connectivity",
+            help="Explicit 3D connectivity: 6, 18, or 26.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    tumor_label_value: Annotated[
+        int,
+        typer.Option(
+            "--tumor-label-value",
+            help="Explicit integer tumor label value.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    git_commit: Annotated[
+        str,
+        typer.Option(
+            "--git-commit",
+            help="Explicit Git commit recorded in the lesion artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    created_at_utc: Annotated[
+        str,
+        typer.Option(
+            "--created-at-utc",
+            help="Explicit UTC creation timestamp recorded in the lesion artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+) -> None:
+    """Summarize deterministic 3D lesion components from geometry-QA-passing labels."""
+    try:
+        artifact = run_lesion_component_analysis(
+            manifest_path,
+            geometry_qa_artifact_path,
+            dataset_root=dataset_root,
+            output_path=output,
+            config=LesionComponentsConfig(
+                connectivity=connectivity,
+                tumor_label_value=tumor_label_value,
+            ),
+            git_commit=git_commit,
+            created_at_utc=created_at_utc,
+        )
+    except (LesionComponentsError, Phase2ArtifactError, Phase2PathError) as exc:
+        _raise_phase2_lesion_cli_error(exc)
+
+    total_lesion_count = sum(
+        record.lesion_count or 0 for record in artifact.case_records if record.analysis_performed
+    )
+    typer.echo("lesion summary completed")
+    typer.echo(f"case count: {artifact.case_count}")
+    typer.echo(f"analyzed case count: {artifact.analyzed_case_count}")
+    typer.echo(f"skipped case count: {artifact.skipped_case_count}")
+    typer.echo(f"total lesion count: {total_lesion_count}")
+    typer.echo(f"connectivity: {artifact.connectivity}")
+    typer.echo(f"config hash: {artifact.config_hash}")
+    typer.echo(f"manifest hash: {artifact.manifest_hash}")
+    typer.echo(f"split hash: {artifact.split_hash}")
+    typer.echo(f"lesion artifact hash: {artifact.lesion_artifact_hash}")
     typer.echo(f"output path: {output}")
 
 

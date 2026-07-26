@@ -1415,6 +1415,7 @@ dependencies = [
     { name = "nibabel" },
     { name = "numpy" },
     { name = "omegaconf" },
+    { name = "scipy" },
     { name = "snakemake" },
     { name = "typer" },
 ]
@@ -1435,6 +1436,7 @@ requires-dist = [
     { name = "nibabel" },
     { name = "numpy" },
     { name = "omegaconf", specifier = ">=2.3.1" },
+    { name = "scipy" },
     { name = "snakemake", specifier = ">=9.23.1" },
     { name = "typer" },
 ]

@@ -17,6 +17,7 @@ if TYPE_CHECKING:
         DevelopmentSplitManifest,
         GeometryLabelQaArtifact,
         LeakageAuditArtifact,
+        LesionComponentsArtifact,
     )
 
 JsonScalar: TypeAlias = str | int | float | bool | None
@@ -147,6 +148,15 @@ def geometry_label_qa_hash_payload(artifact: GeometryLabelQaArtifact) -> dict[st
     return payload
 
 
+def lesion_components_hash_payload(artifact: LesionComponentsArtifact) -> dict[str, JsonValue]:
+    """Return the lesion-components hash payload, excluding ``lesion_artifact_hash``."""
+    from protoem_ct.artifacts.phase2_schemas import phase2_artifact_to_dict
+
+    payload = phase2_artifact_to_dict(artifact)
+    payload.pop("lesion_artifact_hash")
+    return payload
+
+
 def leakage_audit_hash_payload(artifact: LeakageAuditArtifact) -> dict[str, JsonValue]:
     """Return the leakage-audit hash payload, excluding ``audit_hash``."""
     from protoem_ct.artifacts.phase2_schemas import phase2_artifact_to_dict
@@ -190,6 +200,11 @@ def hash_development_qa(artifact: DevelopmentQaArtifact) -> str:
 def hash_geometry_label_qa(artifact: GeometryLabelQaArtifact) -> str:
     """Return the lowercase SHA-256 hash for a Phase 2 geometry-label QA artifact."""
     return sha256_json(geometry_label_qa_hash_payload(artifact))
+
+
+def hash_lesion_components(artifact: LesionComponentsArtifact) -> str:
+    """Return the lowercase SHA-256 hash for a Phase 2 lesion-components artifact."""
+    return sha256_json(lesion_components_hash_payload(artifact))
 
 
 def hash_leakage_audit(artifact: LeakageAuditArtifact) -> str:

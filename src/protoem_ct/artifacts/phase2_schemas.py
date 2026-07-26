@@ -25,10 +25,12 @@ PHASE2_DEVELOPMENT_COHORT_ROLE = "development"
 DATASET_MANIFEST_TYPE = "phase2-dataset-manifest"
 DEVELOPMENT_SPLIT_MANIFEST_TYPE = "phase2-development-split-manifest"
 GEOMETRY_LABEL_QA_STAGE = "geometry_label_qa"
+LESION_COMPONENTS_STAGE = "lesion_components"
 DEVELOPMENT_QA_STAGE = "phase2-development-qa"
 LEAKAGE_AUDIT_STAGE = "phase2-leakage-audit"
 SUPPORTED_SPLIT_PARTITIONS = ("train", "validation", "internal_test")
 SUPPORTED_CONNECTIVITY_VALUES = (6, 18, 26)
+LESION_COMPONENTS_UPSTREAM_FAILURE_REASON = "upstream_geometry_label_qa_failed"
 GEOMETRY_LABEL_QA_FAILURE_CODES = (
     "image_not_3d",
     "label_not_3d",
@@ -550,6 +552,191 @@ class GeometryLabelQaArtifact:
 
 
 @dataclass(frozen=True, slots=True)
+class LesionComponentCaseRecord:
+    """Intermediate per-case connected-component lesion summary record.
+
+    Component ordering is deterministic for Phase 2 synthetic verification: lesions are sorted by
+    descending voxel count, then by the lexicographically smallest voxel coordinate in the
+    component. This is not a final scientific approval for real-data execution.
+    """
+
+    anonymous_patient_id: str
+    anonymous_case_id: str
+    partition: str
+    analysis_performed: bool
+    connectivity: int
+    tumor_label_value: int
+    voxel_volume_mm3: float | None
+    tumor_voxel_count: int | None
+    tumor_physical_volume_mm3: float | None
+    lesion_count: int | None
+    lesions: tuple[LesionSummaryRecord, ...]
+    qa_passed: bool
+    failure_reasons: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        _require_safe_anonymous_id(self.anonymous_patient_id, "anonymous_patient_id")
+        _require_safe_anonymous_id(self.anonymous_case_id, "anonymous_case_id")
+        if self.partition not in SUPPORTED_SPLIT_PARTITIONS:
+            msg = f"partition must be one of {SUPPORTED_SPLIT_PARTITIONS!r}"
+            raise Phase2ArtifactValidationError(msg)
+        _require_bool(self.analysis_performed, "analysis_performed")
+        if self.connectivity not in SUPPORTED_CONNECTIVITY_VALUES:
+            msg = f"connectivity must be one of {SUPPORTED_CONNECTIVITY_VALUES!r}"
+            raise Phase2ArtifactValidationError(msg)
+        if isinstance(self.tumor_label_value, bool) or not isinstance(self.tumor_label_value, int):
+            msg = "tumor_label_value must be an integer"
+            raise Phase2ArtifactValidationError(msg)
+        _require_tuple_of(self.lesions, LesionSummaryRecord, "lesions", allow_empty=True)
+        _require_bool(self.qa_passed, "qa_passed")
+        _require_string_tuple(self.failure_reasons, "failure_reasons", allow_empty=True)
+
+        if self.analysis_performed:
+            self._validate_analyzed_measurements()
+            return
+        self._validate_skipped_measurements()
+
+    def _validate_analyzed_measurements(self) -> None:
+        if not self.qa_passed:
+            msg = "analysis_performed=True requires qa_passed=True"
+            raise Phase2ArtifactValidationError(msg)
+        if self.failure_reasons:
+            msg = "analysis_performed=True requires no failure_reasons"
+            raise Phase2ArtifactValidationError(msg)
+        if self.voxel_volume_mm3 is None:
+            msg = "analysis_performed=True requires voxel_volume_mm3"
+            raise Phase2ArtifactValidationError(msg)
+        _require_positive_finite_float(self.voxel_volume_mm3, "voxel_volume_mm3")
+        if self.tumor_voxel_count is None:
+            msg = "analysis_performed=True requires tumor_voxel_count"
+            raise Phase2ArtifactValidationError(msg)
+        _require_nonnegative_int(self.tumor_voxel_count, "tumor_voxel_count")
+        if self.tumor_physical_volume_mm3 is None:
+            msg = "analysis_performed=True requires tumor_physical_volume_mm3"
+            raise Phase2ArtifactValidationError(msg)
+        _require_nonnegative_finite_float(
+            self.tumor_physical_volume_mm3,
+            "tumor_physical_volume_mm3",
+        )
+        if self.lesion_count is None:
+            msg = "analysis_performed=True requires lesion_count"
+            raise Phase2ArtifactValidationError(msg)
+        _require_nonnegative_int(self.lesion_count, "lesion_count")
+        if self.lesion_count != len(self.lesions):
+            msg = "lesion_count must equal the number of lesion records"
+            raise Phase2ArtifactValidationError(msg)
+        _require_consecutive_lesion_indices(self.lesions)
+        lesion_voxel_sum = sum(lesion.voxel_count for lesion in self.lesions)
+        if lesion_voxel_sum != self.tumor_voxel_count:
+            msg = "sum of lesion voxel counts must equal tumor_voxel_count"
+            raise Phase2ArtifactValidationError(msg)
+        lesion_volume_sum = sum(lesion.physical_volume_mm3 for lesion in self.lesions)
+        if not math.isclose(
+            lesion_volume_sum,
+            self.tumor_physical_volume_mm3,
+            rel_tol=0.0,
+            abs_tol=1e-9,
+        ):
+            msg = "sum of lesion physical volumes must equal tumor_physical_volume_mm3"
+            raise Phase2ArtifactValidationError(msg)
+        if self.tumor_voxel_count == 0:
+            if self.tumor_physical_volume_mm3 != 0.0 or self.lesion_count != 0 or self.lesions:
+                msg = "empty tumor requires zero physical volume and zero lesions"
+                raise Phase2ArtifactValidationError(msg)
+            return
+        if self.tumor_physical_volume_mm3 <= 0.0 or self.lesion_count == 0:
+            msg = "nonempty tumor requires positive physical volume and at least one lesion"
+            raise Phase2ArtifactValidationError(msg)
+
+    def _validate_skipped_measurements(self) -> None:
+        if self.qa_passed:
+            msg = "analysis_performed=False requires qa_passed=False"
+            raise Phase2ArtifactValidationError(msg)
+        if self.failure_reasons != (LESION_COMPONENTS_UPSTREAM_FAILURE_REASON,):
+            msg = "skipped lesion records require the fixed upstream geometry-label QA failure"
+            raise Phase2ArtifactValidationError(msg)
+        if (
+            self.voxel_volume_mm3 is not None
+            or self.tumor_voxel_count is not None
+            or self.tumor_physical_volume_mm3 is not None
+            or self.lesion_count is not None
+            or self.lesions
+        ):
+            msg = "skipped lesion records must not contain fabricated lesion measurements"
+            raise Phase2ArtifactValidationError(msg)
+
+
+@dataclass(frozen=True, slots=True)
+class LesionComponentsArtifact:
+    """Intermediate Phase 2 connected-component lesion-summary artifact."""
+
+    schema_version: str
+    stage: str
+    created_at_utc: str
+    git_commit: str
+    config_hash: str
+    manifest_hash: str
+    split_hash: str
+    geometry_qa_artifact_hash: str
+    connectivity: int
+    case_count: int
+    analyzed_case_count: int
+    skipped_case_count: int
+    case_records: tuple[LesionComponentCaseRecord, ...]
+    lesion_artifact_hash: str
+
+    _expected_stage: ClassVar[str] = LESION_COMPONENTS_STAGE
+
+    def __post_init__(self) -> None:
+        _require_phase2_schema_version(self.schema_version)
+        _require_stage(self.stage, self._expected_stage)
+        _require_nonempty_string(self.created_at_utc, "created_at_utc")
+        _require_nonempty_string(self.git_commit, "git_commit")
+        _require_sha256(self.config_hash, "config_hash")
+        _require_sha256(self.manifest_hash, "manifest_hash")
+        _require_sha256(self.split_hash, "split_hash")
+        _require_sha256(self.geometry_qa_artifact_hash, "geometry_qa_artifact_hash")
+        if self.connectivity not in SUPPORTED_CONNECTIVITY_VALUES:
+            msg = f"connectivity must be one of {SUPPORTED_CONNECTIVITY_VALUES!r}"
+            raise Phase2ArtifactValidationError(msg)
+        _require_nonnegative_int(self.case_count, "case_count")
+        _require_nonnegative_int(self.analyzed_case_count, "analyzed_case_count")
+        _require_nonnegative_int(self.skipped_case_count, "skipped_case_count")
+        _require_tuple_of(
+            self.case_records,
+            LesionComponentCaseRecord,
+            "case_records",
+            allow_empty=False,
+        )
+        if self.case_count != len(self.case_records):
+            msg = "case_count must equal the number of case_records"
+            raise Phase2ArtifactValidationError(msg)
+        if self.analyzed_case_count != sum(
+            1 for case in self.case_records if case.analysis_performed
+        ):
+            msg = "analyzed_case_count must equal analyzed case records"
+            raise Phase2ArtifactValidationError(msg)
+        if self.skipped_case_count != sum(
+            1 for case in self.case_records if not case.analysis_performed
+        ):
+            msg = "skipped_case_count must equal skipped case records"
+            raise Phase2ArtifactValidationError(msg)
+        if self.case_count != self.analyzed_case_count + self.skipped_case_count:
+            msg = "case_count must equal analyzed_case_count + skipped_case_count"
+            raise Phase2ArtifactValidationError(msg)
+        _require_sorted_lesion_component_records(self.case_records)
+        _require_unique_values(
+            (case.anonymous_case_id for case in self.case_records),
+            "anonymous_case_id",
+        )
+        for case in self.case_records:
+            if case.connectivity != self.connectivity:
+                msg = "all case connectivity values must match the artifact connectivity"
+                raise Phase2ArtifactValidationError(msg)
+        _require_sha256(self.lesion_artifact_hash, "lesion_artifact_hash")
+
+
+@dataclass(frozen=True, slots=True)
 class LeakageAuditArtifact:
     """Machine-readable Phase 2 leakage-audit evidence."""
 
@@ -659,6 +846,8 @@ Phase2Artifact: TypeAlias = (
     | DevelopmentQaArtifact
     | GeometryLabelQaCaseRecord
     | GeometryLabelQaArtifact
+    | LesionComponentCaseRecord
+    | LesionComponentsArtifact
     | LeakageAuditArtifact
 )
 Phase2ArtifactT = TypeVar("Phase2ArtifactT", bound=Phase2Artifact)
@@ -673,6 +862,8 @@ _PHASE2_ARTIFACT_TYPES: tuple[type[Phase2Artifact], ...] = (
     DevelopmentQaArtifact,
     GeometryLabelQaCaseRecord,
     GeometryLabelQaArtifact,
+    LesionComponentCaseRecord,
+    LesionComponentsArtifact,
     LeakageAuditArtifact,
 )
 _MANIFEST_TYPES: dict[str, type[Phase2Artifact]] = {
@@ -681,6 +872,7 @@ _MANIFEST_TYPES: dict[str, type[Phase2Artifact]] = {
 }
 _STAGE_TYPES: dict[str, type[Phase2Artifact]] = {
     GEOMETRY_LABEL_QA_STAGE: GeometryLabelQaArtifact,
+    LESION_COMPONENTS_STAGE: LesionComponentsArtifact,
     DEVELOPMENT_QA_STAGE: DevelopmentQaArtifact,
     LEAKAGE_AUDIT_STAGE: LeakageAuditArtifact,
 }
@@ -862,6 +1054,8 @@ def _nested_record_type(
 ) -> type[Phase2Artifact] | None:
     if artifact_type is GeometryLabelQaArtifact and field_name == "case_records":
         return GeometryLabelQaCaseRecord
+    if artifact_type is LesionComponentsArtifact and field_name == "case_records":
+        return LesionComponentCaseRecord
     return _NESTED_RECORD_FIELDS.get(field_name)
 
 
@@ -1253,7 +1447,18 @@ def _require_sorted_case_records(
         raise Phase2ArtifactValidationError(msg)
 
 
-def _case_record_sort_key(case: CaseQaRecord | GeometryLabelQaCaseRecord) -> tuple[str, str]:
+def _require_sorted_lesion_component_records(
+    case_records: tuple[LesionComponentCaseRecord, ...],
+) -> None:
+    expected = tuple(sorted(case_records, key=_case_record_sort_key))
+    if case_records != expected:
+        msg = "case_records must be ordered by anonymous_patient_id and anonymous_case_id"
+        raise Phase2ArtifactValidationError(msg)
+
+
+def _case_record_sort_key(
+    case: CaseQaRecord | GeometryLabelQaCaseRecord | LesionComponentCaseRecord,
+) -> tuple[str, str]:
     return (case.anonymous_patient_id, case.anonymous_case_id)
 
 
