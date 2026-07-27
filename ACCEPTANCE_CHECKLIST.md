@@ -101,7 +101,7 @@ Gate 1 status: PASSED locally
 - [x] Typing passes
 - [x] Full tests pass
 - [x] Smoke tests pass
-- [ ] GitHub-hosted CI passes
+- [x] GitHub-hosted CI passes
 - [x] Leakage audit is completed with no unresolved critical finding
 
 ### Gate 2 Evidence
