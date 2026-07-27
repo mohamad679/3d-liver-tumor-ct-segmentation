@@ -299,3 +299,27 @@
 - Consequences: This is a real-run configuration decision, not a library default. Source NIfTI files
   remain unchanged, and the original failed run remains preserved externally. No Gate 2 pass is
   claimed until the rerun and artifact verification succeed.
+
+### 2026-07-27: Accept Verified Phase 2 v2 Real-Data QA Close-Out
+
+- Status: accepted
+- Context: The preserved first real-run diagnostic showed affine differences consistent with NIfTI
+  header floating-point precision rather than meaningful image/label misregistration. The approved
+  v2 rerun used explicit `affine_tolerance=0.0001 mm` as a real-run configuration value, not a
+  library default.
+- Decision: Accept the verified v2 Phase 2 development-cohort QA and leakage evidence for Gate 2
+  documentation close-out. The v2 artifacts recorded the full Git commit used for execution and are
+  identified by these hashes: manifest
+  `c24244951e050050cf25c4b321f67d61c2087fc0c93fdcf9d112e0e488e1384b`, split
+  `936376cd7b5e6070397c2fef16e5125c60fd6569ff3188d7e9bb5428a46ffadb`, geometry QA
+  `b8e65c558d5f574a1b40f9a5b15a033efbfbd6952006324fae35173940f94ee2`, lesion components
+  `f7ce4874801cc8d5387bf93fd1480d376db4028026a90723dda2c5e2f48fbc60`, development summary
+  `9b721e10232a08c9a5dd5361a11d7595abab04c071058d584e5895087b91951c`, final QA report
+  `3f816db6227a1d2a8b349e248a9654eb4eed1e57760b48d32a6a275e1deca4f1`, and leakage audit
+  `a32da3ac9d5689ec055c3875076ddc2075ca585219160c2d4200ca36484bf199`.
+- Consequences: The v2 result is 131/131 geometry-label QA cases passed, a deterministic
+  patient-level 91/20/20 split, 908 total lesions, and a leakage audit passed with zero overlaps and
+  zero findings. LiTS and MSD Task03 Liver remain the same development-cohort lineage and are not
+  independent cohorts. Source files were unchanged, the v1 failed run remains preserved externally,
+  and v2 artifacts remain external. This decision does not claim model performance, external
+  validation, clinical validity, or Phase 3 progress.

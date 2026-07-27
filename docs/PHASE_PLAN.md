@@ -6,8 +6,11 @@ Phase 0 is completed.
 
 Phase 1 is completed locally.
 
-Active phase: Phase 2 planning only. Phase 2 implementation and real-data execution have not
-started.
+Phase 2 Gate 2 close-out is completed locally from the approved real-data development-cohort QA and
+leakage artifacts.
+
+Active phase: Phase 2 close-out. Phase 3 has not started and may begin only after this close-out
+commit is reviewed and merged.
 
 ## Phase 0 Scope
 
@@ -293,8 +296,18 @@ report, synthetic adapter and QA edge-case tests, no tracked medical data or mac
 no access to real external data, passing lint, typing, full tests, smoke tests, and GitHub-hosted CI,
 and a completed leakage audit with no unresolved critical finding.
 
-Gate 2 is not evaluated during planning. No counts, checks, dataset availability, real-data
-execution, or hosted-CI status may be inferred or fabricated.
+Gate 2 passed locally for the Phase 2 real-data development-cohort QA and leakage-audit scope. The
+verified development cohort is MSD Task03 Liver used as the LiTS-derived development cohort, with
+131 cases and no independent-cohort interpretation. The deterministic patient-level split is 91
+train, 20 validation, and 20 immutable internal-test patients. The final QA report recorded 131
+passed cases and 0 failed cases. The leakage audit passed with zero patient overlap, zero case
+overlap, zero cross-partition image-hash overlap, zero cross-partition label-hash overlap, zero
+cross-partition image/label hash-pair overlap, and zero finding codes.
+
+Real 3D-IRCADb-01 remains untouched for later Phase 8 external validation. These Phase 2 results are
+dataset-QA and leakage results only; they do not claim model performance, scientific efficacy,
+clinical validity, or external validation. GitHub-hosted CI status must still be established after
+publication and is not inferred from local evidence.
 
 ## Implementation Notes and Command Results
 

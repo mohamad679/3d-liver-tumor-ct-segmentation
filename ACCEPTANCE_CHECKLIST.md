@@ -83,36 +83,55 @@ Gate 1 status: PASSED locally
 
 ## Gate 2
 
-- [ ] Real LiTS development-cohort manifest is produced from an explicit dataset root
-- [ ] Deterministic patient-level train, validation, and immutable internal-test split
+- [x] Real LiTS development-cohort manifest is produced from an explicit dataset root
+- [x] Deterministic patient-level train, validation, and immutable internal-test split
       artifacts are produced
-- [ ] Pairwise patient-overlap and case-overlap tests are all zero
-- [ ] Machine-readable per-case, patient-level, and development dataset-level QA artifacts
+- [x] Pairwise patient-overlap and case-overlap tests are all zero
+- [x] Machine-readable per-case, patient-level, and development dataset-level QA artifacts
       are reproducible
-- [ ] Development Markdown QA report is reproducibly generated from saved QA artifacts
-- [ ] LiTS-style and 3D-IRCADb-style adapters have synthetic format and edge-case tests
-- [ ] Geometry, label, finite-value, connected-component, histogram, empty-tumor, duplicate,
+- [x] Development deterministic JSON QA report is reproducibly generated from saved QA artifacts
+- [x] LiTS-style and 3D-IRCADb-style adapters have synthetic format and edge-case tests
+- [x] Geometry, label, finite-value, connected-component, histogram, empty-tumor, duplicate,
       missing, ambiguous, and unsafe-path edge cases are covered by synthetic tests
-- [ ] No medical data, PHI-bearing manifest, prediction, derived volume, or machine-specific
+- [x] No medical data, PHI-bearing manifest, prediction, derived volume, or machine-specific
       dataset path is tracked
-- [ ] Real 3D-IRCADb-01 external data was not accessed, scanned, QA'd, split, tuned on, or
+- [x] Real 3D-IRCADb-01 external data was not accessed, scanned, QA'd, split, tuned on, or
       summarized
-- [ ] Lint passes
-- [ ] Typing passes
-- [ ] Full tests pass
-- [ ] Smoke tests pass
+- [x] Lint passes
+- [x] Typing passes
+- [x] Full tests pass
+- [x] Smoke tests pass
 - [ ] GitHub-hosted CI passes
-- [ ] Leakage audit is completed with no unresolved critical finding
+- [x] Leakage audit is completed with no unresolved critical finding
 
 ### Gate 2 Evidence
 
-Gate 2 status: NOT EVALUATED
+Gate 2 status: PASSED locally for real-data development-cohort QA and leakage evidence.
 
-Evidence must be recorded only after the approved Phase 2 implementation and real LiTS
-development execution. Do not enter estimated case counts, overlap counts, dataset availability,
-command results, or hosted-CI results. Gate 2 cannot pass until the real LiTS manifest, split,
-development QA artifacts, generated Markdown report, completed leakage audit, and all local and
-hosted checks exist.
+Verified v2 evidence is based on the approved read-only MSD Task03 Liver / LiTS-derived
+development-cohort execution. Task03 Liver is treated as the LiTS-derived development cohort, not as
+an independent second cohort.
+
+- Reproducible anonymous manifest: 131 development cases, `manifest_hash`
+  `c24244951e050050cf25c4b321f67d61c2087fc0c93fdcf9d112e0e488e1384b`
+- Deterministic patient-level split: 91 train, 20 validation, 20 immutable internal test,
+  `split_hash` `936376cd7b5e6070397c2fef16e5125c60fd6569ff3188d7e9bb5428a46ffadb`
+- Pairwise patient-overlap counts: zero
+- Pairwise case-overlap counts: zero
+- Cross-partition image SHA-256 overlap: zero
+- Cross-partition label SHA-256 overlap: zero
+- Cross-partition image/label hash-pair overlap: zero
+- Geometry/label QA: 131 passed, 0 failed, explicit affine tolerance `0.0001 mm`
+- Lesion summaries: 131 analyzed, 0 skipped, 908 total lesions
+- CT development summaries: 131 analyzed, 0 skipped
+- Final deterministic JSON QA report: 131 passed, 0 failed
+- LeakageAuditArtifact: verified, `audit_passed=True`, zero findings
+- External artifacts and data remain outside Git; no generated dataset, NIfTI, key, JSON artifact,
+  CSV, TSV, or log is Git-visible.
+
+These are dataset-QA and leakage results only. They do not claim model performance, scientific
+efficacy, segmentation generalization, external validation, clinical validity, or Phase 3 progress.
+GitHub-hosted CI is not claimed until it runs on GitHub.
 
 ## Gate 3
 
