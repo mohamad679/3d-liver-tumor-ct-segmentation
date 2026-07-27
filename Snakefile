@@ -7,34 +7,24 @@ Snakemake --config.
 
 from pathlib import Path
 import shutil
+import sys
 
 from snakemake.exceptions import WorkflowError
 
-
-def _required_config_value(name):
-    """Return a nonempty Snakemake config value or raise a workflow error."""
-    value = config.get(name)
-    if not isinstance(value, str) or not value.strip():
-        raise WorkflowError(f"Missing required Snakemake --config value: {name}")
-    return value
-
-
-def _validate_child_path(root, path):
-    """Require path to remain beneath root after lexical path construction."""
-    try:
-        path.relative_to(root)
-    except ValueError as exc:
-        raise WorkflowError(f"Workflow output escapes generated_root: {path}") from exc
-    return path
-
-
 REPO_ROOT = Path(workflow.basedir).resolve()
+sys.path.insert(0, str(REPO_ROOT / "workflow" / "scripts"))
+
+from generate_phase2_synthetic_fixture import (  # noqa: E402
+    required_config_value,
+    validate_child_path,
+)
+
 DATA_CONFIG = REPO_ROOT / "configs" / "data" / "synthetic.yaml"
 EXPERIMENT_CONFIG = REPO_ROOT / "configs" / "experiment" / "phase1.yaml"
 
-GIT_COMMIT = _required_config_value("git_commit")
-CREATED_AT_UTC = _required_config_value("created_at_utc")
-GENERATED_ROOT_RAW = _required_config_value("generated_root")
+GIT_COMMIT = required_config_value(config, "git_commit")
+CREATED_AT_UTC = required_config_value(config, "created_at_utc")
+GENERATED_ROOT_RAW = required_config_value(config, "generated_root")
 GENERATED_ROOT_PATH = Path(GENERATED_ROOT_RAW)
 
 if not GENERATED_ROOT_PATH.is_absolute():
@@ -47,11 +37,11 @@ PROTOEM_CT = shutil.which("protoem-ct")
 if PROTOEM_CT is None:
     raise WorkflowError("protoem-ct console script was not found on PATH")
 
-DATA_ROOT = _validate_child_path(GENERATED_ROOT, GENERATED_ROOT / "data")
-ARTIFACT_ROOT = _validate_child_path(GENERATED_ROOT, GENERATED_ROOT / "artifacts")
-PREPROCESSED_ROOT = _validate_child_path(GENERATED_ROOT, GENERATED_ROOT / "preprocessed")
-PREDICTION_ROOT = _validate_child_path(GENERATED_ROOT, GENERATED_ROOT / "predictions")
-REPORT_ROOT = _validate_child_path(GENERATED_ROOT, GENERATED_ROOT / "report")
+DATA_ROOT = validate_child_path(GENERATED_ROOT, GENERATED_ROOT / "data")
+ARTIFACT_ROOT = validate_child_path(GENERATED_ROOT, GENERATED_ROOT / "artifacts")
+PREPROCESSED_ROOT = validate_child_path(GENERATED_ROOT, GENERATED_ROOT / "preprocessed")
+PREDICTION_ROOT = validate_child_path(GENERATED_ROOT, GENERATED_ROOT / "predictions")
+REPORT_ROOT = validate_child_path(GENERATED_ROOT, GENERATED_ROOT / "report")
 
 MANIFEST = DATA_ROOT / "generated" / "phase1" / "data" / "synthetic_manifest.json"
 VALIDATION_ARTIFACT = ARTIFACT_ROOT / "validation.json"
@@ -60,7 +50,7 @@ INFERENCE_ARTIFACT = ARTIFACT_ROOT / "inference.json"
 EVALUATION_ARTIFACT = ARTIFACT_ROOT / "evaluation.json"
 REPORT_MARKDOWN = REPORT_ROOT / "phase1_report.md"
 REPORT_ARTIFACT = REPORT_ROOT / "report_artifact.json"
-LOG_ROOT = _validate_child_path(GENERATED_ROOT, GENERATED_ROOT / "logs")
+LOG_ROOT = validate_child_path(GENERATED_ROOT, GENERATED_ROOT / "logs")
 
 
 rule all:
@@ -237,3 +227,9 @@ rule report:
                 --created-at-utc {params.created_at_utc:q}
             """
         )
+
+
+if "--lint" in sys.argv or any(
+    arg == "phase2_synthetic_all" or arg.startswith("phase2_") for arg in sys.argv
+):
+    include: "workflow/phase2_synthetic.smk"

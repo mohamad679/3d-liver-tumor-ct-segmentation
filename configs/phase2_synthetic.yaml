@@ -1,0 +1,49 @@
+# Synthetic-only Phase 2 DAG configuration.
+# These values are test-contract settings for generated fixtures and CI-style workflow checks.
+# They are not approved real-data scientific settings.
+
+phase2_synthetic_generated_root: .artifacts/phase2_synthetic
+phase2_synthetic_created_at_utc: "2026-07-25T00:00:00Z"
+
+case_count: 4
+dataset_id: phase2-synthetic-lits-v1
+project_namespace: protoem-ct.synthetic.phase2
+
+layout:
+  image_pattern: volumes/volume-*.nii
+  label_pattern: segmentations/segmentation-*.nii
+  recursive: false
+  image_prefix: volume-
+  label_prefix: segmentation-
+
+anonymous_ids:
+  patient_id_prefix: sp-
+  case_id_prefix: sc-
+  digest_length: 32
+
+split:
+  policy_version: patient_hash_rank_v1
+  seed: 1729
+  train_patient_count: 2
+  validation_patient_count: 1
+  internal_test_patient_count: 1
+
+geometry_qa:
+  allowed_label_values: [0, 1]
+  tumor_label_value: 1
+  affine_tolerance: 0.000001
+
+lesions:
+  connectivity: 26
+  tumor_label_value: 1
+
+histogram:
+  minimum: -1000.0
+  maximum: 1000.0
+  bin_count: 8
+
+report:
+  contract_version: development_qa_report_v1
+
+audit:
+  contract_version: development_leakage_audit_v1

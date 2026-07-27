@@ -7,7 +7,19 @@ import json
 import math
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import TypeAlias
+from typing import TYPE_CHECKING, TypeAlias
+
+if TYPE_CHECKING:
+    from protoem_ct.artifacts.phase2_schemas import (
+        DatasetCaseRecord,
+        DatasetManifest,
+        DevelopmentDataSummaryArtifact,
+        DevelopmentQaArtifact,
+        DevelopmentSplitManifest,
+        GeometryLabelQaArtifact,
+        LeakageAuditArtifact,
+        LesionComponentsArtifact,
+    )
 
 JsonScalar: TypeAlias = str | int | float | bool | None
 JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
@@ -67,6 +79,154 @@ def hash_config(config: Mapping[str, object]) -> str:
 def hash_manifest(manifest: Mapping[str, object]) -> str:
     """Return the canonical SHA-256 hash for a manifest mapping."""
     return sha256_json(manifest)
+
+
+def dataset_root_fingerprint_payload(
+    *,
+    adapter_name: str,
+    adapter_version: str,
+    cases: Sequence[DatasetCaseRecord],
+) -> dict[str, JsonValue]:
+    """Return the deterministic metadata payload for a dataset-root fingerprint.
+
+    The payload deliberately excludes the absolute dataset root and all timestamps. It is derived
+    only from adapter identity plus ordered safe relative paths and file hashes already validated by
+    ``DatasetCaseRecord``.
+    """
+    return {
+        "adapter_name": adapter_name,
+        "adapter_version": adapter_version,
+        "cases": [
+            {
+                "cohort_role": case.cohort_role,
+                "image_sha256": case.image_sha256,
+                "label_sha256": case.label_sha256,
+                "relative_image_path": case.relative_image_path,
+                "relative_label_path": case.relative_label_path,
+            }
+            for case in cases
+        ],
+        "payload_type": "phase2-dataset-root-fingerprint",
+        "schema_version": "2",
+    }
+
+
+def dataset_manifest_hash_payload(manifest: DatasetManifest) -> dict[str, JsonValue]:
+    """Return the dataset-manifest hash payload, excluding ``manifest_hash``."""
+    from protoem_ct.artifacts.phase2_schemas import phase2_artifact_to_dict
+
+    payload = phase2_artifact_to_dict(manifest)
+    payload.pop("manifest_hash")
+    return payload
+
+
+def development_split_hash_payload(
+    manifest: DevelopmentSplitManifest,
+) -> dict[str, JsonValue]:
+    """Return the development-split hash payload, excluding ``split_hash``."""
+    from protoem_ct.artifacts.phase2_schemas import phase2_artifact_to_dict
+
+    payload = phase2_artifact_to_dict(manifest)
+    payload.pop("split_hash")
+    return payload
+
+
+def development_qa_hash_payload(artifact: DevelopmentQaArtifact) -> dict[str, JsonValue]:
+    """Return the development-QA hash payload, excluding ``qa_artifact_hash``."""
+    from protoem_ct.artifacts.phase2_schemas import phase2_artifact_to_dict
+
+    payload = phase2_artifact_to_dict(artifact)
+    payload.pop("qa_artifact_hash")
+    return payload
+
+
+def geometry_label_qa_hash_payload(artifact: GeometryLabelQaArtifact) -> dict[str, JsonValue]:
+    """Return the geometry-label-QA hash payload, excluding ``qa_artifact_hash``."""
+    from protoem_ct.artifacts.phase2_schemas import phase2_artifact_to_dict
+
+    payload = phase2_artifact_to_dict(artifact)
+    payload.pop("qa_artifact_hash")
+    return payload
+
+
+def lesion_components_hash_payload(artifact: LesionComponentsArtifact) -> dict[str, JsonValue]:
+    """Return the lesion-components hash payload, excluding ``lesion_artifact_hash``."""
+    from protoem_ct.artifacts.phase2_schemas import phase2_artifact_to_dict
+
+    payload = phase2_artifact_to_dict(artifact)
+    payload.pop("lesion_artifact_hash")
+    return payload
+
+
+def development_data_summary_hash_payload(
+    artifact: DevelopmentDataSummaryArtifact,
+) -> dict[str, JsonValue]:
+    """Return the development-data-summary hash payload, excluding ``summary_artifact_hash``."""
+    from protoem_ct.artifacts.phase2_schemas import phase2_artifact_to_dict
+
+    payload = phase2_artifact_to_dict(artifact)
+    payload.pop("summary_artifact_hash")
+    return payload
+
+
+def leakage_audit_hash_payload(artifact: LeakageAuditArtifact) -> dict[str, JsonValue]:
+    """Return the leakage-audit hash payload, excluding ``audit_hash``."""
+    from protoem_ct.artifacts.phase2_schemas import phase2_artifact_to_dict
+
+    payload = phase2_artifact_to_dict(artifact)
+    payload.pop("audit_hash")
+    return payload
+
+
+def hash_dataset_root_fingerprint(
+    *,
+    adapter_name: str,
+    adapter_version: str,
+    cases: Sequence[DatasetCaseRecord],
+) -> str:
+    """Return the lowercase SHA-256 hash for a Phase 2 dataset-root fingerprint."""
+    return sha256_json(
+        dataset_root_fingerprint_payload(
+            adapter_name=adapter_name,
+            adapter_version=adapter_version,
+            cases=cases,
+        )
+    )
+
+
+def hash_dataset_manifest(manifest: DatasetManifest) -> str:
+    """Return the lowercase SHA-256 hash for a Phase 2 dataset manifest."""
+    return sha256_json(dataset_manifest_hash_payload(manifest))
+
+
+def hash_development_split(manifest: DevelopmentSplitManifest) -> str:
+    """Return the lowercase SHA-256 hash for a Phase 2 development split artifact."""
+    return sha256_json(development_split_hash_payload(manifest))
+
+
+def hash_development_qa(artifact: DevelopmentQaArtifact) -> str:
+    """Return the lowercase SHA-256 hash for a Phase 2 development QA artifact."""
+    return sha256_json(development_qa_hash_payload(artifact))
+
+
+def hash_geometry_label_qa(artifact: GeometryLabelQaArtifact) -> str:
+    """Return the lowercase SHA-256 hash for a Phase 2 geometry-label QA artifact."""
+    return sha256_json(geometry_label_qa_hash_payload(artifact))
+
+
+def hash_lesion_components(artifact: LesionComponentsArtifact) -> str:
+    """Return the lowercase SHA-256 hash for a Phase 2 lesion-components artifact."""
+    return sha256_json(lesion_components_hash_payload(artifact))
+
+
+def hash_development_data_summary(artifact: DevelopmentDataSummaryArtifact) -> str:
+    """Return the lowercase SHA-256 hash for a Phase 2 development-data-summary artifact."""
+    return sha256_json(development_data_summary_hash_payload(artifact))
+
+
+def hash_leakage_audit(artifact: LeakageAuditArtifact) -> str:
+    """Return the lowercase SHA-256 hash for a Phase 2 leakage-audit artifact."""
+    return sha256_json(leakage_audit_hash_payload(artifact))
 
 
 def _require_json_value(value: object, location: str) -> JsonValue:
