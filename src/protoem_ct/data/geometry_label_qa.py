@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-import os
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Final, cast
@@ -31,6 +30,11 @@ from protoem_ct.artifacts import (
     phase2_artifact_from_json,
     phase2_artifact_to_json,
     sha256_json,
+)
+from protoem_ct.data._phase2_publication import (
+    Phase2PublicationExistingOutputError,
+    Phase2PublicationIOError,
+    publish_text_no_overwrite,
 )
 from protoem_ct.data.phase2_paths import (
     Phase2PathError,
@@ -668,29 +672,18 @@ def _publish_qa_json(artifact: GeometryLabelQaArtifact, output_path: Path) -> No
     except Phase2ArtifactError as exc:
         msg = "failed to serialize geometry-label QA artifact"
         raise GeometryLabelQaPublicationError(msg) from exc
-    temp_path = output_path.with_name(f".{output_path.name}.tmp")
-    created_temp = False
     try:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        if temp_path.exists():
-            msg = "temporary geometry-label QA output already exists"
-            raise ExistingGeometryLabelQaOutputError(msg)
-        temp_path.write_text(text, encoding="utf-8", newline="\n")
-        created_temp = True
-        if output_path.exists():
-            msg = "geometry-label QA output path already exists"
-            raise ExistingGeometryLabelQaOutputError(msg)
-        os.link(temp_path, output_path)
-        temp_path.unlink()
-        created_temp = False
-    except ExistingGeometryLabelQaOutputError:
-        raise
-    except OSError as exc:
+        publish_text_no_overwrite(
+            text=text,
+            output_path=output_path,
+            temporary_exists_message="temporary geometry-label QA output already exists",
+            final_exists_message="geometry-label QA output path already exists",
+        )
+    except Phase2PublicationExistingOutputError as exc:
+        raise ExistingGeometryLabelQaOutputError(str(exc)) from exc
+    except Phase2PublicationIOError as exc:
         msg = "failed to publish geometry-label QA JSON"
         raise GeometryLabelQaPublicationError(msg) from exc
-    finally:
-        if created_temp and temp_path.exists():
-            temp_path.unlink()
 
 
 def _require_explicit_metadata(value: object, field_name: str) -> None:

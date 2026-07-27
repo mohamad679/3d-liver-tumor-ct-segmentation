@@ -282,3 +282,20 @@
   under temporary test directories.
 - Consequences: Hosted CI requires no real dataset, medical image, external label, machine-specific
   path, network data download, or committed generated volume.
+
+### 2026-07-27: Approve Explicit Real-Run Affine Tolerance Rerun
+
+- Status: accepted
+- Context: The first approved real Task03 Liver development-cohort QA run used
+  `affine_tolerance=0.00001 mm`. It produced 122 passing cases and 9 failing cases; every failure
+  used only the `affine_mismatch` code. All 9 failing pairs had matching orientation. The observed
+  numeric differences were small: maximum spacing delta was at most `5.96046447754e-08 mm`,
+  maximum selected-sform affine delta was `3.0517578125e-05 mm`, maximum corner displacement was
+  approximately `5.71685607815e-05 mm`, maximum voxel translation delta was approximately
+  `4.73484848555e-05 voxels`, and linear voxel-transform deviations were below `1e-7`.
+- Decision: Treat these differences as consistent with NIfTI header floating-point precision rather
+  than meaningful image/label misregistration. The approved rerun tolerance is explicitly
+  `0.0001 mm`.
+- Consequences: This is a real-run configuration decision, not a library default. Source NIfTI files
+  remain unchanged, and the original failed run remains preserved externally. No Gate 2 pass is
+  claimed until the rerun and artifact verification succeed.

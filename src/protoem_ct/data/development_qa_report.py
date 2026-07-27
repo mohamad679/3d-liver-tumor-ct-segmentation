@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Final
@@ -31,6 +30,11 @@ from protoem_ct.artifacts import (
     phase2_artifact_from_json,
     phase2_artifact_to_json,
     sha256_json,
+)
+from protoem_ct.data._phase2_publication import (
+    Phase2PublicationExistingOutputError,
+    Phase2PublicationIOError,
+    publish_text_no_overwrite,
 )
 
 DEVELOPMENT_QA_REPORT_CONTRACT_VERSION: Final[str] = "development_qa_report_v1"
@@ -576,29 +580,18 @@ def _publish_report_json(artifact: DevelopmentQaArtifact, output_path: Path) -> 
     except Phase2ArtifactError as exc:
         msg = "failed to serialize final development-QA report"
         raise DevelopmentQaReportPublicationError(msg) from exc
-    temp_path = output_path.with_name(f".{output_path.name}.tmp")
-    created_temp = False
     try:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        if temp_path.exists():
-            msg = "temporary development-QA report output already exists"
-            raise ExistingDevelopmentQaReportOutputError(msg)
-        temp_path.write_text(text, encoding="utf-8", newline="\n")
-        created_temp = True
-        if output_path.exists():
-            msg = "development-QA report output path already exists"
-            raise ExistingDevelopmentQaReportOutputError(msg)
-        os.link(temp_path, output_path)
-        temp_path.unlink()
-        created_temp = False
-    except ExistingDevelopmentQaReportOutputError:
-        raise
-    except OSError as exc:
+        publish_text_no_overwrite(
+            text=text,
+            output_path=output_path,
+            temporary_exists_message="temporary development-QA report output already exists",
+            final_exists_message="development-QA report output path already exists",
+        )
+    except Phase2PublicationExistingOutputError as exc:
+        raise ExistingDevelopmentQaReportOutputError(str(exc)) from exc
+    except Phase2PublicationIOError as exc:
         msg = "failed to publish final development-QA report JSON"
         raise DevelopmentQaReportPublicationError(msg) from exc
-    finally:
-        if created_temp and temp_path.exists():
-            temp_path.unlink()
 
 
 def _require_explicit_metadata(value: object, field_name: str) -> None:

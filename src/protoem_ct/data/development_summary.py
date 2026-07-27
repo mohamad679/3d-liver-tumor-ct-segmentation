@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-import os
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Final, cast
@@ -34,6 +33,11 @@ from protoem_ct.artifacts import (
     phase2_artifact_from_json,
     phase2_artifact_to_json,
     sha256_json,
+)
+from protoem_ct.data._phase2_publication import (
+    Phase2PublicationExistingOutputError,
+    Phase2PublicationIOError,
+    publish_text_no_overwrite,
 )
 from protoem_ct.data.phase2_paths import (
     Phase2PathError,
@@ -464,15 +468,18 @@ def _verify_image_metadata(image: Any, geometry_case: GeometryLabelQaCaseRecord)
 
 
 def _stream_image_statistics(image: Any, edges: tuple[float, ...]) -> dict[str, Any]:
-    dataobj = image.dataobj
     histogram_edges = np.asarray(edges, dtype=np.float64)
     histogram = np.zeros(len(edges) - 1, dtype=np.int64)
     below = 0
     above = 0
     stats = _StreamingStats(count=0, mean=0.0, m2=0.0, minimum=None, maximum=None)
     try:
-        for z_index in range(int(image.shape[2])):
-            slice_array = np.asarray(dataobj[..., z_index], dtype=np.float64)
+        volume = np.asanyarray(image.dataobj)
+        if volume.shape != tuple(int(dimension) for dimension in image.shape):
+            msg = "image NIfTI data shape does not match header shape"
+            raise DevelopmentSummarySourceIntegrityError(msg)
+        for z_index in range(int(volume.shape[2])):
+            slice_array = np.asarray(volume[..., z_index], dtype=np.float64)
             if not bool(np.isfinite(slice_array).all()):
                 msg = "image finite-value status changed after geometry QA"
                 raise DevelopmentSummarySourceIntegrityError(msg)
@@ -481,6 +488,7 @@ def _stream_image_statistics(image: Any, edges: tuple[float, ...]) -> dict[str, 
             histogram += np.histogram(flat, bins=histogram_edges)[0].astype(np.int64)
             below += int(np.count_nonzero(flat < histogram_edges[0]))
             above += int(np.count_nonzero(flat > histogram_edges[-1]))
+        del volume
     except DevelopmentSummarySourceIntegrityError:
         raise
     except (OSError, ValueError, TypeError, IndexError) as exc:
@@ -765,29 +773,18 @@ def _publish_summary_json(artifact: DevelopmentDataSummaryArtifact, output_path:
     except Phase2ArtifactError as exc:
         msg = "failed to serialize development-summary artifact"
         raise DevelopmentSummaryPublicationError(msg) from exc
-    temp_path = output_path.with_name(f".{output_path.name}.tmp")
-    created_temp = False
     try:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        if temp_path.exists():
-            msg = "temporary development-summary output already exists"
-            raise ExistingDevelopmentSummaryOutputError(msg)
-        temp_path.write_text(text, encoding="utf-8", newline="\n")
-        created_temp = True
-        if output_path.exists():
-            msg = "development-summary output path already exists"
-            raise ExistingDevelopmentSummaryOutputError(msg)
-        os.link(temp_path, output_path)
-        temp_path.unlink()
-        created_temp = False
-    except ExistingDevelopmentSummaryOutputError:
-        raise
-    except OSError as exc:
+        publish_text_no_overwrite(
+            text=text,
+            output_path=output_path,
+            temporary_exists_message="temporary development-summary output already exists",
+            final_exists_message="development-summary output path already exists",
+        )
+    except Phase2PublicationExistingOutputError as exc:
+        raise ExistingDevelopmentSummaryOutputError(str(exc)) from exc
+    except Phase2PublicationIOError as exc:
         msg = "failed to publish development-summary JSON"
         raise DevelopmentSummaryPublicationError(msg) from exc
-    finally:
-        if created_temp and temp_path.exists():
-            temp_path.unlink()
 
 
 def _require_explicit_metadata(value: object, field_name: str) -> None:

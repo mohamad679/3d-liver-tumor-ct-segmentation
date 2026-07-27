@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, replace
@@ -25,6 +24,11 @@ from protoem_ct.artifacts import (
     phase2_artifact_from_json,
     phase2_artifact_to_json,
     sha256_json,
+)
+from protoem_ct.data._phase2_publication import (
+    Phase2PublicationExistingOutputError,
+    Phase2PublicationIOError,
+    publish_text_no_overwrite,
 )
 
 DEVELOPMENT_LEAKAGE_AUDIT_CONTRACT_VERSION: Final[str] = "development_leakage_audit_v1"
@@ -482,29 +486,18 @@ def _publish_audit_json(artifact: LeakageAuditArtifact, output_path: Path) -> No
     except Phase2ArtifactError as exc:
         msg = "failed to serialize leakage-audit artifact"
         raise DevelopmentLeakageAuditPublicationError(msg) from exc
-    temp_path = output_path.with_name(f".{output_path.name}.tmp")
-    created_temp = False
     try:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        if temp_path.exists():
-            msg = "temporary leakage-audit output already exists"
-            raise ExistingDevelopmentLeakageAuditOutputError(msg)
-        temp_path.write_text(text, encoding="utf-8", newline="\n")
-        created_temp = True
-        if output_path.exists():
-            msg = "leakage-audit output path already exists"
-            raise ExistingDevelopmentLeakageAuditOutputError(msg)
-        os.link(temp_path, output_path)
-        temp_path.unlink()
-        created_temp = False
-    except ExistingDevelopmentLeakageAuditOutputError:
-        raise
-    except OSError as exc:
+        publish_text_no_overwrite(
+            text=text,
+            output_path=output_path,
+            temporary_exists_message="temporary leakage-audit output already exists",
+            final_exists_message="leakage-audit output path already exists",
+        )
+    except Phase2PublicationExistingOutputError as exc:
+        raise ExistingDevelopmentLeakageAuditOutputError(str(exc)) from exc
+    except Phase2PublicationIOError as exc:
         msg = "failed to publish leakage-audit JSON"
         raise DevelopmentLeakageAuditPublicationError(msg) from exc
-    finally:
-        if created_temp and temp_path.exists():
-            temp_path.unlink()
 
 
 def _require_explicit_metadata(value: object, field_name: str) -> None:

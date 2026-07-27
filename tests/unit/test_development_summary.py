@@ -521,6 +521,66 @@ def test_histogram_edges_and_case_statistics(
     assert (root / "images/case-0001.nii.gz").read_bytes() == before
 
 
+def test_stream_statistics_materializes_proxy_once_and_processes_z_slices_in_order(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    values = np.array(
+        [
+            [[-1.0, 0.0, 1.0], [2.0, 3.0, 4.0]],
+            [[5.0, 6.0, 7.0], [8.0, 9.0, 11.0]],
+        ],
+        dtype=np.float32,
+    )
+
+    class CountingDataObject:
+        def __init__(self, array: npt.NDArray[np.float32]) -> None:
+            self.array = array
+            self.array_calls = 0
+
+        def __array__(self, dtype: Any = None) -> npt.NDArray[np.generic]:
+            self.array_calls += 1
+            if dtype is None:
+                return self.array
+            return cast(npt.NDArray[np.generic], self.array.astype(dtype, copy=False))
+
+    class FakeImage:
+        def __init__(self, array: npt.NDArray[np.float32]) -> None:
+            self.shape = array.shape
+            self.dataobj = CountingDataObject(array)
+
+    image = FakeImage(values)
+    observed_slices: list[tuple[float, ...]] = []
+    module_any = cast(Any, summary_module)
+    original_stats_from_batch = module_any._stats_from_batch
+
+    def _recording_stats(batch: npt.NDArray[np.floating[Any]]) -> Any:
+        observed_slices.append(tuple(float(value) for value in batch.tolist()))
+        return original_stats_from_batch(batch)
+
+    monkeypatch.setattr(module_any, "_stats_from_batch", _recording_stats)
+
+    stats = module_any._stream_image_statistics(image, _config().histogram_bin_edges)
+
+    assert image.dataobj.array_calls == 1
+    assert observed_slices == [
+        tuple(float(value) for value in values[..., 0].reshape(-1).astype(np.float64).tolist()),
+        tuple(float(value) for value in values[..., 1].reshape(-1).astype(np.float64).tolist()),
+        tuple(float(value) for value in values[..., 2].reshape(-1).astype(np.float64).tolist()),
+    ]
+    flat = values.reshape(-1).astype(np.float64)
+    assert stats["count"] == flat.size
+    assert stats["minimum"] == pytest.approx(float(np.min(flat)))
+    assert stats["maximum"] == pytest.approx(float(np.max(flat)))
+    assert stats["mean"] == pytest.approx(float(np.mean(flat, dtype=np.float64)))
+    assert stats["std"] == pytest.approx(float(np.std(flat, dtype=np.float64, ddof=0)))
+    assert stats["histogram"] == tuple(
+        int(value)
+        for value in np.histogram(flat, bins=np.asarray(_config().histogram_bin_edges))[0]
+    )
+    assert stats["below"] == 1
+    assert stats["above"] == 1
+
+
 def test_weighted_aggregate_statistics_and_lesion_medians(
     tmp_path: Path,
     write_nifti_file: Any,

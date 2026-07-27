@@ -8,7 +8,6 @@ support external-cohort manifest publication.
 from __future__ import annotations
 
 import hmac
-import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,6 +21,11 @@ from protoem_ct.artifacts import (
     DatasetCaseRecord,
     DatasetManifest,
     phase2_artifact_to_json,
+)
+from protoem_ct.data._phase2_publication import (
+    Phase2PublicationExistingOutputError,
+    Phase2PublicationIOError,
+    publish_text_no_overwrite,
 )
 from protoem_ct.data.adapters.base import AdapterLayoutSpec, resolve_adapter_inventory_files
 from protoem_ct.data.adapters.lits import LiTSFilenameConvention, LiTSStyleAdapter
@@ -409,29 +413,18 @@ def _resolve_path_with_existing_ancestor(path: Path) -> Path:
 
 def _publish_manifest_json(manifest: DatasetManifest, output_path: Path) -> None:
     text = phase2_artifact_to_json(manifest)
-    temp_path = output_path.with_name(f".{output_path.name}.tmp")
-    created_temp = False
     try:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        if temp_path.exists():
-            msg = "temporary manifest output already exists"
-            raise ExistingManifestOutputError(msg)
-        temp_path.write_text(text, encoding="utf-8", newline="\n")
-        created_temp = True
-        if output_path.exists():
-            msg = "manifest output path already exists"
-            raise ExistingManifestOutputError(msg)
-        os.link(temp_path, output_path)
-        temp_path.unlink()
-        created_temp = False
-    except ExistingManifestOutputError:
-        raise
-    except OSError as exc:
+        publish_text_no_overwrite(
+            text=text,
+            output_path=output_path,
+            temporary_exists_message="temporary manifest output already exists",
+            final_exists_message="manifest output path already exists",
+        )
+    except Phase2PublicationExistingOutputError as exc:
+        raise ExistingManifestOutputError(str(exc)) from exc
+    except Phase2PublicationIOError as exc:
         msg = "failed to publish manifest JSON"
         raise ManifestPublicationError(msg) from exc
-    finally:
-        if created_temp and temp_path.exists():
-            temp_path.unlink()
 
 
 def _require_id_key_material(value: object) -> None:
