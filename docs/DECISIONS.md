@@ -323,3 +323,23 @@
   independent cohorts. Source files were unchanged, the v1 failed run remains preserved externally,
   and v2 artifacts remain external. This decision does not claim model performance, external
   validation, clinical validity, or Phase 3 progress.
+
+### 2026-07-28: Kick Off Phase 3 Baseline Scope and Gate 3
+
+- Status: accepted
+- Context: Phase 2 documentation close-out established the approved development-cohort QA and
+  leakage boundary. Phase 3 now needs a narrow baseline implementation scope that preserves the
+  external-validation boundary, keeps real development data disconnected during initial
+  implementation, and prevents later-phase work from starting prematurely.
+- Decision: Phase 3 begins from the merged Phase 2 commit. The baseline scope is limited to
+  `nnU-Net v2` and `MONAI SegResNet`. Synthetic or tiny-data execution is sufficient for Gate 3.
+  Real development data remains disconnected during initial implementation, and full real-cohort
+  training is deferred until smoke and overfit gates pass. Artifacts, checkpoints, predictions,
+  MLflow runs, and model weights must remain outside Git. AMP is conditional on safe device
+  support. No LLM/VLM work may begin before baseline, few-shot, robustness, and external validation
+  are complete. Task03 Liver remains the LiTS-derived development cohort, not an independent
+  cohort.
+- Consequences: Gate 3 scope is restricted to shared baseline infrastructure, deterministic metric
+  generation, synthetic or tiny-data end-to-end paths, CPU smoke tests, and tiny-subset overfit
+  evidence for the two approved baseline families only. Later scientific work, real-data baseline
+  execution, external validation, and LLM/VLM efforts require separate approvals and later gates.

@@ -9,8 +9,11 @@ Phase 1 is completed locally.
 Phase 2 Gate 2 close-out is completed locally from the approved real-data development-cohort QA and
 leakage artifacts.
 
-Active phase: Phase 2 close-out. Phase 3 has not started and may begin only after this close-out
-commit is reviewed and merged.
+Active phase: Phase 3 baselines. Phase 3 status is in progress from base commit
+`907ea9d3f559ce959b92bc78c05c75c8187a5f32` on branch `phase/3-baselines`.
+
+Phase 4 and later phases remain blocked until the Phase 3 Gate 3 baseline scope is completed,
+reviewed, and merged.
 
 ## Phase 0 Scope
 
@@ -308,6 +311,81 @@ Real 3D-IRCADb-01 remains untouched for later Phase 8 external validation. These
 dataset-QA and leakage results only; they do not claim model performance, scientific efficacy,
 clinical validity, or external validation. GitHub-hosted CI status must still be established after
 publication and is not inferred from local evidence.
+
+## Phase 3 Scope
+
+Phase 3 establishes the project baseline-modeling scope only. The baseline families are limited to:
+
+- `nnU-Net v2`
+- `MONAI SegResNet`
+
+Phase 3 includes the shared baseline infrastructure needed to exercise those two families
+deterministically and audibly:
+
+- deterministic configuration and provenance;
+- external artifact-path contracts;
+- preprocessing orchestration;
+- training orchestration;
+- checkpointing and resume behavior;
+- deterministic seeds;
+- device selection;
+- AMP only where the selected device safely supports it;
+- sliding-window inference;
+- MLflow metadata logging without medical data;
+- machine-readable metric JSON;
+- CPU shape smoke tests;
+- synthetic or tiny-subset overfit tests; and
+- failure handling for NaN/Inf, incompatible shapes, missing files, and duplicate predictions.
+
+The required metric interface for both baseline families is:
+
+- tumor Dice;
+- IoU;
+- HD95;
+- normalized surface Dice;
+- lesion-wise recall;
+- lesion-wise precision;
+- lesion F1;
+- false-positive lesions per scan;
+- volume error; and
+- explicit empty-mask behavior.
+
+Phase 3 excludes:
+
+- few-shot support protocols;
+- frozen-encoder/head-only, decoder-only, or few-shot full fine-tuning experiments;
+- foundation-model adapters;
+- retrieval baselines;
+- prototype memory;
+- ProtoEM-CT E-step or M-step;
+- transductive adaptation;
+- robustness corruptions;
+- uncertainty and calibration experiments;
+- external 3D-IRCADb validation;
+- LLM/VLM work; and
+- claims about segmentation efficacy, generalization, clinical validity, or external validation.
+
+Real development-cohort execution is not part of the initial Phase 3 implementation step. Any
+real-data baseline run requires a separately approved later step after smoke, overfit, and contract
+verification are complete.
+
+## Phase 3 Branch and Base Commit
+
+- Status: `in progress`
+- Base commit: `907ea9d3f559ce959b92bc78c05c75c8187a5f32`
+- Branch: `phase/3-baselines`
+
+## Gate 3 Acceptance Criteria
+
+Gate 3 is accepted when both `nnU-Net v2` and `MONAI SegResNet` complete an end-to-end synthetic or
+tiny-data path; each path covers preparation, training or tiny overfit, inference, result import,
+and metric JSON; CPU smoke tests pass; tiny-subset overfit demonstrates that the training path can
+reduce its configured loss; outputs are deterministic where the contract claims determinism;
+checkpoint and prediction files remain outside Git; metric JSON is produced from saved predictions
+and labels by project code; all repository quality checks and GitHub-hosted CI pass; and Gate 3 is
+closed without requiring full training on all 131 development cases.
+
+Phase 4 cannot begin before Gate 3 is merged.
 
 ## Implementation Notes and Command Results
 
