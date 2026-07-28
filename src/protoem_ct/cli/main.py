@@ -9,12 +9,24 @@ import typer
 
 from protoem_ct.artifacts import Phase2ArtifactError
 from protoem_ct.baselines import (
+    BASELINE_PREDICTION_MANIFEST_VERSION,
     BASELINE_SYNTHETIC_DATASET_NAME,
     BASELINE_SYNTHETIC_FIXTURE_VERSION,
     BASELINE_SYNTHETIC_TEST_CASE_IDENTIFIERS,
     BASELINE_SYNTHETIC_TRAINING_CASE_IDENTIFIERS,
+    NNUNET_V2_RUN_CONFIG_VERSION,
+    BaselineEvaluationError,
     BaselineSyntheticFixtureError,
+    NnUNetWrapperError,
+    build_nnunet_v2_plan_and_preprocess_command,
+    build_nnunet_v2_predict_command,
+    build_nnunet_v2_runtime_environment,
+    build_nnunet_v2_train_command,
     generate_baseline_synthetic_fixture,
+    import_saved_baseline_predictions,
+    load_reference_label_mapping_artifact,
+    nnunet_v2_run_config_from_json,
+    validate_baseline_run_root,
 )
 from protoem_ct.data import (
     SUPPORTED_LITS_SUFFIXES,
@@ -133,6 +145,26 @@ def _raise_baseline_synthetic_fixture_cli_error(exc: Exception) -> None:
     """Exit with a concise Phase 3 synthetic-fixture error without path leakage."""
     typer.secho(
         f"Phase 3 baseline synthetic fixture error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_baseline_prediction_import_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 3 prediction-import error without path leakage."""
+    typer.secho(
+        f"Phase 3 baseline prediction import error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_nnunet_wrapper_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 3 nnU-Net wrapper error without path leakage."""
+    typer.secho(
+        f"Phase 3 nnU-Net wrapper error: {type(exc).__name__}",
         err=True,
         fg=typer.colors.RED,
     )
@@ -1545,3 +1577,183 @@ def generate_baseline_synthetic_fixture_command(
     typer.echo(f"test case count: {len(BASELINE_SYNTHETIC_TEST_CASE_IDENTIFIERS)}")
     typer.echo(f"total generated file count: {result.total_generated_file_count}")
     typer.echo(f"artifact hash: {result.artifact.artifact_hash}")
+
+
+@app.command("inspect-nnunet-v2-baseline-plan")
+def inspect_nnunet_v2_baseline_plan(
+    run_config_path: Annotated[
+        Path,
+        typer.Option(
+            "--run-config",
+            help="Absolute path to the serialized nnU-Net v2 run-config JSON artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    runtime_raw_root: Annotated[
+        Path,
+        typer.Option(
+            "--runtime-raw-root",
+            help=(
+                "Absolute external nnU-Net raw root that contains the synthetic dataset directory."
+            ),
+        ),
+    ] = ...,  # type: ignore[assignment]
+    runtime_run_root: Annotated[
+        Path,
+        typer.Option(
+            "--runtime-run-root",
+            help="Absolute external nnU-Net baseline run root to validate without creating.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+) -> None:
+    """Validate nnU-Net baseline planning inputs and print aggregate command metadata only."""
+
+    try:
+        run_config = nnunet_v2_run_config_from_json(run_config_path.read_bytes())
+        run_paths = validate_baseline_run_root(
+            runtime_run_root,
+            baseline_family="nnunet_v2",
+        )
+        _runtime_environment = build_nnunet_v2_runtime_environment(
+            raw_root=runtime_raw_root,
+            run_paths=run_paths,
+        )
+        plan_command = build_nnunet_v2_plan_and_preprocess_command(run_config)
+        train_command = build_nnunet_v2_train_command(run_config)
+        predict_command = build_nnunet_v2_predict_command(
+            run_config,
+            input_images_directory=runtime_raw_root / BASELINE_SYNTHETIC_DATASET_NAME / "imagesTs",
+            output_predictions_directory=run_paths.predictions_dir / "nnunet_predictions",
+        )
+    except (OSError, NnUNetWrapperError) as exc:
+        _raise_nnunet_wrapper_cli_error(exc)
+
+    typer.echo("nnU-Net v2 baseline plan inspection success")
+    typer.echo(f"contract version: {NNUNET_V2_RUN_CONFIG_VERSION}")
+    typer.echo(f"dataset ID: {run_config.dataset_id}")
+    typer.echo(f"configuration: {run_config.configuration}")
+    typer.echo(f"fold: {run_config.fold}")
+    typer.echo(f"trainer class: {run_config.trainer_class}")
+    typer.echo(f"plans identifier: {run_config.plans_identifier}")
+    typer.echo(f"planning executable: {plan_command[0]}")
+    typer.echo(f"training executable: {train_command[0]}")
+    typer.echo(f"prediction executable: {predict_command[0]}")
+    typer.echo("command count: 3")
+
+
+@app.command("import-baseline-predictions")
+def import_baseline_predictions_command(
+    baseline_family: Annotated[
+        str,
+        typer.Option(
+            "--baseline-family",
+            help="Baseline family name: nnunet_v2 or monai_segresnet.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    run_identifier: Annotated[
+        str,
+        typer.Option(
+            "--run-identifier",
+            help="Conservative anonymous run identifier.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    prediction_directory: Annotated[
+        Path,
+        typer.Option(
+            "--prediction-directory",
+            help="Absolute external directory containing one <case>.nii.gz prediction per case.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    reference_mapping_artifact: Annotated[
+        Path,
+        typer.Option(
+            "--reference-mapping-artifact",
+            help=(
+                "Absolute external JSON artifact that maps anonymous case "
+                "identifiers to label paths."
+            ),
+        ),
+    ] = ...,  # type: ignore[assignment]
+    dataset_manifest_sha256: Annotated[
+        str,
+        typer.Option(
+            "--dataset-manifest-sha256",
+            help="Dataset-manifest SHA-256 linked to the imported predictions.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    development_split_sha256: Annotated[
+        str,
+        typer.Option(
+            "--development-split-sha256",
+            help="Development-split SHA-256 linked to the imported predictions.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    checkpoint_sha256: Annotated[
+        str,
+        typer.Option(
+            "--checkpoint-sha256",
+            help="Checkpoint SHA-256 linked to the imported predictions.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    metric_config_sha256: Annotated[
+        str,
+        typer.Option(
+            "--metric-config-sha256",
+            help="Metric-config SHA-256 for the saved-prediction evaluation.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    nsd_tolerance_mm: Annotated[
+        float,
+        typer.Option(
+            "--nsd-tolerance-mm",
+            help="Explicit normalized-surface-Dice tolerance in millimetres.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    affine_tolerance_mm: Annotated[
+        float,
+        typer.Option(
+            "--affine-tolerance-mm",
+            help="Explicit absolute affine and spacing tolerance in millimetres.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    prediction_manifest_output: Annotated[
+        Path,
+        typer.Option(
+            "--prediction-manifest-output",
+            help="Absolute external output path for the saved-prediction manifest JSON artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    metric_report_output: Annotated[
+        Path,
+        typer.Option(
+            "--metric-report-output",
+            help="Absolute external output path for the deterministic metric-report JSON artifact.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+) -> None:
+    """Import saved baseline predictions and evaluate them with project-owned metrics only."""
+
+    try:
+        label_paths_by_case = load_reference_label_mapping_artifact(reference_mapping_artifact)
+        result = import_saved_baseline_predictions(
+            baseline_family=baseline_family,
+            run_identifier=run_identifier,
+            prediction_directory=prediction_directory,
+            label_paths_by_case=label_paths_by_case,
+            dataset_manifest_sha256=dataset_manifest_sha256,
+            development_split_sha256=development_split_sha256,
+            checkpoint_sha256=checkpoint_sha256,
+            metric_config_sha256=metric_config_sha256,
+            nsd_tolerance_mm=nsd_tolerance_mm,
+            affine_tolerance_mm=affine_tolerance_mm,
+            prediction_manifest_output_path=prediction_manifest_output,
+            metric_report_output_path=metric_report_output,
+        )
+    except (BaselineEvaluationError, OSError) as exc:
+        _raise_baseline_prediction_import_cli_error(exc)
+
+    typer.echo("baseline prediction import success")
+    typer.echo(f"manifest version: {BASELINE_PREDICTION_MANIFEST_VERSION}")
+    typer.echo(f"baseline family: {baseline_family}")
+    typer.echo(f"case count: {len(result.prediction_manifest.prediction_records)}")
+    typer.echo(f"prediction manifest hash: {result.prediction_manifest.artifact_hash}")
+    typer.echo(f"metric report hash: {result.metric_report.artifact_hash}")

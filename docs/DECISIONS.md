@@ -426,3 +426,21 @@
   smoke paths, overfit-path scaffolding, and metric validation without any random seed handling,
   path discovery, or real-data access. Repeated generation under different temporary roots remains
   byte-identical at the relative-file level.
+
+### 2026-07-28: Keep nnU-Net v2 Wrapping Project-Owned and Runtime-External
+
+- Status: accepted
+- Context: Phase 3 needs an `nnU-Net v2` wrapper that matches the installed `nnunetv2==2.8.1`
+  command-line interface exactly while preserving the repository boundary against real execution,
+  shell injection, absolute-path persistence, and framework-owned metric logic.
+- Decision: `nnU-Net v2` is locked to version `2.8.1` in the isolated baseline environment. CLI
+  option spellings are derived from the locally installed `--help` output. Command execution never
+  uses a shell. Runtime `nnUNet_raw`, `nnUNet_preprocessed`, and `nnUNet_results` paths remain
+  external and are never persisted. Prediction import is baseline-neutral and owned by project
+  code. Saved prediction files, not console text, feed the metric engine. Prediction geometry and
+  binary values are validated without repair. Subprocess failures use machine-readable failure
+  codes. No `nnU-Net` execution has occurred in this implementation step.
+- Consequences: Phase 3 can inspect, validate, and later execute `nnU-Net v2` through deterministic
+  command tuples, sanitized runtime environments, typed failure handling, and project-owned saved-
+  prediction evaluation. Synthetic and tiny-data paths can be exercised later without changing the
+  scientific metric implementation or persisting machine-specific runtime paths.
