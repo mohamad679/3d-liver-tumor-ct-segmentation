@@ -343,3 +343,25 @@
   generation, synthetic or tiny-data end-to-end paths, CPU smoke tests, and tiny-subset overfit
   evidence for the two approved baseline families only. Later scientific work, real-data baseline
   execution, external validation, and LLM/VLM efforts require separate approvals and later gates.
+
+### 2026-07-28: Isolate the Phase 3 Intel macOS CPU Baseline Environment
+
+- Status: accepted
+- Context: The root project environment currently serves the Phase 0-2 tooling contract and keeps
+  its existing root lock, including NumPy 2.x. The Phase 3 Intel macOS CPU baseline stack requires
+  a narrower pinned environment around `nnunetv2[intel_macos]`, `torch==2.2.2`, and
+  `numpy==1.26.4`, and the candidate audit found only one compatible baseline set.
+- Decision: Keep the root project environment unchanged and create an isolated Intel macOS CPU
+  Phase 3 baseline environment. The direct versions are `numpy==1.26.4`, `torch==2.2.2`,
+  `torchvision==0.17.2`, `monai==1.4.0`, `nnunetv2[intel_macos]==2.8.1`, `mlflow==3.14.0`,
+  `simpleitk==2.5.5`, `scikit-image==0.26.0`, `scipy==1.17.1`, and `nibabel==5.4.2`, plus the
+  local editable root project. Candidate A was the only resolved candidate. `monai==1.5.2` and
+  `monai==1.6.0` are rejected because they require newer torch versions. `torchvision==0.17.2` is
+  explicitly pinned to the official `torch==2.2.2` pairing. MLflow is declared inside the baseline
+  environment. A possible `acvl-utils` source build during a later sync is an acknowledged
+  installation risk. No installation or runtime validation is claimed yet. Later Linux and CUDA
+  support will use a sibling environment rather than changing scientific code.
+- Consequences: Phase 3 dependency resolution, sync, import verification, and CPU smoke execution
+  can proceed within the isolated baseline environment without changing the root `pyproject.toml`
+  or root `uv.lock`. The Gate 3 dependency and environment checklist item remains incomplete until a
+  later approved sync and runtime verification step passes.
