@@ -365,3 +365,21 @@
   can proceed within the isolated baseline environment without changing the root `pyproject.toml`
   or root `uv.lock`. The Gate 3 dependency and environment checklist item remains incomplete until a
   later approved sync and runtime verification step passes.
+
+### 2026-07-28: Use Shared External Run-Path and Provenance Contracts for Phase 3
+
+- Status: accepted
+- Context: Phase 3 baseline execution needs one deterministic contract for external run roots and
+  one deterministic provenance artifact shared by `nnU-Net v2` and `MONAI SegResNet`. The contract
+  must keep runtime output paths outside Git, avoid persisting machine-specific absolute paths, and
+  record failure state without leaking medical identifiers or free-text exception content.
+- Decision: Baseline output roots are runtime-only and external to Git. Absolute paths are never
+  persisted in baseline provenance artifacts. Both approved baseline families share one versioned
+  provenance contract. Callers must provide environment facts and package versions explicitly
+  instead of collecting them implicitly. No medical identifiers or free-text exception messages are
+  permitted in the persisted provenance record. Failed runs store machine-readable failure codes.
+  Directory creation is explicit, no-overwrite, and separate from validation.
+- Consequences: Phase 3 baseline preparation, training, inference, and evaluation code must route
+  checkpoints, predictions, metrics, MLflow state, logs, and temporary files through validated
+  external run roots. Persisted provenance remains deterministic, hash-verified, and portable
+  across machines because it excludes absolute paths and runtime-discovered free text.

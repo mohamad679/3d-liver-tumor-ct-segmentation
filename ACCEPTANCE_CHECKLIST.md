@@ -135,11 +135,11 @@ GitHub-hosted CI is not claimed until it runs on GitHub.
 
 ## Gate 3
 
-- [ ] Dependency and environment contracts for the Phase 3 baseline stack are documented and
+- [x] Dependency and environment contracts for the Phase 3 baseline stack are documented and
       verified
-- [ ] Safe external output-path contracts for artifacts, checkpoints, predictions, and MLflow runs
+- [x] Safe external output-path contracts for artifacts, checkpoints, predictions, and MLflow runs
       are documented and enforced
-- [ ] Deterministic provenance is recorded for baseline preparation, training, inference, and
+- [x] Deterministic provenance is recorded for baseline preparation, training, inference, and
       evaluation paths
 - [ ] Metric engine covers tumor Dice, IoU, HD95, normalized surface Dice, lesion-wise recall,
       lesion-wise precision, lesion F1, false-positive lesions per scan, volume error, and explicit
