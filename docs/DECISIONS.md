@@ -409,3 +409,20 @@
   baseline families without importing training frameworks or relying on external metric services.
   Split-lesion, merged-lesion, empty-mask, and undefined-value cases now have one shared
   repository definition that later baseline wrappers must preserve exactly.
+
+### 2026-07-28: Use One Fixed Synthetic Phase 3 Fixture Dataset
+
+- Status: accepted
+- Context: Phase 3 baseline preparation and metric-path testing require one deterministic,
+  framework-independent 3D fixture dataset that exercises empty-mask, multi-lesion, boundary, and
+  irregular-label cases without touching LiTS, MSD Task03 Liver, or 3D-IRCADb.
+- Decision: Phase 3 uses one fixed synthetic dataset shared by both baselines. The dataset ID
+  `901` is synthetic-only. The fixture contains five training cases and two test cases. The fixture
+  is not medical data. Images are deterministic coordinate-generated `int16`, and labels are
+  deterministic binary `uint8`. Spacing and affine are explicit. Compressed NIfTI bytes and the
+  fixture manifest are deterministic. `labelsTs` is project evaluation ground truth and is not an
+  nnU-Net training input. Generated fixtures remain outside Git. Real data remains disconnected.
+- Consequences: Both baseline families can consume the same external synthetic dataset contract for
+  smoke paths, overfit-path scaffolding, and metric validation without any random seed handling,
+  path discovery, or real-data access. Repeated generation under different temporary roots remains
+  byte-identical at the relative-file level.

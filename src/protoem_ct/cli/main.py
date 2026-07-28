@@ -8,6 +8,14 @@ from typing import Annotated
 import typer
 
 from protoem_ct.artifacts import Phase2ArtifactError
+from protoem_ct.baselines import (
+    BASELINE_SYNTHETIC_DATASET_NAME,
+    BASELINE_SYNTHETIC_FIXTURE_VERSION,
+    BASELINE_SYNTHETIC_TEST_CASE_IDENTIFIERS,
+    BASELINE_SYNTHETIC_TRAINING_CASE_IDENTIFIERS,
+    BaselineSyntheticFixtureError,
+    generate_baseline_synthetic_fixture,
+)
 from protoem_ct.data import (
     SUPPORTED_LITS_SUFFIXES,
     AdapterLayoutSpec,
@@ -115,6 +123,16 @@ def _raise_phase2_development_leakage_audit_cli_error(exc: Exception) -> None:
     """Exit with a concise Phase 2 leakage-audit error without artifact-content leakage."""
     typer.secho(
         f"Phase 2 development leakage-audit error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_baseline_synthetic_fixture_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 3 synthetic-fixture error without path leakage."""
+    typer.secho(
+        f"Phase 3 baseline synthetic fixture error: {type(exc).__name__}",
         err=True,
         fg=typer.colors.RED,
     )
@@ -1499,3 +1517,31 @@ def track_run(
     typer.echo(f"config hash: {result.config_hash}")
     typer.echo(f"manifest hash: {result.manifest_hash}")
     typer.echo("synthetic pipeline verification only")
+
+
+@app.command("generate-baseline-synthetic-fixture")
+def generate_baseline_synthetic_fixture_command(
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help=(
+                "Absolute non-existing external output root for the fixed "
+                "baseline synthetic fixture."
+            ),
+        ),
+    ] = ...,  # type: ignore[assignment]
+) -> None:
+    """Generate the fixed Phase 3 synthetic fixture outside the repository."""
+    try:
+        result = generate_baseline_synthetic_fixture(output_root)
+    except BaselineSyntheticFixtureError as exc:
+        _raise_baseline_synthetic_fixture_cli_error(exc)
+
+    typer.echo("baseline synthetic fixture generation success")
+    typer.echo(f"contract version: {BASELINE_SYNTHETIC_FIXTURE_VERSION}")
+    typer.echo(f"dataset name: {BASELINE_SYNTHETIC_DATASET_NAME}")
+    typer.echo(f"training case count: {len(BASELINE_SYNTHETIC_TRAINING_CASE_IDENTIFIERS)}")
+    typer.echo(f"test case count: {len(BASELINE_SYNTHETIC_TEST_CASE_IDENTIFIERS)}")
+    typer.echo(f"total generated file count: {result.total_generated_file_count}")
+    typer.echo(f"artifact hash: {result.artifact.artifact_hash}")

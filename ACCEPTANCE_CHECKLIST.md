@@ -144,7 +144,7 @@ GitHub-hosted CI is not claimed until it runs on GitHub.
 - [x] Metric engine covers tumor Dice, IoU, HD95, normalized surface Dice, lesion-wise recall,
       lesion-wise precision, lesion F1, false-positive lesions per scan, volume error, and explicit
       empty-mask behavior, with dedicated empty-mask tests
-- [ ] Synthetic 3D fixtures exist for baseline preparation, inference, and metric-path testing
+- [x] Synthetic 3D fixtures exist for baseline preparation, inference, and metric-path testing
 - [ ] `nnU-Net v2` baseline wrapper path completes the required synthetic or tiny-data end-to-end
       flow
 - [ ] `MONAI SegResNet` baseline path completes the required synthetic or tiny-data end-to-end flow
