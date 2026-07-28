@@ -383,3 +383,29 @@
   checkpoints, predictions, metrics, MLflow state, logs, and temporary files through validated
   external run roots. Persisted provenance remains deterministic, hash-verified, and portable
   across machines because it excludes absolute paths and runtime-discovered free text.
+
+### 2026-07-28: Fix the Shared Phase 3 Binary-Tumor Metric Definitions
+
+- Status: accepted
+- Context: Phase 3 needs one deterministic project-owned metric implementation shared by
+  `nnU-Net v2` and `MONAI SegResNet`, with explicit empty-mask behavior, stable lesion matching,
+  and machine-readable artifacts that never persist NaN values or model-framework-specific state.
+- Decision: The exact empty-mask policy is fixed as follows: both-empty cases use Dice `1.0`, IoU
+  `1.0`, HD95 `0.0`, NSD `1.0`, lesion recall `null`, lesion precision `null`, lesion F1 `1.0`,
+  zero false-positive lesions, zero volume errors, and relative volume error `null`; ground-truth
+  nonempty with empty prediction uses Dice `0.0`, IoU `0.0`, HD95 `null`, NSD `0.0`, lesion recall
+  `0.0`, lesion precision `null`, and lesion F1 `0.0`; ground-truth empty with nonempty prediction
+  uses Dice `0.0`, IoU `0.0`, HD95 `null`, NSD `0.0`, lesion recall `null`, lesion precision
+  `0.0`, and lesion F1 `0.0`. Foreground surfaces use a deterministic 3D face-connectivity
+  surface definition. HD95 is the 95th percentile of concatenated bidirectional surface distances
+  in physical millimetres. NSD uses the explicit tolerance supplied to the metric call and counts
+  bidirectional surface samples whose distance is less than or equal to that tolerance.
+  Twenty-six-connected components define lesions. Lesion matches use deterministic maximum-overlap
+  one-to-one bipartite assignment and require at least one shared voxel. Signed volume error is
+  `predicted_volume_ml - ground_truth_volume_ml`. Undefined values are persisted as JSON `null`,
+  never NaN. Both approved baselines use the same project metric implementation, and metric values
+  are computed by project code rather than an LLM.
+- Consequences: Phase 3 report artifacts can aggregate case metrics deterministically across both
+  baseline families without importing training frameworks or relying on external metric services.
+  Split-lesion, merged-lesion, empty-mask, and undefined-value cases now have one shared
+  repository definition that later baseline wrappers must preserve exactly.

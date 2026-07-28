@@ -141,7 +141,7 @@ GitHub-hosted CI is not claimed until it runs on GitHub.
       are documented and enforced
 - [x] Deterministic provenance is recorded for baseline preparation, training, inference, and
       evaluation paths
-- [ ] Metric engine covers tumor Dice, IoU, HD95, normalized surface Dice, lesion-wise recall,
+- [x] Metric engine covers tumor Dice, IoU, HD95, normalized surface Dice, lesion-wise recall,
       lesion-wise precision, lesion F1, false-positive lesions per scan, volume error, and explicit
       empty-mask behavior, with dedicated empty-mask tests
 - [ ] Synthetic 3D fixtures exist for baseline preparation, inference, and metric-path testing
