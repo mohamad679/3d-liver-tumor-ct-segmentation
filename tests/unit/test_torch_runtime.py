@@ -15,6 +15,10 @@ from protoem_ct.baselines._torch_runtime import (
 from protoem_ct.baselines.monai_segresnet import _configure_torch_runtime as configure_monai_runtime
 from protoem_ct.baselines.nnunet_tiny import _configure_torch_runtime as configure_nnunet_runtime
 
+_BASELINE_ENVIRONMENT_NOT_INSTALLED_REASON = (
+    "isolated Phase 3 baseline environment is not installed"
+)
+
 
 @dataclass
 class _FakeTorch:
@@ -44,6 +48,22 @@ class _FakeTorch:
 @pytest.fixture(autouse=True)
 def _reset_torch_runtime_state() -> None:
     torch_runtime._INTEROP_CONFIGURATION_APPLIED = False
+
+
+def _require_baseline_python(baseline_python: Path) -> None:
+    """Skip a test when the optional isolated Phase 3 interpreter is absent."""
+    if not baseline_python.exists():
+        pytest.skip(_BASELINE_ENVIRONMENT_NOT_INSTALLED_REASON)
+
+
+def test_missing_baseline_python_skips_optional_runtime(tmp_path: Path) -> None:
+    missing_baseline_python = tmp_path / ".venv" / "bin" / "python"
+
+    with pytest.raises(
+        pytest.skip.Exception,
+        match=_BASELINE_ENVIRONMENT_NOT_INSTALLED_REASON,
+    ):
+        _require_baseline_python(missing_baseline_python)
 
 
 def test_first_configuration_sets_intra_and_interop_to_one() -> None:
@@ -115,6 +135,7 @@ def test_fresh_subprocess_runtime_initialization_succeeds() -> None:
     baseline_python = (
         repository_root / "environments/phase3-baselines/intel-macos-cpu/.venv/bin/python"
     )
+    _require_baseline_python(baseline_python)
     script = """
 from protoem_ct.baselines._torch_runtime import configure_phase3_cpu_torch_runtime
 import torch
