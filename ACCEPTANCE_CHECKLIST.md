@@ -135,7 +135,33 @@ GitHub-hosted CI is not claimed until it runs on GitHub.
 
 ## Gate 3
 
-- [ ] Pending definition.
+- [x] Dependency and environment contracts for the Phase 3 baseline stack are documented and
+      verified
+- [x] Safe external output-path contracts for artifacts, checkpoints, predictions, and MLflow runs
+      are documented and enforced
+- [x] Deterministic provenance is recorded for baseline preparation, training, inference, and
+      evaluation paths
+- [x] Metric engine covers tumor Dice, IoU, HD95, normalized surface Dice, lesion-wise recall,
+      lesion-wise precision, lesion F1, false-positive lesions per scan, volume error, and explicit
+      empty-mask behavior, with dedicated empty-mask tests
+- [x] Synthetic 3D fixtures exist for baseline preparation, inference, and metric-path testing
+- [x] `nnU-Net v2` baseline wrapper path completes the required synthetic or tiny-data end-to-end
+      flow
+- [x] `MONAI SegResNet` baseline path completes the required synthetic or tiny-data end-to-end flow
+- [ ] CPU shape smoke tests pass
+- [ ] Tiny-subset overfit tests demonstrate that each training path can reduce its configured loss
+- [ ] Deterministic metric JSON is produced from saved predictions and labels by project code where
+      the contract claims determinism
+- [ ] No tracked checkpoints, predictions, datasets, or model weights are Git-visible
+- [ ] Full local repository quality checks pass
+- [ ] GitHub-hosted CI passes
+- [ ] Gate 3 close-out is documented without claiming full development-cohort training
+
+### Gate 3 Scope Note
+
+Gate 3 is limited to the Phase 3 baseline scope: `nnU-Net v2`, `MONAI SegResNet`, shared baseline
+infrastructure, deterministic metric JSON, synthetic or tiny-data execution, CPU smoke tests, and
+tiny-subset overfit evidence. Gate 3 does not require full training on all 131 development cases.
 
 ## Gate 4
 

@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
 from collections.abc import Callable
 from pathlib import Path
+from types import ModuleType
 
 import nibabel as nib
 import numpy as np
@@ -13,6 +16,70 @@ import pytest
 NiftiArray = npt.NDArray[np.generic]
 AffineArray = npt.NDArray[np.float64]
 WriteNiftiFile = Callable[[Path, NiftiArray, AffineArray], Path]
+ImportGuardRunner = Callable[[tuple[str, ...], tuple[str, ...]], None]
+_MISSING_MODULE_ATTRIBUTE = object()
+
+
+def _snapshot_module_state(
+    prefixes: tuple[str, ...],
+) -> tuple[dict[str, ModuleType], dict[tuple[str, str], object]]:
+    """Capture affected module objects and their immediate parent-package attributes."""
+
+    modules = {
+        name: module
+        for name, module in sys.modules.items()
+        if any(name == prefix or name.startswith(f"{prefix}.") for prefix in prefixes)
+    }
+    attributes: dict[tuple[str, str], object] = {}
+    for name in sorted(set(modules) | set(prefixes)):
+        parent_name, separator, attribute_name = name.rpartition(".")
+        if not separator:
+            continue
+        parent = sys.modules.get(parent_name)
+        if parent is not None:
+            attributes[(parent_name, attribute_name)] = getattr(
+                parent,
+                attribute_name,
+                _MISSING_MODULE_ATTRIBUTE,
+            )
+    return modules, attributes
+
+
+@pytest.fixture
+def run_import_guard() -> ImportGuardRunner:
+    """Run an import guard in a subprocess and require exact parent-state preservation."""
+
+    def _run_import_guard(
+        import_names: tuple[str, ...],
+        forbidden_names: tuple[str, ...],
+    ) -> None:
+        prefixes = tuple(sorted(set(import_names) | set(forbidden_names)))
+        modules_before, attributes_before = _snapshot_module_state(prefixes)
+        script = "\n".join(
+            (
+                "import importlib",
+                "import sys",
+                f"for module_name in {import_names!r}:",
+                "    importlib.import_module(module_name)",
+                f"for module_name in {forbidden_names!r}:",
+                "    assert module_name not in sys.modules, module_name",
+            )
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", script],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        modules_after, attributes_after = _snapshot_module_state(prefixes)
+
+        assert result.returncode == 0, result.stderr
+        assert modules_after.keys() == modules_before.keys()
+        assert all(modules_after[name] is module for name, module in modules_before.items())
+        assert attributes_after.keys() == attributes_before.keys()
+        assert all(attributes_after[key] is value for key, value in attributes_before.items())
+
+    return _run_import_guard
 
 
 @pytest.fixture

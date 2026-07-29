@@ -1,0 +1,27 @@
+[project]
+name = "protoem-ct-phase3-intel-macos-cpu"
+version = "0.0.0"
+description = "Isolated Phase 3 Intel macOS CPU dependency environment for ProtoEM-CT baselines."
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+  "protoem-ct",
+  "numpy==1.26.4",
+  "torch==2.2.2",
+  "torchvision==0.17.2",
+  "monai==1.4.0",
+  "nnunetv2[intel_macos]==2.8.1",
+  "mlflow==3.14.0",
+  "simpleitk==2.5.5",
+  "scikit-image==0.26.0",
+  "scipy==1.17.1",
+  "nibabel==5.4.2",
+]
+
+[dependency-groups]
+dev = [
+  "pytest==9.1.1",
+]
+
+[tool.uv.sources]
+protoem-ct = { path = "../../..", editable = true }

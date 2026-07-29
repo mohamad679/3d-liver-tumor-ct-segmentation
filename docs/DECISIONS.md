@@ -323,3 +323,145 @@
   independent cohorts. Source files were unchanged, the v1 failed run remains preserved externally,
   and v2 artifacts remain external. This decision does not claim model performance, external
   validation, clinical validity, or Phase 3 progress.
+
+### 2026-07-28: Kick Off Phase 3 Baseline Scope and Gate 3
+
+- Status: accepted
+- Context: Phase 2 documentation close-out established the approved development-cohort QA and
+  leakage boundary. Phase 3 now needs a narrow baseline implementation scope that preserves the
+  external-validation boundary, keeps real development data disconnected during initial
+  implementation, and prevents later-phase work from starting prematurely.
+- Decision: Phase 3 begins from the merged Phase 2 commit. The baseline scope is limited to
+  `nnU-Net v2` and `MONAI SegResNet`. Synthetic or tiny-data execution is sufficient for Gate 3.
+  Real development data remains disconnected during initial implementation, and full real-cohort
+  training is deferred until smoke and overfit gates pass. Artifacts, checkpoints, predictions,
+  MLflow runs, and model weights must remain outside Git. AMP is conditional on safe device
+  support. No LLM/VLM work may begin before baseline, few-shot, robustness, and external validation
+  are complete. Task03 Liver remains the LiTS-derived development cohort, not an independent
+  cohort.
+- Consequences: Gate 3 scope is restricted to shared baseline infrastructure, deterministic metric
+  generation, synthetic or tiny-data end-to-end paths, CPU smoke tests, and tiny-subset overfit
+  evidence for the two approved baseline families only. Later scientific work, real-data baseline
+  execution, external validation, and LLM/VLM efforts require separate approvals and later gates.
+
+### 2026-07-28: Isolate the Phase 3 Intel macOS CPU Baseline Environment
+
+- Status: accepted
+- Context: The root project environment currently serves the Phase 0-2 tooling contract and keeps
+  its existing root lock, including NumPy 2.x. The Phase 3 Intel macOS CPU baseline stack requires
+  a narrower pinned environment around `nnunetv2[intel_macos]`, `torch==2.2.2`, and
+  `numpy==1.26.4`, and the candidate audit found only one compatible baseline set.
+- Decision: Keep the root project environment unchanged and create an isolated Intel macOS CPU
+  Phase 3 baseline environment. The direct versions are `numpy==1.26.4`, `torch==2.2.2`,
+  `torchvision==0.17.2`, `monai==1.4.0`, `nnunetv2[intel_macos]==2.8.1`, `mlflow==3.14.0`,
+  `simpleitk==2.5.5`, `scikit-image==0.26.0`, `scipy==1.17.1`, and `nibabel==5.4.2`, plus the
+  local editable root project. Candidate A was the only resolved candidate. `monai==1.5.2` and
+  `monai==1.6.0` are rejected because they require newer torch versions. `torchvision==0.17.2` is
+  explicitly pinned to the official `torch==2.2.2` pairing. MLflow is declared inside the baseline
+  environment. A possible `acvl-utils` source build during a later sync is an acknowledged
+  installation risk. No installation or runtime validation is claimed yet. Later Linux and CUDA
+  support will use a sibling environment rather than changing scientific code.
+- Consequences: Phase 3 dependency resolution, sync, import verification, and CPU smoke execution
+  can proceed within the isolated baseline environment without changing the root `pyproject.toml`
+  or root `uv.lock`. The Gate 3 dependency and environment checklist item remains incomplete until a
+  later approved sync and runtime verification step passes.
+
+### 2026-07-28: Use Shared External Run-Path and Provenance Contracts for Phase 3
+
+- Status: accepted
+- Context: Phase 3 baseline execution needs one deterministic contract for external run roots and
+  one deterministic provenance artifact shared by `nnU-Net v2` and `MONAI SegResNet`. The contract
+  must keep runtime output paths outside Git, avoid persisting machine-specific absolute paths, and
+  record failure state without leaking medical identifiers or free-text exception content.
+- Decision: Baseline output roots are runtime-only and external to Git. Absolute paths are never
+  persisted in baseline provenance artifacts. Both approved baseline families share one versioned
+  provenance contract. Callers must provide environment facts and package versions explicitly
+  instead of collecting them implicitly. No medical identifiers or free-text exception messages are
+  permitted in the persisted provenance record. Failed runs store machine-readable failure codes.
+  Directory creation is explicit, no-overwrite, and separate from validation.
+- Consequences: Phase 3 baseline preparation, training, inference, and evaluation code must route
+  checkpoints, predictions, metrics, MLflow state, logs, and temporary files through validated
+  external run roots. Persisted provenance remains deterministic, hash-verified, and portable
+  across machines because it excludes absolute paths and runtime-discovered free text.
+
+### 2026-07-28: Fix the Shared Phase 3 Binary-Tumor Metric Definitions
+
+- Status: accepted
+- Context: Phase 3 needs one deterministic project-owned metric implementation shared by
+  `nnU-Net v2` and `MONAI SegResNet`, with explicit empty-mask behavior, stable lesion matching,
+  and machine-readable artifacts that never persist NaN values or model-framework-specific state.
+- Decision: The exact empty-mask policy is fixed as follows: both-empty cases use Dice `1.0`, IoU
+  `1.0`, HD95 `0.0`, NSD `1.0`, lesion recall `null`, lesion precision `null`, lesion F1 `1.0`,
+  zero false-positive lesions, zero volume errors, and relative volume error `null`; ground-truth
+  nonempty with empty prediction uses Dice `0.0`, IoU `0.0`, HD95 `null`, NSD `0.0`, lesion recall
+  `0.0`, lesion precision `null`, and lesion F1 `0.0`; ground-truth empty with nonempty prediction
+  uses Dice `0.0`, IoU `0.0`, HD95 `null`, NSD `0.0`, lesion recall `null`, lesion precision
+  `0.0`, and lesion F1 `0.0`. Foreground surfaces use a deterministic 3D face-connectivity
+  surface definition. HD95 is the 95th percentile of concatenated bidirectional surface distances
+  in physical millimetres. NSD uses the explicit tolerance supplied to the metric call and counts
+  bidirectional surface samples whose distance is less than or equal to that tolerance.
+  Twenty-six-connected components define lesions. Lesion matches use deterministic maximum-overlap
+  one-to-one bipartite assignment and require at least one shared voxel. Signed volume error is
+  `predicted_volume_ml - ground_truth_volume_ml`. Undefined values are persisted as JSON `null`,
+  never NaN. Both approved baselines use the same project metric implementation, and metric values
+  are computed by project code rather than an LLM.
+- Consequences: Phase 3 report artifacts can aggregate case metrics deterministically across both
+  baseline families without importing training frameworks or relying on external metric services.
+  Split-lesion, merged-lesion, empty-mask, and undefined-value cases now have one shared
+  repository definition that later baseline wrappers must preserve exactly.
+
+### 2026-07-28: Use One Fixed Synthetic Phase 3 Fixture Dataset
+
+- Status: accepted
+- Context: Phase 3 baseline preparation and metric-path testing require one deterministic,
+  framework-independent 3D fixture dataset that exercises empty-mask, multi-lesion, boundary, and
+  irregular-label cases without touching LiTS, MSD Task03 Liver, or 3D-IRCADb.
+- Decision: Phase 3 uses one fixed synthetic dataset shared by both baselines. The dataset ID
+  `901` is synthetic-only. The fixture contains five training cases and two test cases. The fixture
+  is not medical data. Images are deterministic coordinate-generated `int16`, and labels are
+  deterministic binary `uint8`. Spacing and affine are explicit. Compressed NIfTI bytes and the
+  fixture manifest are deterministic. `labelsTs` is project evaluation ground truth and is not an
+  nnU-Net training input. Generated fixtures remain outside Git. Real data remains disconnected.
+- Consequences: Both baseline families can consume the same external synthetic dataset contract for
+  smoke paths, overfit-path scaffolding, and metric validation without any random seed handling,
+  path discovery, or real-data access. Repeated generation under different temporary roots remains
+  byte-identical at the relative-file level.
+
+### 2026-07-28: Keep nnU-Net v2 Wrapping Project-Owned and Runtime-External
+
+- Status: accepted
+- Context: Phase 3 needs an `nnU-Net v2` wrapper that matches the installed `nnunetv2==2.8.1`
+  command-line interface exactly while preserving the repository boundary against real execution,
+  shell injection, absolute-path persistence, and framework-owned metric logic.
+- Decision: `nnU-Net v2` is locked to version `2.8.1` in the isolated baseline environment. CLI
+  option spellings are derived from the locally installed `--help` output. Command execution never
+  uses a shell. Runtime `nnUNet_raw`, `nnUNet_preprocessed`, and `nnUNet_results` paths remain
+  external and are never persisted. Prediction import is baseline-neutral and owned by project
+  code. Saved prediction files, not console text, feed the metric engine. Prediction geometry and
+  binary values are validated without repair. Subprocess failures use machine-readable failure
+  codes. No `nnU-Net` execution has occurred in this implementation step.
+- Consequences: Phase 3 can inspect, validate, and later execute `nnU-Net v2` through deterministic
+  command tuples, sanitized runtime environments, typed failure handling, and project-owned saved-
+  prediction evaluation. Synthetic and tiny-data paths can be exercised later without changing the
+  scientific metric implementation or persisting machine-specific runtime paths.
+
+### 2026-07-28: Use CPU-Only Synthetic Gate 3 Baselines Before Final Evidence
+
+- Status: accepted
+- Context: Phase 3 needs a bounded reproducible software-path execution for both approved baseline
+  families before any final committed Gate 3 evidence run. The implementation must remain on Intel
+  macOS CPU, must not use AMP, and must keep all temporary artifacts outside Git.
+- Decision: Use one fixed synthetic fixture for both baselines, run `MONAI SegResNet` as a small
+  deterministic CPU-only `monai.networks.nets.SegResNet` with fixed CT clipping and scaling,
+  `Adam`, cross-entropy loss, 16 bounded training steps, no dropout, `sliding_window_inference`
+  with ROI `(24, 24, 16)` and overlap `0.0`, and deterministic seed `1729`. Use real nnU-Net v2
+  planning and preprocessing first, then use the actual nnU-Net trainer/plans machinery to build
+  the planned network and run a bounded project-owned CPU tiny overfit loop with no fallback. Save
+  checkpoints externally with no overwrite, validate resume metadata explicitly, and log only
+  non-sensitive MLflow metadata beneath the approved external run root. The temporary pre-commit
+  self-test is engineering evidence only and is not final Gate 3 evidence; final Gate 3 evidence
+  must be rerun after the implementation is committed.
+- Consequences: Phase 3 can verify deterministic synthetic preparation, training-path loss
+  reduction, saved-prediction import, metric JSON generation, and metadata logging for both
+  approved baseline families without claiming scientific efficacy, full-cohort training,
+  generalization, or clinical validity.
