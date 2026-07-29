@@ -4,7 +4,7 @@ import gzip
 import inspect
 import json
 import struct
-import sys
+from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 from typing import Any, cast
@@ -343,20 +343,10 @@ def test_failure_cleanup_and_no_partial_final_destination(
     assert not any(path.name.startswith(".fixture-root.tmp-") for path in tmp_path.iterdir())
 
 
-def test_no_heavy_ml_imports_from_baselines_synthetic() -> None:
-    for name in (
-        "torch",
-        "torchvision",
-        "monai",
-        "nnunetv2",
-        "SimpleITK",
-        "mlflow",
-        "protoem_ct.baselines.synthetic",
-    ):
-        sys.modules.pop(name, None)
-
-    importlib = __import__("importlib")
-    importlib.import_module("protoem_ct.baselines.synthetic")
-
-    for name in ("torch", "torchvision", "monai", "nnunetv2", "SimpleITK", "mlflow"):
-        assert name not in sys.modules
+def test_no_heavy_ml_imports_from_baselines_synthetic(
+    run_import_guard: Callable[[tuple[str, ...], tuple[str, ...]], None],
+) -> None:
+    run_import_guard(
+        ("protoem_ct.baselines.synthetic",),
+        ("torch", "torchvision", "monai", "nnunetv2", "SimpleITK", "mlflow"),
+    )

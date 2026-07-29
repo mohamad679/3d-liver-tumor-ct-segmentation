@@ -1,0 +1,23 @@
+phase3_gate3:
+  contract_version: phase3_gate3_report_v1
+  selected_device: cpu
+  amp_enabled: false
+  synthetic_fixture_contract_version: baseline_synthetic_fixture_v1
+  nnunet:
+    dataset_id: 901
+    configuration: 3d_fullres
+    fold: 0
+    trainer_class: nnUNetTrainer
+    plans_identifier: nnUNetPlans
+    checkpoint_name: checkpoint_final.pth
+    seed: 1729
+  monai_segresnet:
+    contract_version: monai_segresnet_run_config_v1
+    seed: 1729
+    optimizer_name: adam
+    learning_rate: 0.005
+    loss_name: cross_entropy
+    max_training_steps: 16
+    sliding_window_roi_size: [24, 24, 16]
+    sliding_window_overlap: 0.0
+    sliding_window_batch_size: 1

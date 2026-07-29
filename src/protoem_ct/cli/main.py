@@ -15,6 +15,7 @@ from protoem_ct.baselines import (
     BASELINE_SYNTHETIC_TEST_CASE_IDENTIFIERS,
     BASELINE_SYNTHETIC_TRAINING_CASE_IDENTIFIERS,
     NNUNET_V2_RUN_CONFIG_VERSION,
+    PHASE3_GATE3_REPORT_VERSION,
     BaselineEvaluationError,
     BaselineSyntheticFixtureError,
     NnUNetWrapperError,
@@ -74,7 +75,6 @@ from protoem_ct.evaluation.dummy_inference import (
 )
 from protoem_ct.evaluation.metrics import EvaluationError, evaluate_predictions
 from protoem_ct.reporting import ReportGenerationError, generate_synthetic_report
-from protoem_ct.tracking import LocalMlflowTrackingError, track_synthetic_run
 
 app = typer.Typer(help="ProtoEM-CT command-line tools.")
 
@@ -165,6 +165,16 @@ def _raise_nnunet_wrapper_cli_error(exc: Exception) -> None:
     """Exit with a concise Phase 3 nnU-Net wrapper error without path leakage."""
     typer.secho(
         f"Phase 3 nnU-Net wrapper error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase3_gate3_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 3 Gate 3 error without path leakage."""
+    typer.secho(
+        f"Phase 3 Gate 3 error: {type(exc).__name__}",
         err=True,
         fg=typer.colors.RED,
     )
@@ -1523,6 +1533,9 @@ def track_run(
     ] = ...,  # type: ignore[assignment]
 ) -> None:
     """Track a Phase 1 synthetic pipeline verification run in local MLflow."""
+
+    from protoem_ct.tracking import LocalMlflowTrackingError, track_synthetic_run
+
     try:
         result = track_synthetic_run(
             manifest_path,
@@ -1757,3 +1770,69 @@ def import_baseline_predictions_command(
     typer.echo(f"case count: {len(result.prediction_manifest.prediction_records)}")
     typer.echo(f"prediction manifest hash: {result.prediction_manifest.artifact_hash}")
     typer.echo(f"metric report hash: {result.metric_report.artifact_hash}")
+
+
+@app.command("run-phase3-gate3-synthetic")
+def run_phase3_gate3_synthetic_command(
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help="Absolute non-existing external output root for the synthetic Gate 3 run.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    git_commit: Annotated[
+        str,
+        typer.Option(
+            "--git-commit",
+            help="Explicit Git commit recorded in the synthetic Gate 3 artifacts.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    start_timestamp: Annotated[
+        str,
+        typer.Option(
+            "--start-timestamp",
+            help="Explicit UTC start timestamp recorded in the synthetic Gate 3 artifacts.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    end_timestamp: Annotated[
+        str,
+        typer.Option(
+            "--end-timestamp",
+            help="Explicit UTC end timestamp recorded in the synthetic Gate 3 artifacts.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+) -> None:
+    """Run the bounded synthetic Phase 3 Gate 3 orchestration outside the repository."""
+
+    from protoem_ct.baselines.gate3 import (
+        Phase3Gate3Error,
+        run_phase3_gate3_synthetic,
+    )
+
+    try:
+        result = run_phase3_gate3_synthetic(
+            output_root=output_root,
+            git_commit=git_commit,
+            run_identifier="phase3_gate3_synthetic",
+            start_timestamp=start_timestamp,
+            end_timestamp=end_timestamp,
+            baseline_environment_lock_path=Path(
+                "environments/phase3-baselines/intel-macos-cpu/uv.lock"
+            ).resolve(strict=True),
+        )
+    except (Phase3Gate3Error, OSError) as exc:
+        _raise_phase3_gate3_cli_error(exc)
+
+    typer.echo("phase3 gate3 synthetic run success")
+    typer.echo(f"report version: {PHASE3_GATE3_REPORT_VERSION}")
+    typer.echo("selected device: cpu")
+    typer.echo("amp enabled: false")
+    typer.echo(f"fixture hash: {result.fixture_artifact_sha256}")
+    typer.echo(f"nnunet checkpoint hash: {result.nnunet_result.checkpoint_sha256}")
+    typer.echo(f"monai checkpoint hash: {result.monai_result.checkpoint_sha256}")
+    typer.echo(f"gate3 report hash: {result.report.artifact_hash}")
+
+
+if __name__ == "__main__":
+    app()

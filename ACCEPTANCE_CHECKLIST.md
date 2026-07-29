@@ -147,7 +147,7 @@ GitHub-hosted CI is not claimed until it runs on GitHub.
 - [x] Synthetic 3D fixtures exist for baseline preparation, inference, and metric-path testing
 - [x] `nnU-Net v2` baseline wrapper path completes the required synthetic or tiny-data end-to-end
       flow
-- [ ] `MONAI SegResNet` baseline path completes the required synthetic or tiny-data end-to-end flow
+- [x] `MONAI SegResNet` baseline path completes the required synthetic or tiny-data end-to-end flow
 - [ ] CPU shape smoke tests pass
 - [ ] Tiny-subset overfit tests demonstrate that each training path can reduce its configured loss
 - [ ] Deterministic metric JSON is produced from saved predictions and labels by project code where

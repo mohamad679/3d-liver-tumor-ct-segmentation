@@ -18,5 +18,10 @@ dependencies = [
   "nibabel==5.4.2",
 ]
 
+[dependency-groups]
+dev = [
+  "pytest==9.1.1",
+]
+
 [tool.uv.sources]
 protoem-ct = { path = "../../..", editable = true }

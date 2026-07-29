@@ -444,3 +444,24 @@
   command tuples, sanitized runtime environments, typed failure handling, and project-owned saved-
   prediction evaluation. Synthetic and tiny-data paths can be exercised later without changing the
   scientific metric implementation or persisting machine-specific runtime paths.
+
+### 2026-07-28: Use CPU-Only Synthetic Gate 3 Baselines Before Final Evidence
+
+- Status: accepted
+- Context: Phase 3 needs a bounded reproducible software-path execution for both approved baseline
+  families before any final committed Gate 3 evidence run. The implementation must remain on Intel
+  macOS CPU, must not use AMP, and must keep all temporary artifacts outside Git.
+- Decision: Use one fixed synthetic fixture for both baselines, run `MONAI SegResNet` as a small
+  deterministic CPU-only `monai.networks.nets.SegResNet` with fixed CT clipping and scaling,
+  `Adam`, cross-entropy loss, 16 bounded training steps, no dropout, `sliding_window_inference`
+  with ROI `(24, 24, 16)` and overlap `0.0`, and deterministic seed `1729`. Use real nnU-Net v2
+  planning and preprocessing first, then use the actual nnU-Net trainer/plans machinery to build
+  the planned network and run a bounded project-owned CPU tiny overfit loop with no fallback. Save
+  checkpoints externally with no overwrite, validate resume metadata explicitly, and log only
+  non-sensitive MLflow metadata beneath the approved external run root. The temporary pre-commit
+  self-test is engineering evidence only and is not final Gate 3 evidence; final Gate 3 evidence
+  must be rerun after the implementation is committed.
+- Consequences: Phase 3 can verify deterministic synthetic preparation, training-path loss
+  reduction, saved-prediction import, metric JSON generation, and metadata logging for both
+  approved baseline families without claiming scientific efficacy, full-cohort training,
+  generalization, or clinical validity.

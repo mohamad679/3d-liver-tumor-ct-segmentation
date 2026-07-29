@@ -4,11 +4,13 @@ import importlib
 import os
 import stat
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+from protoem_ct.baselines import _log_paths
 from protoem_ct.baselines.nnunet import (
     NNUNET_ALLOWED_INHERITED_ENVIRONMENT_KEYS,
     NNUNET_V2_DEFAULT_CHECKPOINT_NAME,
@@ -19,6 +21,7 @@ from protoem_ct.baselines.nnunet import (
     NNUNET_V2_EXECUTABLE_TRAIN,
     NnUNetExecutionError,
     NnUNetWrapperValidationError,
+    _redact_log_content,
     build_nnunet_v2_plan_and_preprocess_command,
     build_nnunet_v2_predict_command,
     build_nnunet_v2_run_config,
@@ -297,21 +300,178 @@ def test_executor_uses_subprocess_run_without_shell(
     assert calls["kwargs"]["shell"] is False
 
 
-def test_import_guard_for_baselines_and_nnunet_module() -> None:
-    for name in (
-        "torch",
-        "torchvision",
-        "monai",
-        "nnunetv2",
-        "SimpleITK",
-        "mlflow",
-        "protoem_ct.baselines",
-        "protoem_ct.baselines.nnunet",
-    ):
-        sys.modules.pop(name, None)
+def test_log_redaction_replaces_known_roots_longest_first_and_deterministically(
+    tmp_path: Path,
+) -> None:
+    runtime_root = tmp_path / "runtime-root"
+    logs_dir = runtime_root / "logs"
+    logs_dir.mkdir(parents=True)
+    working_directory = runtime_root / "work"
+    working_directory.mkdir()
+    raw_root = runtime_root / "nnUNet_raw"
+    preprocessed_root = raw_root / "preprocessed"
+    results_root = runtime_root / "nnUNet_results"
+    runtime_environment = {
+        "nnUNet_raw": str(raw_root),
+        "nnUNet_preprocessed": str(preprocessed_root),
+        "nnUNet_results": str(results_root),
+        "TMPDIR": str(runtime_root / "tmp"),
+    }
+    content = "\n".join(
+        (
+            str(runtime_root),
+            str(raw_root),
+            str(preprocessed_root),
+            str(results_root),
+            str(Path.home()),
+            str(Path(sys.prefix).resolve()),
+            str(Path(__file__).resolve().parents[2]),
+            str(working_directory),
+        )
+    )
 
-    importlib.import_module("protoem_ct.baselines")
-    importlib.import_module("protoem_ct.baselines.nnunet")
+    first = _redact_log_content(
+        content,
+        runtime_environment=runtime_environment,
+        working_directory=working_directory,
+        logs_directory=logs_dir,
+        log_redaction_roots=None,
+    )
+    second = _redact_log_content(
+        content,
+        runtime_environment=runtime_environment,
+        working_directory=working_directory,
+        logs_directory=logs_dir,
+        log_redaction_roots=None,
+    )
 
-    for name in ("torch", "torchvision", "monai", "nnunetv2", "SimpleITK", "mlflow"):
-        assert name not in sys.modules
+    assert first == second
+    assert "<RUNTIME_ROOT>" in first
+    assert "<NNUNET_RAW>" in first
+    assert "<NNUNET_PREPROCESSED>" in first
+    assert "<NNUNET_RESULTS>" in first
+    assert "<HOME>" in first
+    assert "<BASELINE_ENV>" in first
+    assert "<REPOSITORY_ROOT>" in first
+    assert "<TEMP_ROOT>" in first
+    assert "<NNUNET_RAW>/preprocessed" not in first
+    assert str(runtime_root) not in first
+    assert str(Path.home()) not in first
+    assert str(Path(sys.prefix).resolve()) not in first
+    assert not _log_paths._contains_absolute_filesystem_path(first)
+    assert first.endswith("\n")
+    assert not first.endswith("\n\n")
+
+
+def test_log_redaction_handles_residual_paths_tracebacks_spaces_and_uris(
+    tmp_path: Path,
+) -> None:
+    logs_dir = tmp_path / "runtime" / "logs"
+    logs_dir.mkdir(parents=True)
+    working_directory = tmp_path / "runtime" / "work"
+    working_directory.mkdir()
+    unknown_path = "/opt/package/build/source.py"
+    content = (
+        f"unknown={unknown_path},\n"
+        'File "/opt/package path/module.py", line 17, in execute\n'
+        "documentation=https://github.com/MIC-DKFZ/nnUNet/blob/master/"
+        "documentation/resenc_presets.md\n"
+        "fallback=http://example.org/project/reference.html\n"
+        "artifact=mlflow-artifacts:/phase3/run\n"
+        "flag=--configuration=3d_fullres\n"
+        "number=1/2\n\n\n"
+    )
+
+    first = _redact_log_content(
+        content,
+        runtime_environment={},
+        working_directory=working_directory,
+        logs_directory=logs_dir,
+        log_redaction_roots=None,
+    )
+    second = _redact_log_content(
+        content,
+        runtime_environment={},
+        working_directory=working_directory,
+        logs_directory=logs_dir,
+        log_redaction_roots=None,
+    )
+
+    assert first == second
+    assert "unknown=<ABSOLUTE_PATH>," in first
+    assert 'File "<ABSOLUTE_PATH>", line 17' in first
+    assert "https://github.com/MIC-DKFZ/nnUNet/blob/master/documentation/resenc_presets.md" in first
+    assert "http://example.org/project/reference.html" in first
+    assert "mlflow-artifacts:/phase3/run" in first
+    assert "--configuration=3d_fullres" in first
+    assert "number=1/2" in first
+    assert unknown_path not in first
+    assert not _log_paths._contains_absolute_filesystem_path(first)
+    assert first.endswith("\n")
+    assert not first.endswith("\n\n")
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "https://github.com/MIC-DKFZ/nnUNet/blob/master/documentation/resenc_presets.md",
+        "http://example.org/reference/path",
+        "mlflow-artifacts:/phase3/run",
+        "<RUNTIME_ROOT>/relative/output",
+        "--output-root",
+        "1/2",
+    ],
+)
+def test_canonical_log_detector_accepts_non_file_values(value: str) -> None:
+    assert not _log_paths._contains_absolute_filesystem_path(value)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "/private/runtime/output.log",
+        'File "/private/runtime path/module.py", line 17',
+    ],
+)
+def test_canonical_log_detector_rejects_absolute_posix_paths(value: str) -> None:
+    assert _log_paths._contains_absolute_filesystem_path(value)
+
+
+def test_executor_raises_typed_failure_when_redaction_cannot_remove_windows_path(
+    tmp_path: Path,
+) -> None:
+    workdir = tmp_path / "workdir"
+    workdir.mkdir()
+    logs_dir = tmp_path / "logs"
+    logs_dir.mkdir()
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+
+    script = bin_dir / NNUNET_V2_EXECUTABLE_TRAIN
+    _make_executable(
+        script,
+        "#!/usr/bin/env python3\nprint('C:/sensitive/path')\n",
+    )
+
+    with pytest.raises(NnUNetExecutionError) as exc_info:
+        execute_nnunet_command(
+            (NNUNET_V2_EXECUTABLE_TRAIN,),
+            runtime_environment=_runtime_environment_with_path(bin_dir),
+            working_directory=workdir,
+            logs_directory=logs_dir,
+            timeout_seconds=5.0,
+            stage_name="custom-redaction-failure",
+        )
+
+    assert exc_info.value.failure_code == "nnunet_log_redaction_failed"
+    assert "C:/sensitive/path" not in str(exc_info.value)
+    assert list(logs_dir.glob("*")) == []
+
+
+def test_import_guard_for_baselines_and_nnunet_module(
+    run_import_guard: Callable[[tuple[str, ...], tuple[str, ...]], None],
+) -> None:
+    run_import_guard(
+        ("protoem_ct.baselines", "protoem_ct.baselines.nnunet"),
+        ("torch", "torchvision", "monai", "nnunetv2", "SimpleITK", "mlflow"),
+    )

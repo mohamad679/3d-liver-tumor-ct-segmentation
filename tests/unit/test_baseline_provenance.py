@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import importlib
 import json
-import sys
+from collections.abc import Callable
 from typing import Any, cast
 
 import pytest
@@ -212,21 +211,10 @@ def test_unknown_version_rejected() -> None:
         baseline_run_provenance_from_json(json.dumps(payload).encode("utf-8"))
 
 
-def test_importing_baselines_package_does_not_import_heavy_dependencies() -> None:
-    for name in (
-        "torch",
-        "monai",
-        "nnunetv2",
-        "torchvision",
-        "SimpleITK",
-        "protoem_ct.baselines",
-    ):
-        sys.modules.pop(name, None)
-
-    importlib.import_module("protoem_ct.baselines")
-
-    assert "torch" not in sys.modules
-    assert "monai" not in sys.modules
-    assert "nnunetv2" not in sys.modules
-    assert "torchvision" not in sys.modules
-    assert "SimpleITK" not in sys.modules
+def test_importing_baselines_package_does_not_import_heavy_dependencies(
+    run_import_guard: Callable[[tuple[str, ...], tuple[str, ...]], None],
+) -> None:
+    run_import_guard(
+        ("protoem_ct.baselines",),
+        ("torch", "monai", "nnunetv2", "torchvision", "SimpleITK", "mlflow"),
+    )

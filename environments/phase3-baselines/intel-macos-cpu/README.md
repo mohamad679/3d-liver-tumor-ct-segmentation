@@ -27,6 +27,10 @@ in this environment definition.
 - `scipy==1.17.1`
 - `nibabel==5.4.2`
 
+The development dependency group pins the root-locked test runner:
+
+- `pytest==9.1.1`
+
 ## Why This Environment Is Isolated
 
 The root project environment remains the Phase 0-2 core environment and retains its current NumPy
@@ -36,12 +40,37 @@ constraints require `numpy<2` and `torch<2.3`, while the core environment alread
 This isolation keeps baseline dependency churn out of the core environment, its lockfile, and its
 existing test surface.
 
-## Installation Status
+## Test Runner Contract
 
-No installation, sync, import verification, or runtime validation has occurred yet in this step.
+The isolated project owns its pytest installation. Baseline tests must run through the isolated
+Python interpreter and must never resolve a bare `pytest` executable from the shell `PATH`.
 
-`acvl-utils` is locked transitively by this environment, and a later locked sync may require a
-local source build for that package on this host.
+The locked sync command is:
+
+```bash
+env -u VIRTUAL_ENV \
+  uv sync \
+  --project environments/phase3-baselines/intel-macos-cpu \
+  --locked \
+  --system-certs
+```
+
+The repository test entry point is:
+
+```bash
+make baseline-test
+```
+
+Its interpreter-safe command pattern is:
+
+```bash
+env -u VIRTUAL_ENV \
+  uv run \
+  --project environments/phase3-baselines/intel-macos-cpu \
+  --locked \
+  --no-sync \
+  python -m pytest
+```
 
 ## Data, Artifacts, and Git Hygiene
 
@@ -55,18 +84,3 @@ local source build for that package on this host.
 
 Future Linux and CUDA variants will use sibling environment directories while reusing the same
 scientific code.
-
-## Future Commands
-
-Future locked sync command, do not execute in this step:
-
-```bash
-uv sync --project environments/phase3-baselines/intel-macos-cpu --locked
-```
-
-Future command pattern for running Python through this environment, do not execute imports in this
-step:
-
-```bash
-uv run --project environments/phase3-baselines/intel-macos-cpu --locked python -c "<command>"
-```

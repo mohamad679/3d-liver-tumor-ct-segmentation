@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import importlib
 import json
-import sys
+from collections.abc import Callable
 from dataclasses import replace
 from typing import Any, cast
 
@@ -182,19 +181,10 @@ def test_contract_versions_and_foreground_label_are_fixed() -> None:
     assert record.foreground_label == 1
 
 
-def test_importing_predictions_module_does_not_import_heavy_dependencies() -> None:
-    for name in (
-        "torch",
-        "torchvision",
-        "monai",
-        "nnunetv2",
-        "SimpleITK",
-        "mlflow",
-        "protoem_ct.baselines.predictions",
-    ):
-        sys.modules.pop(name, None)
-
-    importlib.import_module("protoem_ct.baselines.predictions")
-
-    for name in ("torch", "torchvision", "monai", "nnunetv2", "SimpleITK", "mlflow"):
-        assert name not in sys.modules
+def test_importing_predictions_module_does_not_import_heavy_dependencies(
+    run_import_guard: Callable[[tuple[str, ...], tuple[str, ...]], None],
+) -> None:
+    run_import_guard(
+        ("protoem_ct.baselines.predictions",),
+        ("torch", "torchvision", "monai", "nnunetv2", "SimpleITK", "mlflow"),
+    )

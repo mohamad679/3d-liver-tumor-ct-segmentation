@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import importlib
 import json
-import sys
+from collections.abc import Callable
 from dataclasses import replace
 from typing import Any, cast
 
@@ -498,21 +497,10 @@ def test_case_and_report_contract_versions_and_fields() -> None:
     assert report.lesion_connectivity == BASELINE_LESION_CONNECTIVITY
 
 
-def test_importing_baselines_and_metrics_does_not_import_heavy_dependencies() -> None:
-    for name in (
-        "torch",
-        "torchvision",
-        "monai",
-        "nnunetv2",
-        "SimpleITK",
-        "mlflow",
-        "protoem_ct.baselines",
-        "protoem_ct.baselines.metrics",
-    ):
-        sys.modules.pop(name, None)
-
-    importlib.import_module("protoem_ct.baselines")
-    importlib.import_module("protoem_ct.baselines.metrics")
-
-    for name in ("torch", "torchvision", "monai", "nnunetv2", "SimpleITK", "mlflow"):
-        assert name not in sys.modules
+def test_importing_baselines_and_metrics_does_not_import_heavy_dependencies(
+    run_import_guard: Callable[[tuple[str, ...], tuple[str, ...]], None],
+) -> None:
+    run_import_guard(
+        ("protoem_ct.baselines", "protoem_ct.baselines.metrics"),
+        ("torch", "torchvision", "monai", "nnunetv2", "SimpleITK", "mlflow"),
+    )

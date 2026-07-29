@@ -7,12 +7,14 @@ import math
 import os
 import re
 import subprocess
+import sys
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any
 
 from protoem_ct.artifacts.hashing import canonical_json_bytes, sha256_json
+from protoem_ct.baselines import _log_paths
 from protoem_ct.baselines.paths import ValidatedBaselineRunPaths
 
 NNUNET_V2_RUN_CONFIG_VERSION = "nnunet_v2_run_config_v1"
@@ -48,6 +50,7 @@ NNUNET_ALLOWED_INHERITED_ENVIRONMENT_KEYS: tuple[str, ...] = (
 
 NNUNET_EXECUTION_FAILURE_CODES: tuple[str, ...] = (
     "nnunet_executable_missing",
+    "nnunet_log_redaction_failed",
     "nnunet_nonzero_exit",
     "nnunet_output_collision",
     "nnunet_output_missing",
@@ -58,7 +61,6 @@ NNUNET_EXECUTION_FAILURE_CODES: tuple[str, ...] = (
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _SAFE_IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9_.-]{0,126}[A-Za-z0-9])?$")
 _SAFE_COMMAND_PART_RE = re.compile(r"^[^\s`$|;&<>\\\n\r\t]+$")
-_WINDOWS_ABSOLUTE_PATH_RE = re.compile(r"^[A-Za-z]:[\\/]")
 _RUN_CONFIG_FIELDS = {
     "artifact_hash",
     "checkpoint_name",
@@ -426,6 +428,7 @@ def execute_nnunet_command(
     timeout_seconds: float,
     stage_name: str,
     required_output_paths: Sequence[Path] = (),
+    log_redaction_roots: Mapping[str, Path] | None = None,
 ) -> NnUNetExecutionResult:
     """Execute a validated nnU-Net command tuple without a shell."""
 
@@ -474,11 +477,43 @@ def execute_nnunet_command(
             if isinstance(error.stderr, bytes)
             else (error.stderr or "")
         )
-        _write_log(stdout_log_path, timeout_stdout)
-        _write_log(stderr_log_path, timeout_stderr)
+        _write_log(
+            stdout_log_path,
+            timeout_stdout,
+            stage_name=stage_name,
+            log_redaction_roots=log_redaction_roots,
+            runtime_environment=runtime_environment,
+            working_directory=working_directory_path,
+            logs_directory=logs_directory_path,
+        )
+        _write_log(
+            stderr_log_path,
+            timeout_stderr,
+            stage_name=stage_name,
+            log_redaction_roots=log_redaction_roots,
+            runtime_environment=runtime_environment,
+            working_directory=working_directory_path,
+            logs_directory=logs_directory_path,
+        )
         raise NnUNetExecutionError("nnunet_timeout", stage_name=stage_name) from error
-    _write_log(stdout_log_path, completed.stdout)
-    _write_log(stderr_log_path, completed.stderr)
+    _write_log(
+        stdout_log_path,
+        completed.stdout,
+        stage_name=stage_name,
+        log_redaction_roots=log_redaction_roots,
+        runtime_environment=runtime_environment,
+        working_directory=working_directory_path,
+        logs_directory=logs_directory_path,
+    )
+    _write_log(
+        stderr_log_path,
+        completed.stderr,
+        stage_name=stage_name,
+        log_redaction_roots=log_redaction_roots,
+        runtime_environment=runtime_environment,
+        working_directory=working_directory_path,
+        logs_directory=logs_directory_path,
+    )
     if completed.returncode != 0:
         raise NnUNetExecutionError(
             "nnunet_nonzero_exit",
@@ -545,10 +580,83 @@ def _validate_nnunet_command(command: tuple[str, ...]) -> None:
             )
 
 
-def _write_log(path: Path, content: str) -> None:
+def _write_log(
+    path: Path,
+    content: str,
+    *,
+    stage_name: str,
+    log_redaction_roots: Mapping[str, Path] | None,
+    runtime_environment: Mapping[str, str],
+    working_directory: Path,
+    logs_directory: Path,
+) -> None:
     if path.exists():
         raise NnUNetExecutionError("nnunet_output_collision", stage_name=path.stem)
-    path.write_text(content, encoding="utf-8")
+    redacted = _redact_log_content(
+        content,
+        log_redaction_roots=log_redaction_roots,
+        runtime_environment=runtime_environment,
+        working_directory=working_directory,
+        logs_directory=logs_directory,
+    )
+    if _log_paths._contains_absolute_filesystem_path(redacted):
+        raise NnUNetExecutionError("nnunet_log_redaction_failed", stage_name=stage_name)
+    path.write_text(redacted, encoding="utf-8")
+
+
+def _redact_log_content(
+    content: str,
+    *,
+    log_redaction_roots: Mapping[str, Path] | None,
+    runtime_environment: Mapping[str, str],
+    working_directory: Path,
+    logs_directory: Path,
+) -> str:
+    replacements = _build_log_redaction_replacements(
+        log_redaction_roots=log_redaction_roots,
+        runtime_environment=runtime_environment,
+        working_directory=working_directory,
+        logs_directory=logs_directory,
+    )
+    redacted = content
+    for source, token in replacements:
+        redacted = redacted.replace(source, token)
+    redacted = _log_paths._redact_residual_absolute_paths(redacted)
+    return redacted.rstrip("\r\n") + "\n"
+
+
+def _build_log_redaction_replacements(
+    *,
+    log_redaction_roots: Mapping[str, Path] | None,
+    runtime_environment: Mapping[str, str],
+    working_directory: Path,
+    logs_directory: Path,
+) -> tuple[tuple[str, str], ...]:
+    runtime_root = logs_directory.parent
+    replacements: dict[str, str] = {
+        os.path.normpath(os.fspath(runtime_root)): "<RUNTIME_ROOT>",
+        os.path.normpath(os.fspath(Path(__file__).resolve().parents[3])): "<REPOSITORY_ROOT>",
+        os.path.normpath(os.fspath(Path.home())): "<HOME>",
+        os.path.normpath(os.fspath(Path(sys.prefix).resolve())): "<BASELINE_ENV>",
+        os.path.normpath(os.fspath(working_directory)): "<TEMP_ROOT>",
+    }
+    for environment_key, token in (
+        ("nnUNet_raw", "<NNUNET_RAW>"),
+        ("nnUNet_preprocessed", "<NNUNET_PREPROCESSED>"),
+        ("nnUNet_results", "<NNUNET_RESULTS>"),
+    ):
+        value = runtime_environment.get(environment_key)
+        if value:
+            replacements[os.path.normpath(os.fspath(Path(value)))] = token
+    for environment_key in ("TEMP", "TMP", "TMPDIR"):
+        value = runtime_environment.get(environment_key)
+        if value:
+            replacements[os.path.normpath(value)] = "<TEMP_ROOT>"
+    if log_redaction_roots is not None:
+        for token, path in log_redaction_roots.items():
+            replacements[os.path.normpath(os.fspath(path))] = token
+    sorted_items = sorted(replacements.items(), key=lambda item: (-len(item[0]), item[0]))
+    return tuple((source, token) for source, token in sorted_items if source)
 
 
 def _run_config_payload(run_config: NnUNetV2RunConfig) -> dict[str, Any]:
@@ -674,7 +782,7 @@ def _require_no_absolute_paths(value: Any) -> None:
 
 
 def _require_no_absolute_path_string(value: str, *, field_name: str) -> None:
-    if value.startswith("/") or _WINDOWS_ABSOLUTE_PATH_RE.match(value):
+    if value.startswith("/") or PureWindowsPath(value).is_absolute():
         raise NnUNetWrapperValidationError(f"{field_name} must not contain an absolute path.")
 
 
