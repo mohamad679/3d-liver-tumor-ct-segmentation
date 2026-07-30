@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import shutil
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -266,6 +268,45 @@ def test_byte_identical_regeneration_and_unsafe_output_rejection(tmp_path: Path)
         )
 
 
+def test_existing_absolute_external_temp_directory_is_accepted() -> None:
+    settings = load_phase5_foundation_retrieval_settings(_config_path())
+    output_root = Path(tempfile.mkdtemp(prefix="protoem-ct-phase5-existing.", dir="/tmp"))
+
+    try:
+        result = run_and_publish_phase5_retrieval(output_root=output_root, settings=settings)
+
+        assert result.output_root == output_root.resolve(strict=True)
+        assert result.comparison_path.exists()
+    finally:
+        shutil.rmtree(output_root.resolve(strict=False), ignore_errors=True)
+
+
+def test_tmp_lexical_and_resolved_forms_are_consistent_when_tmp_is_alias() -> None:
+    lexical_root = Path(tempfile.mkdtemp(prefix="protoem-ct-phase5-tmp-alias.", dir="/tmp"))
+    resolved_root = lexical_root.resolve(strict=True)
+    settings = load_phase5_foundation_retrieval_settings(_config_path())
+
+    try:
+        first = run_and_publish_phase5_retrieval(output_root=lexical_root, settings=settings)
+        second = run_and_publish_phase5_retrieval(output_root=resolved_root, settings=settings)
+
+        assert first.output_root == resolved_root
+        assert second.output_root == resolved_root
+        assert second.reused_existing_output is True
+    finally:
+        shutil.rmtree(resolved_root, ignore_errors=True)
+
+
+def test_repository_internal_output_root_remains_rejected() -> None:
+    settings = load_phase5_foundation_retrieval_settings(_config_path())
+
+    with pytest.raises(Phase5ComparisonPathError):
+        run_and_publish_phase5_retrieval(
+            output_root=REPO_ROOT / "src" / "phase5-forbidden-output",
+            settings=settings,
+        )
+
+
 @pytest.mark.skipif(not hasattr(Path, "symlink_to"), reason="Symlinks unsupported")
 def test_symlink_escape_rejected(tmp_path: Path) -> None:
     settings = load_phase5_foundation_retrieval_settings(_config_path())
@@ -276,3 +317,51 @@ def test_symlink_escape_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(Phase5ComparisonPathError):
         run_and_publish_phase5_retrieval(output_root=symlink_root, settings=settings)
+
+
+@pytest.mark.skipif(not hasattr(Path, "symlink_to"), reason="Symlinks unsupported")
+def test_symlink_parent_escape_rejected(tmp_path: Path) -> None:
+    settings = load_phase5_foundation_retrieval_settings(_config_path())
+    real_root = tmp_path / "real"
+    real_root.mkdir()
+    symlink_parent = tmp_path / "linked-parent"
+    symlink_parent.symlink_to(real_root, target_is_directory=True)
+
+    with pytest.raises(Phase5ComparisonPathError):
+        run_and_publish_phase5_retrieval(
+            output_root=symlink_parent / "published",
+            settings=settings,
+        )
+
+
+def test_parent_traversal_output_root_rejected(tmp_path: Path) -> None:
+    settings = load_phase5_foundation_retrieval_settings(_config_path())
+    lexical_parent = tmp_path / "lexical-parent"
+    lexical_parent.mkdir()
+
+    with pytest.raises(Phase5ComparisonPathError):
+        run_and_publish_phase5_retrieval(
+            output_root=lexical_parent / ".." / "published",
+            settings=settings,
+        )
+
+
+def test_identical_regeneration_on_same_root_is_byte_identical(tmp_path: Path) -> None:
+    settings = load_phase5_foundation_retrieval_settings(_config_path())
+    output_root = tmp_path / "published"
+
+    first = run_and_publish_phase5_retrieval(output_root=output_root, settings=settings)
+    first_bytes = {
+        path.relative_to(first.output_root).as_posix(): path.read_bytes()
+        for path in first.output_root.rglob("*")
+        if path.is_file()
+    }
+    second = run_and_publish_phase5_retrieval(output_root=output_root, settings=settings)
+    second_bytes = {
+        path.relative_to(second.output_root).as_posix(): path.read_bytes()
+        for path in second.output_root.rglob("*")
+        if path.is_file()
+    }
+
+    assert second.reused_existing_output is True
+    assert second_bytes == first_bytes

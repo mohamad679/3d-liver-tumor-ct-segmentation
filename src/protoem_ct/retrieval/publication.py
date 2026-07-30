@@ -1655,7 +1655,8 @@ def _validate_phase5_output_root(output_root: Path) -> Path:
         )
     except InvalidDatasetRootError as exc:
         raise Phase5ComparisonPathError(str(exc)) from exc
-    _require_no_symlink_components(output_root)
+    _require_no_parent_traversal_components(output_root)
+    _require_no_symlink_components(output_root, resolved_output_root=resolved_output_root)
     return resolved_output_root
 
 
@@ -1762,14 +1763,52 @@ def _existing_tree_matches(
     return existing_file_paths == artifact_bytes
 
 
-def _require_no_symlink_components(path: Path) -> None:
+def _require_no_parent_traversal_components(path: Path) -> None:
+    """Reject lexical parent traversal before publishing generated artifacts."""
+    if ".." in path.parts:
+        raise Phase5ComparisonPathError("output_root must not contain parent traversal.")
+
+
+def _require_no_symlink_components(path: Path, *, resolved_output_root: Path) -> None:
+    """Reject symlink escapes while allowing the canonical macOS /tmp alias."""
     current = Path(path.anchor)
     for component in path.parts[1:]:
         current = current / component
         if current.exists() and current.is_symlink():
+            if _is_allowed_phase5_output_alias(
+                current,
+                resolved_output_root=resolved_output_root,
+            ):
+                continue
             raise Phase5ComparisonPathError("output_root must not traverse symlinked paths.")
         if current.exists() and not current.is_dir() and current != path:
             raise Phase5ComparisonPathError("output_root parent chain must contain directories.")
+
+
+def _is_allowed_phase5_output_alias(
+    symlink_path: Path,
+    *,
+    resolved_output_root: Path,
+) -> bool:
+    """Allow only the platform /tmp alias when it contains the canonical output root."""
+    if symlink_path != Path("/tmp"):
+        return False
+    try:
+        resolved_symlink = symlink_path.resolve(strict=True)
+    except OSError:
+        return False
+    return _path_is_equal_or_nested(resolved_output_root, resolved_symlink)
+
+
+def _path_is_equal_or_nested(path: Path, root: Path) -> bool:
+    """Return whether a resolved path is equal to or contained by a resolved root."""
+    if path == root:
+        return True
+    try:
+        path.relative_to(root)
+    except ValueError:
+        return False
+    return True
 
 
 def _require_no_symlinks_in_tree(root: Path) -> None:
