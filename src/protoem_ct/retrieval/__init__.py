@@ -43,6 +43,18 @@ from protoem_ct.retrieval.artifacts import (
     hash_embedding_cache_key,
     hash_embedding_cache_manifest,
 )
+from protoem_ct.retrieval.cache import (
+    DEFAULT_CACHE_MANIFEST_RELATIVE_PATH,
+    CachedEmbedding,
+    EmbeddingCache,
+    EmbeddingCacheError,
+    EmbeddingCacheIncompatibleEntryError,
+    EmbeddingCacheInvalidEntryError,
+    EmbeddingCacheMissError,
+    EmbeddingCacheProbeResult,
+    EmbeddingCachePublicationError,
+    EmbeddingCacheUnsafePathError,
+)
 
 __all__ = [
     "EMBEDDING_ARTIFACT_METADATA_SCHEMA_NAME",
@@ -58,6 +70,16 @@ __all__ = [
     "EMBEDDING_TENSOR_DESCRIPTOR_SCHEMA_NAME",
     "EMBEDDING_TENSOR_DESCRIPTOR_SCHEMA_VERSION",
     "SUPPORTED_EMBEDDING_TENSOR_DTYPES",
+    "CachedEmbedding",
+    "DEFAULT_CACHE_MANIFEST_RELATIVE_PATH",
+    "EmbeddingCache",
+    "EmbeddingCacheError",
+    "EmbeddingCacheIncompatibleEntryError",
+    "EmbeddingCacheInvalidEntryError",
+    "EmbeddingCacheMissError",
+    "EmbeddingCacheProbeResult",
+    "EmbeddingCachePublicationError",
+    "EmbeddingCacheUnsafePathError",
     "EmbeddingArtifact",
     "EmbeddingArtifactMetadata",
     "EmbeddingCacheEntry",
