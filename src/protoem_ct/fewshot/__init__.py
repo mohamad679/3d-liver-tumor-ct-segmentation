@@ -1,5 +1,15 @@
 """Phase 4 few-shot artifact contracts."""
 
+from protoem_ct.fewshot.adaptation import (
+    SEGRESNET_DECODER_ATTRIBUTE_NAMES,
+    SEGRESNET_ENCODER_ATTRIBUTE_NAMES,
+    SEGRESNET_HEAD_ATTRIBUTE_NAME,
+    SUPPORTED_ADAPTATION_BASELINE_FAMILIES,
+    AdaptationParameterSelectionResult,
+    FewshotAdaptationSelectionError,
+    FewshotAdaptationSelectionValidationError,
+    apply_monai_segresnet_adaptation_mode,
+)
 from protoem_ct.fewshot.artifacts import (
     FEWSHOT_ADAPTATION_CONFIG_VERSION,
     FEWSHOT_PROTOCOL_TABLE_VERSION,
@@ -86,7 +96,14 @@ __all__ = [
     "FEWSHOT_RUN_SUMMARY_VERSION",
     "FEWSHOT_SUPPORT_MANIFEST_VERSION",
     "FEWSHOT_SUPPORT_SELECTION_POLICY_VERSION",
+    "SEGRESNET_DECODER_ATTRIBUTE_NAMES",
+    "SEGRESNET_ENCODER_ATTRIBUTE_NAMES",
+    "SEGRESNET_HEAD_ATTRIBUTE_NAME",
+    "SUPPORTED_ADAPTATION_BASELINE_FAMILIES",
+    "AdaptationParameterSelectionResult",
     "FewshotAdaptationConfig",
+    "FewshotAdaptationSelectionError",
+    "FewshotAdaptationSelectionValidationError",
     "FewshotArtifact",
     "FewshotArtifactError",
     "FewshotArtifactHashError",
@@ -123,6 +140,7 @@ __all__ = [
     "SUPPORTED_PROTOCOL_RUN_STATUSES",
     "SUPPORTED_STRATIFICATION_STATUSES",
     "assign_burden_buckets",
+    "apply_monai_segresnet_adaptation_mode",
     "build_default_support_replicate_plans",
     "fewshot_adaptation_config_from_json",
     "fewshot_adaptation_config_hash_payload",
