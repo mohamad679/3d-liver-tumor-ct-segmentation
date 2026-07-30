@@ -70,6 +70,16 @@ def _require_probability_score(value: float, *, field_name: str) -> None:
         raise RetrievalContractValidationError(f"{field_name} must lie in [-1.0, 1.0].")
 
 
+def _require_finite_vector(
+    value: tuple[float, ...],
+    *,
+    field_name: str,
+) -> None:
+    for index, item in enumerate(value):
+        if not math.isfinite(item):
+            raise RetrievalContractValidationError(f"{field_name}[{index}] must be finite.")
+
+
 @dataclass(frozen=True, slots=True)
 class FeatureResolution3D:
     """Explicit relation between one input volume and one encoded feature map."""
@@ -266,6 +276,14 @@ class SupportPrototype:
     contributing_voxel_count: int
     source_support_identifiers: tuple[str, ...]
     normalization_name: str
+    prototype_vector: tuple[float, ...] = ()
+    encoder_identity: str = ""
+    preprocessing_hash: str = ""
+    checkpoint_hash: str = ""
+    dataset_manifest_hash: str | None = None
+    feature_stage: str = ""
+    prototype_content_sha256: str = ""
+    prototype_identity_sha256: str = ""
 
     def __post_init__(self) -> None:
         if self.prototype_kind not in {"foreground", "background"}:
@@ -288,6 +306,32 @@ class SupportPrototype:
             raise RetrievalContractValidationError("source_support_identifiers must be unique.")
         object.__setattr__(self, "source_support_identifiers", normalized_identifiers)
         _require_identifier(self.normalization_name, field_name="normalization_name")
+        if self.prototype_vector:
+            _require_finite_vector(self.prototype_vector, field_name="prototype_vector")
+            if len(self.prototype_vector) != self.feature_channels:
+                raise RetrievalContractValidationError(
+                    "prototype_vector length must equal feature_channels."
+                )
+        if self.encoder_identity:
+            _require_identifier(self.encoder_identity, field_name="encoder_identity")
+        if self.preprocessing_hash:
+            _require_sha256(self.preprocessing_hash, field_name="preprocessing_hash")
+        if self.checkpoint_hash:
+            _require_sha256(self.checkpoint_hash, field_name="checkpoint_hash")
+        if self.dataset_manifest_hash is not None:
+            _require_sha256(self.dataset_manifest_hash, field_name="dataset_manifest_hash")
+        if self.feature_stage:
+            _require_identifier(self.feature_stage, field_name="feature_stage")
+        if self.prototype_content_sha256:
+            _require_sha256(
+                self.prototype_content_sha256,
+                field_name="prototype_content_sha256",
+            )
+        if self.prototype_identity_sha256:
+            _require_sha256(
+                self.prototype_identity_sha256,
+                field_name="prototype_identity_sha256",
+            )
 
 
 @dataclass(frozen=True, slots=True)
