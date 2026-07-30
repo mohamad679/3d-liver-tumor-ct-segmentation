@@ -87,6 +87,16 @@ from protoem_ct.fewshot import (
     load_phase4_fewshot_protocol_settings,
 )
 from protoem_ct.reporting import ReportGenerationError, generate_synthetic_report
+from protoem_ct.retrieval import (
+    Phase5ComparisonCollisionError,
+    Phase5ComparisonConfigError,
+    Phase5ComparisonError,
+    Phase5ComparisonIOError,
+    Phase5ComparisonLeakageError,
+    Phase5ComparisonPathError,
+    load_phase5_foundation_retrieval_settings,
+    run_and_publish_phase5_retrieval,
+)
 
 app = typer.Typer(help="ProtoEM-CT command-line tools.")
 
@@ -197,6 +207,16 @@ def _raise_phase4_protocol_cli_error(exc: Exception) -> None:
     """Exit with a concise Phase 4 protocol-generation error without path leakage."""
     typer.secho(
         f"Phase 4 few-shot protocol error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase5_retrieval_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 5 retrieval error without path or data leakage."""
+    typer.secho(
+        f"Phase 5 retrieval error: {type(exc).__name__}",
         err=True,
         fg=typer.colors.RED,
     )
@@ -1119,6 +1139,51 @@ def generate_phase4_fewshot_protocol(
     typer.echo(f"immutable test cohort hash: {result.immutable_test_cohort_hash}")
     typer.echo(f"protocol table hash: {result.protocol_table_hash}")
     typer.echo(f"leakage check passed: {str(result.leakage_check_passed).lower()}")
+    typer.echo(f"output root: {result.output_root}")
+
+
+@app.command("run-phase5-retrieval")
+def run_phase5_retrieval_command(
+    config_path: Annotated[
+        Path,
+        typer.Option(
+            "--config",
+            help="Path to the Phase 5 foundation-retrieval OmegaConf YAML file.",
+        ),
+    ] = Path("configs/phase5_foundation_retrieval.yaml"),
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help="Explicit absolute external output root for the synthetic Phase 5 run.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+) -> None:
+    """Run the bounded synthetic Phase 5 retrieval comparison and publish artifacts."""
+    try:
+        settings = load_phase5_foundation_retrieval_settings(config_path)
+        result = run_and_publish_phase5_retrieval(
+            output_root=output_root,
+            settings=settings,
+        )
+    except (
+        Phase5ComparisonCollisionError,
+        Phase5ComparisonConfigError,
+        Phase5ComparisonError,
+        Phase5ComparisonIOError,
+        Phase5ComparisonLeakageError,
+        Phase5ComparisonPathError,
+    ) as exc:
+        _raise_phase5_retrieval_cli_error(exc)
+
+    typer.echo("Phase 5 retrieval comparison success")
+    typer.echo("mode: synthetic_only")
+    typer.echo(f"comparison identity: {result.comparison_identity_sha256}")
+    typer.echo(f"support set identity: {result.support_set_identity_sha256}")
+    typer.echo(f"comparison artifact: {result.comparison_path}")
+    typer.echo(f"comparison markdown: {result.markdown_path}")
+    typer.echo(f"run summary artifact: {result.run_summary_path}")
+    typer.echo(f"effective config artifact: {result.effective_config_path}")
     typer.echo(f"output root: {result.output_root}")
 
 
