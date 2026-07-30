@@ -1,0 +1,9 @@
+phase4_fewshot_protocol:
+  baseline_family: monai_segresnet
+  optimizer_name: adam
+  learning_rate: 0.001
+  weight_decay: 0.0
+  max_adaptation_steps: 8
+  support_batch_size: 1
+  gradient_accumulation_steps: 1
+  amp_enabled: false
