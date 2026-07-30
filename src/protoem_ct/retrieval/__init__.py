@@ -55,6 +55,15 @@ from protoem_ct.retrieval.cache import (
     EmbeddingCachePublicationError,
     EmbeddingCacheUnsafePathError,
 )
+from protoem_ct.retrieval.cosine import (
+    CosineRetrievalError,
+    IncompatibleEmbeddingError,
+    InvalidCosineRetrievalRequestError,
+    InvalidEmbeddingError,
+    RetrievalLeakageError,
+    ZeroNormEmbeddingError,
+    retrieve_top_k_by_exact_cosine,
+)
 
 __all__ = [
     "EMBEDDING_ARTIFACT_METADATA_SCHEMA_NAME",
@@ -80,6 +89,7 @@ __all__ = [
     "EmbeddingCacheProbeResult",
     "EmbeddingCachePublicationError",
     "EmbeddingCacheUnsafePathError",
+    "CosineRetrievalError",
     "EmbeddingArtifact",
     "EmbeddingArtifactMetadata",
     "EmbeddingCacheEntry",
@@ -90,6 +100,11 @@ __all__ = [
     "RetrievalArtifactHashError",
     "RetrievalArtifactSerializationError",
     "RetrievalArtifactValidationError",
+    "RetrievalLeakageError",
+    "IncompatibleEmbeddingError",
+    "InvalidCosineRetrievalRequestError",
+    "InvalidEmbeddingError",
+    "ZeroNormEmbeddingError",
     "embedding_artifact_from_mapping",
     "embedding_artifact_identity_payload",
     "embedding_artifact_metadata_from_mapping",
@@ -108,4 +123,5 @@ __all__ = [
     "hash_embedding_artifact",
     "hash_embedding_cache_key",
     "hash_embedding_cache_manifest",
+    "retrieve_top_k_by_exact_cosine",
 ]
