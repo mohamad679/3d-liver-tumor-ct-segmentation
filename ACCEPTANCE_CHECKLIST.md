@@ -165,7 +165,62 @@ tiny-subset overfit evidence. Gate 3 does not require full training on all 131 d
 
 ## Gate 4
 
-- [ ] Pending definition.
+- [x] Deterministic patient-level support manifests exist for `K = 1, 2, 5, 10, 20`
+- [x] Each `K` has exactly three fixed support manifests with stable replicate identifiers
+- [x] Every support manifest is linked to the exact source development manifest hash and development
+      split hash
+- [x] Support patients and cases are disjoint from the immutable internal-test cohort in every
+      generated artifact
+- [x] Lesion-burden stratification is used where feasible and deterministic fallback behavior is
+      explicitly recorded where infeasible
+- [x] `head_only`, `decoder_only`, and `full_finetune` adaptation modes are implemented with
+      explicit parameter-group validation
+- [x] Trainable-parameter count is available from the adaptation-mode contract
+- [x] Duration and memory are explicitly representable as unavailable because no Phase 4 adaptation
+      training execution was performed
+- [x] Deterministic adaptation configs are generated
+- [x] Deterministic protocol-table artifact enumerates all planned
+      `K x replicate x adaptation-mode` runs and their source hashes
+- [x] Unit, integration, leakage, determinism, synthetic smoke, lint, format, typing, and full
+      repository tests pass locally
+- [x] No tracked medical data, PHI-bearing support manifests, checkpoints, predictions, or large
+      generated artifacts are Git-visible
+- [x] Gate 4 close-out remains limited to few-shot protocol generation and publication without
+      Phase 5, ProtoEM-CT, or adaptation execution
+
+### Gate 4 Evidence
+
+Gate 4 status: PASSED locally on 2026-07-30
+
+- Repository-wide verification:
+  - `uv run ruff check .`: PASS, `All checks passed!`
+  - `uv run ruff format --check .`: PASS, `132 files already formatted`
+  - `uv run mypy src`: PASS, `Success: no issues found in 53 source files`
+  - `uv run pytest -q`: PASS, `769 passed, 2 skipped in 388.27s (0:06:28)`
+  - `uv run protoem-ct generate-phase4-fewshot-protocol --help`: PASS
+- Synthetic Phase 4 publication using existing test-fixture constructors and external temporary
+  output roots:
+  - support manifests: `15`
+  - adaptation configs: `45`
+  - protocol-table JSON rows: `45`
+  - protocol-table Markdown data rows: `45`
+  - support/internal-test patient overlap count: `0`
+  - support/internal-test case overlap count: `0`
+  - leakage check passed: `true`
+  - byte-identical artifacts across two separate external output roots: `true`
+- Adaptation modes verified: `head_only`, `decoder_only`, `full_finetune`
+- Trainable-parameter-count evidence from the deterministic adaptation unit-test model:
+  - `head_only`: total `98`, trainable `15`, frozen `83`
+  - `decoder_only`: total `98`, trainable `38`, frozen `60`
+  - `full_finetune`: total `98`, trainable `98`, frozen `0`
+- Duration and memory are intentionally unavailable at Gate 4 because no Phase 4 adaptation
+  training execution was performed. The existing `fewshot_run_summary_v1` schema supports
+  `duration_seconds = null` and `memory_availability_status = "unavailable"` with null memory
+  fields.
+
+These results verify the deterministic few-shot protocol contract only. They do not claim
+adaptation performance, runtime duration, memory usage, GPU execution, checkpoint quality, external
+validation, or any Phase 5/ProtoEM-CT behavior.
 
 ## Gate 5
 

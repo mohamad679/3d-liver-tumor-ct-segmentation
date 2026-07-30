@@ -95,3 +95,26 @@ critical findings.
 - Unresolved critical findings: 0
 - Gate 2 leakage-audit recommendation: pass
 - Reviewer sign-off: pending repository review and commit
+
+## Phase 4 Support-to-Internal-Test Verification
+
+Status: PASSED for deterministic Phase 4 support-manifest publication verification on 2026-07-30.
+
+This Phase 4 note records support/internal-test separation evidence only. It is not adaptation
+training, inference, model-performance, duration, memory, external-validation, or clinical-validity
+evidence.
+
+- Verification surface: deterministic Phase 4 support-manifest generation, deterministic protocol
+  publication CLI, and generation-summary overlap counts from one synthetic publication using the
+  existing test-fixture constructors
+- Verified support-manifest count: `15`
+- Verified adaptation-config count: `45`
+- Verified protocol-table row count: `45`
+- Verified protocol Markdown data-row count: `45`
+- Support/internal-test patient overlap count: `0`
+- Support/internal-test case overlap count: `0`
+- Leakage check passed: `true`
+- Deterministic regeneration across two external output roots: `true`
+
+Phase 4 retained the immutable internal-test cohort boundary and published no tracked support
+artifacts, checkpoints, predictions, or medical data into the repository.

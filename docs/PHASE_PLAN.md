@@ -10,11 +10,13 @@ Phase 2 Gate 2 close-out is completed locally from the approved real-data develo
 leakage artifacts.
 
 Phase 3 Gate 3 baseline scope is treated as completed and merged for Phase 4 planning purposes on
-the user-confirmed repository state. This Phase 4 planning update does not audit, rerun, verify, or
-modify any Phase 3 implementation or evidence.
+the user-confirmed repository state. Phase 4 close-out remains limited to the implemented few-shot
+protocol contracts and repository-wide verification required for Gate 4. It does not audit, rerun,
+verify, or modify any completed Phase 3 behavior beyond dependencies exercised by repository-wide
+checks.
 
-Active phase: Phase 4 few-shot protocol planning on branch `phase/4-fewshot-protocol` from branch
-point `dba4ef4`.
+Active phase: Phase 4 few-shot protocol is completed locally and Gate 4 is closed on branch
+`phase/4-fewshot-protocol`.
 
 ## Phase 0 Scope
 
@@ -634,6 +636,64 @@ Gate 4 is accepted when:
   generated artifacts are Git-visible; and
 - Gate 4 close-out remains limited to few-shot protocol definition and bounded adaptation execution,
   without implementing ProtoEM-CT or Phase 5 methods.
+
+## Phase 4 Gate 4 Close-Out Evidence
+
+Verified on 2026-07-30 from branch `phase/4-fewshot-protocol` at user-confirmed `HEAD`
+`4f0a356`.
+
+- Deterministic support-manifest generation exists for `K = 1, 2, 5, 10, 20`, with exactly three
+  fixed replicates per `K`, for 15 total support manifests.
+- Support selection remains patient-level, support/internal-test patient overlap is zero, and
+  support/internal-test case overlap is zero in the verified synthetic publication result.
+- Lesion-burden stratification and its deterministic fallback are implemented in the Phase 4
+  support-generation path and exercised by the passing Phase 4 unit test surface.
+- Adaptation modes `head_only`, `decoder_only`, and `full_finetune` are implemented for the
+  SegResNet boundary contract. Verified unit-test parameter-count evidence on the deterministic test
+  model is:
+  - `head_only`: total `98`, trainable `15`, frozen `83`
+  - `decoder_only`: total `98`, trainable `38`, frozen `60`
+  - `full_finetune`: total `98`, trainable `98`, frozen `0`
+- Deterministic adaptation-config construction and deterministic protocol-table generation are
+  implemented and verified. The protocol table contains exactly `45` rows for
+  `5 K values x 3 replicates x 3 adaptation modes`.
+- Deterministic filesystem publication and CLI generation are implemented. One synthetic Phase 4
+  publication using existing test-fixture constructors produced:
+  - `15` support manifests
+  - `45` adaptation configs
+  - `45` protocol-table JSON rows
+  - `45` protocol-table Markdown data rows
+  - zero support/internal-test patient overlap
+  - zero support/internal-test case overlap
+  - byte-identical artifacts across two separate external output roots
+
+Exact verification commands executed:
+
+- `uv run ruff check .`
+- `uv run ruff format --check .`
+- `uv run mypy src`
+- `uv run pytest -q`
+- `uv run protoem-ct generate-phase4-fewshot-protocol --help`
+- `mktemp -d /private/tmp/protoem-ct-phase4-gate4.XXXXXX`
+- `uv run python -c 'import importlib.util; from pathlib import Path; from protoem_ct.artifacts.phase2_schemas import phase2_artifact_to_json; root = Path("/private/tmp/protoem-ct-phase4-gate4.htyLrT/inputs"); root.mkdir(parents=True, exist_ok=True); helper_path = Path("/Users/mohsenshamsijazeb/Projects/protoem-ct/tests/unit/test_fewshot_protocol.py"); spec = importlib.util.spec_from_file_location("_fewshot_protocol_helpers", helper_path); module = importlib.util.module_from_spec(spec); assert spec is not None and spec.loader is not None; spec.loader.exec_module(module); manifest = module._manifest(); split = module._split(manifest); lesion = module._lesion_artifact(manifest, split); (root / "manifest.json").write_text(phase2_artifact_to_json(manifest), encoding="utf-8"); (root / "split.json").write_text(phase2_artifact_to_json(split), encoding="utf-8"); (root / "lesion.json").write_text(phase2_artifact_to_json(lesion), encoding="utf-8"); print(root / "manifest.json"); print(root / "split.json"); print(root / "lesion.json")'`
+- `uv run protoem-ct generate-phase4-fewshot-protocol --manifest /private/tmp/protoem-ct-phase4-gate4.htyLrT/inputs/manifest.json --split /private/tmp/protoem-ct-phase4-gate4.htyLrT/inputs/split.json --lesion-artifact /private/tmp/protoem-ct-phase4-gate4.htyLrT/inputs/lesion.json --output-root /private/tmp/protoem-ct-phase4-gate4.htyLrT/out-a --initialization-reference-type baseline_provenance --initialization-reference-identifier baseline_init_001 --initialization-artifact-sha256 1111111111111111111111111111111111111111111111111111111111111111 --base-seed 1729 --config /Users/mohsenshamsijazeb/Projects/protoem-ct/configs/phase4_fewshot_protocol.yaml`
+- `uv run protoem-ct generate-phase4-fewshot-protocol --manifest /private/tmp/protoem-ct-phase4-gate4.htyLrT/inputs/manifest.json --split /private/tmp/protoem-ct-phase4-gate4.htyLrT/inputs/split.json --lesion-artifact /private/tmp/protoem-ct-phase4-gate4.htyLrT/inputs/lesion.json --output-root /private/tmp/protoem-ct-phase4-gate4.htyLrT/out-b --initialization-reference-type baseline_provenance --initialization-reference-identifier baseline_init_001 --initialization-artifact-sha256 1111111111111111111111111111111111111111111111111111111111111111 --base-seed 1729 --config /Users/mohsenshamsijazeb/Projects/protoem-ct/configs/phase4_fewshot_protocol.yaml`
+- `uv run python -c 'import json; from pathlib import Path; from protoem_ct.fewshot import fewshot_protocol_table_from_json; root_a = Path("/private/tmp/protoem-ct-phase4-gate4.htyLrT/out-a"); root_b = Path("/private/tmp/protoem-ct-phase4-gate4.htyLrT/out-b"); support_a = sorted(root_a.glob("support_manifests/k*/**/*.json")); support_b = sorted(root_b.glob("support_manifests/k*/**/*.json")); configs_a = sorted((root_a / "adaptation_configs").glob("*.json")); configs_b = sorted((root_b / "adaptation_configs").glob("*.json")); protocol_a = fewshot_protocol_table_from_json((root_a / "protocol" / "fewshot_protocol_table.json").read_bytes()); protocol_b = fewshot_protocol_table_from_json((root_b / "protocol" / "fewshot_protocol_table.json").read_bytes()); md_rows_a = sum(1 for line in (root_a / "protocol" / "fewshot_protocol_table.md").read_text(encoding="utf-8").splitlines() if line.startswith("| ")) - 2; md_rows_b = sum(1 for line in (root_b / "protocol" / "fewshot_protocol_table.md").read_text(encoding="utf-8").splitlines() if line.startswith("| ")) - 2; summary_a = json.loads((root_a / "generation_summary.json").read_text(encoding="utf-8")); summary_b = json.loads((root_b / "generation_summary.json").read_text(encoding="utf-8")); bytes_a = {path.relative_to(root_a).as_posix(): path.read_bytes() for path in root_a.rglob("*") if path.is_file()}; bytes_b = {path.relative_to(root_b).as_posix(): path.read_bytes() for path in root_b.rglob("*") if path.is_file()}; print(json.dumps({"support_manifest_count": len(support_a), "adaptation_config_count": len(configs_a), "protocol_row_count": len(protocol_a.rows), "markdown_data_row_count": md_rows_a, "patient_overlap_count": summary_a["internal_test_patient_overlap_count"], "case_overlap_count": summary_a["internal_test_case_overlap_count"], "leakage_check_passed": summary_a["leakage_check_passed"], "byte_identical_across_output_roots": bytes_a == bytes_b, "generation_summary_equal": summary_a == summary_b, "protocol_rows_equal": len(protocol_a.rows) == len(protocol_b.rows), "support_manifest_count_b": len(support_b), "adaptation_config_count_b": len(configs_b), "protocol_row_count_b": len(protocol_b.rows), "markdown_data_row_count_b": md_rows_b}, sort_keys=True))'`
+
+Exact verified results:
+
+- `uv run ruff check .`: PASS, `All checks passed!`
+- `uv run ruff format --check .`: PASS, `132 files already formatted`
+- `uv run mypy src`: PASS, `Success: no issues found in 53 source files`
+- `uv run pytest -q`: PASS, `769 passed, 2 skipped in 388.27s (0:06:28)`
+- `uv run protoem-ct generate-phase4-fewshot-protocol --help`: PASS
+- Synthetic Phase 4 publication: PASS
+- Synthetic determinism comparison across two external output roots: PASS
+
+Duration and memory remain unavailable for Phase 4 close-out because no adaptation training or
+inference execution was performed in Phase 4. This is intentional. The existing
+`fewshot_run_summary_v1` schema already supports unavailable execution measurements through nullable
+`duration_seconds` and explicit `memory_availability_status` with null memory fields.
 
 ## Implementation Notes and Command Results
 
