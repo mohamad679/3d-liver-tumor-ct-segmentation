@@ -9,14 +9,13 @@ Phase 1 is completed locally.
 Phase 2 Gate 2 close-out is completed locally from the approved real-data development-cohort QA and
 leakage artifacts.
 
-Phase 3 Gate 3 baseline scope is treated as completed and merged for Phase 4 planning purposes on
-the user-confirmed repository state. Phase 4 close-out remains limited to the implemented few-shot
-protocol contracts and repository-wide verification required for Gate 4. It does not audit, rerun,
-verify, or modify any completed Phase 3 behavior beyond dependencies exercised by repository-wide
-checks.
+Phase 3 Gate 3 baseline scope is treated as completed and merged for later-phase planning purposes
+on the user-confirmed repository state. Phase 4 is treated as completed with Gate 4 closed for
+planning purposes on the user-confirmed repository state. This Phase 5 planning update does not
+audit, rerun, verify, or modify any completed Phase 3 or Phase 4 behavior.
 
-Active phase: Phase 4 few-shot protocol is completed locally and Gate 4 is closed on branch
-`phase/4-fewshot-protocol`.
+Active phase: Phase 5 foundation-retrieval planning on branch `phase/5-foundation-retrieval` from
+base commit `41b152a`.
 
 ## Phase 0 Scope
 
@@ -694,6 +693,319 @@ Duration and memory remain unavailable for Phase 4 close-out because no adaptati
 inference execution was performed in Phase 4. This is intentional. The existing
 `fewshot_run_summary_v1` schema already supports unavailable execution measurements through nullable
 `duration_seconds` and explicit `memory_availability_status` with null memory fields.
+
+## Phase 5 Scope
+
+Phase 5 establishes the retrieval-and-prototype foundation layer that sits between the completed
+Phase 4 few-shot protocol and any later transductive refinement. The Phase 5 objective is to build
+deterministic feature extraction, deterministic embedding caching, exact nearest-support retrieval,
+foreground/background prototype memory, prototype-only inference, and a reproducible comparator
+between no-retrieval and nearest-support retrieval. Phase 5 must remain non-transductive.
+
+Phase 5 includes:
+
+- modular `FeatureEncoder3D` and `PromptableSegmenter3D` interfaces with narrow typed contracts;
+- one explicit SegResNet feature adapter built on the existing MONAI SegResNet baseline family;
+- a deterministic embedding cache keyed by preprocessing hash, checkpoint hash, encoder identity,
+  and input identity;
+- machine-readable embedding and cache metadata artifacts using canonical JSON and stable SHA-256
+  hashing;
+- exact cosine-similarity retrieval over persisted support embeddings;
+- deterministic foreground/background support prototype construction;
+- prototype-only inference with no learnable updates;
+- a deterministic no-retrieval versus nearest-support comparison artifact;
+- CLI and publication entry points for cache generation, retrieval/prototype publication, and
+  bounded synthetic smoke execution; and
+- unit, integration, leakage, determinism, and CPU synthetic smoke coverage for the Phase 5
+  contracts.
+
+Phase 5 excludes:
+
+- any learnable transductive update on query features or logits;
+- any EM-like refinement, E-step, M-step, entropy objective, balance objective, consistency term,
+  proximal term, or other iterative self-training procedure;
+- any implementation of Phase 6;
+- any external 3D-IRCADb-01 validation;
+- any mutation of the immutable internal-test definition established earlier;
+- any use of external labels for design, retrieval tuning, support selection, or comparator
+  selection; and
+- any optional foundation-model adapter unless code availability, licensing, practical weights, and
+  practical compute feasibility are explicitly verified first.
+
+## Phase 5 Scientific and Data Boundaries
+
+Phase 5 consumes only persisted Phase 2 development artifacts, the immutable internal-test cohort
+definition, completed Phase 4 support-manifest artifacts, completed Phase 4 protocol artifacts where
+relevant, and existing Phase 3/Phase 4 baseline checkpoints or initialization references. Support
+patients remain drawn only from non-test development partitions. Query evaluation remains confined to
+the immutable internal-test cohort. Support/query patient disjointness and support/query case
+disjointness remain mandatory.
+
+Phase 5 does not update model weights, support embeddings, query embeddings, or prototypes using
+query labels or pseudo-labels. Query features may be encoded and compared, but they must not drive
+learnable parameter updates in this phase. Any transductive refinement trace belongs to Phase 6 and
+must not be claimed, fabricated, or partially implemented in Phase 5.
+
+The optional foundation-model adapter remains out of scope unless all of the following are verified
+practical before implementation: usable local code path, acceptable license, compatible weights,
+tractable CPU/GPU memory and runtime, and a repository-safe way to reference the adapter without
+committing weights. Until then, Phase 5 planning is anchored on the SegResNet feature adapter only.
+
+## Phase 5 Planned Implementation Sequence
+
+Each numbered substage is a reviewable implementation unit. Work remains on one named substage at a
+time:
+
+1. Define `FeatureEncoder3D` and `PromptableSegmenter3D` interfaces plus typed retrieval/prototype
+   contracts.
+2. Implement the SegResNet feature adapter using explicit existing SegResNet feature boundaries.
+3. Define embedding-artifact and cache-schema contracts plus their canonical hash payloads.
+4. Implement deterministic embedding-cache validation, path safety, and external publication.
+5. Implement exact cosine-similarity retrieval with deterministic ordering and tie-breaking.
+6. Implement support prototype memory construction for foreground and background classes.
+7. Implement prototype-only inference with explicit empty-foreground handling.
+8. Implement the no-retrieval versus nearest-support comparison artifact and summary surface.
+9. Add CLI/publication paths and bounded CPU synthetic smoke execution for the Phase 5 contracts.
+10. Run final Phase 5 verification and evaluate Gate 5 without implementing any Phase 6 method.
+
+## Phase 5 Planned Artifacts
+
+- `retrieval_embedding_manifest_v1` or equivalent artifact enumerating one deterministic embedding
+  cache publication
+- `retrieval_embedding_record_v1` or equivalent per-input embedding metadata contract keyed by
+  preprocessing hash, checkpoint hash, encoder identity, and input identity
+- `prototype_memory_v1` artifact recording deterministic foreground/background prototype summaries
+  for one support set
+- `retrieval_result_v1` artifact recording exact cosine scores, ordered nearest supports, and
+  deterministic tie resolution
+- `prototype_inference_summary_v1` artifact recording one prototype-only query inference contract
+  without inventing metrics
+- `retrieval_comparison_table_v1` artifact comparing no-retrieval and nearest-support retrieval
+  configurations without implying transductive updates
+- optional derived Markdown summaries generated only from saved JSON artifacts
+
+All generated artifacts remain outside Git beneath explicit external output roots.
+
+## Phase 5 Planned Files and Directories
+
+The exact implementation may adjust filenames modestly, but the Phase 5 plan expects work in these
+surfaces while avoiding broad refactors:
+
+- `docs/PHASE_PLAN.md`
+- `configs/phase5_foundation_retrieval.yaml`
+- `src/protoem_ct/models/__init__.py`
+- `src/protoem_ct/models/interfaces.py`
+- `src/protoem_ct/models/segresnet_adapter.py`
+- `src/protoem_ct/retrieval/__init__.py`
+- `src/protoem_ct/retrieval/artifacts.py`
+- `src/protoem_ct/retrieval/cache.py`
+- `src/protoem_ct/retrieval/cosine.py`
+- `src/protoem_ct/retrieval/prototypes.py`
+- `src/protoem_ct/retrieval/inference.py`
+- `src/protoem_ct/retrieval/publication.py`
+- `src/protoem_ct/cli/main.py`
+- `src/protoem_ct/baselines/monai_segresnet.py`
+- `src/protoem_ct/baselines/provenance.py`
+- `src/protoem_ct/artifacts/hashing.py`
+- `tests/unit/test_phase5_interfaces.py`
+- `tests/unit/test_phase5_segresnet_adapter.py`
+- `tests/unit/test_phase5_embedding_artifacts.py`
+- `tests/unit/test_phase5_cache.py`
+- `tests/unit/test_phase5_cosine_retrieval.py`
+- `tests/unit/test_phase5_prototypes.py`
+- `tests/unit/test_phase5_inference.py`
+- `tests/unit/test_phase5_comparison.py`
+- `tests/unit/test_phase5_leakage.py`
+- `tests/integration/test_phase5_cli.py`
+- `tests/integration/test_phase5_publication.py`
+- `tests/smoke/test_phase5_retrieval_smoke.py`
+
+The preferred implementation location is the existing `src/protoem_ct/models` and
+`src/protoem_ct/retrieval` packages, which are currently narrow placeholders and therefore allow
+Phase 5 to be added without disturbing completed Phase 3 and Phase 4 modules.
+
+## Phase 5 Interface and Scientific Contracts
+
+### FeatureEncoder3D
+
+`FeatureEncoder3D` should expose a pure inference-time contract that accepts one preprocessed 3D CT
+input tensor plus explicit encoder metadata and returns one deterministic dense feature tensor plus a
+machine-readable encoder descriptor. The returned feature tensor must have explicit channel-first
+shape `(C, D_f, H_f, W_f)` with a documented spatial downsampling relation to the preprocessed input
+shape `(1, D, H, W)`.
+
+For the initial Phase 5 implementation, the SegResNet adapter should define one explicit feature
+boundary and keep it fixed for the phase. The contract should document whether the chosen features
+come from the final decoder stage before the segmentation head or from another explicit internal
+stage. The adapter must fail explicitly if the expected SegResNet boundaries are absent or
+ambiguous.
+
+### PromptableSegmenter3D
+
+`PromptableSegmenter3D` should expose a deterministic inference-only contract that accepts one query
+feature tensor and one support-derived prompt object, then returns one finite query logit tensor or
+probability tensor with explicit spatial shape. In Phase 5 the prompt object is limited to support
+prototypes; it must not include learnable query-conditioned updates.
+
+### Feature normalization
+
+Feature normalization should be fixed and explicit. The recommended Phase 5 default is per-voxel
+L2-normalization across the feature-channel dimension after feature extraction and before cosine
+comparison or prototype construction. The implementation plan should treat this normalization rule
+as part of the artifact identity because changing it changes cache validity and retrieval outcomes.
+
+### Cosine similarity
+
+Cosine similarity should be defined exactly as the dot product between two L2-normalized embedding
+vectors. If embeddings are compared after spatial pooling, the pooling rule must be fixed first and
+recorded in the artifact schema. If embeddings remain dense, the reduction rule over spatial
+positions must be fixed and recorded explicitly rather than inferred.
+
+Tie-breaking must be deterministic. The planned rule is descending cosine score, then ascending
+anonymous support patient ID, then ascending anonymous support case ID, then ascending support
+manifest assignment index. No Python set/dict iteration order may affect retrieval rank.
+
+### Foreground/background prototype construction
+
+Support prototype memory should be built deterministically from support features and support masks
+only. The Phase 5 foreground prototype is the mean of all normalized support feature vectors whose
+support mask voxel is foreground tumor after any documented feature-resolution alignment step. The
+background prototype is the mean of all normalized support feature vectors whose aligned support mask
+voxel is background. If feature-resolution alignment requires downsampling masks, the method must be
+fixed, explicit, and deterministic.
+
+### Empty-foreground support handling
+
+If a selected support case has no foreground tumor voxels after aligned mask projection, the case
+must not silently fabricate a foreground prototype contribution. The artifact must record empty-mask
+status explicitly. The planned fallback is to exclude that support case from the foreground prototype
+accumulator while retaining its background contribution, then fail explicitly if all support cases
+for that support set are foreground-empty.
+
+### Query inference rule
+
+Prototype-only inference should compute query feature vectors, normalize them with the same fixed
+rule, and produce class scores from similarity to the background and foreground prototypes without
+any gradient-based or iterative update. The initial recommended rule is per-voxel cosine similarity
+to the two class prototypes followed by a deterministic two-class argmax or equivalent deterministic
+probability mapping. Phase 5 should record whichever rule is chosen and keep it fixed for the phase.
+
+### No-retrieval and nearest-support comparators
+
+The no-retrieval comparator should use the full fixed support set attached to the chosen Phase 4
+support manifest for prototype construction, without ranking or filtering by query-support
+similarity. The nearest-support comparator should rank support cases by the exact cosine retrieval
+rule and build prototypes from the top-ranked support subset under a fixed deterministic policy that
+is declared up front in configuration and artifacts. If the initial implementation uses
+nearest-support retrieval with one top-ranked support case, that fact must be stated explicitly and
+must not be generalized in documentation beyond what is implemented.
+
+### Patient-disjoint and immutable internal-test requirements
+
+Every published Phase 5 artifact must retain links back to the exact support manifest hash, source
+development manifest hash, source development split hash, and immutable internal-test cohort hash.
+Support and query identities must remain anonymous and patient-disjoint. Any cache or retrieval plan
+that mixes support and internal-test identities must fail explicitly.
+
+## Phase 5 Reproducibility Contracts
+
+- Use existing canonical JSON and SHA-256 hashing utilities rather than introducing a second hashing
+  stack.
+- Derive artifact hashes only from canonical payloads with deterministic key ordering.
+- Keep deterministic ordering explicit for embedding records, retrieval result rows, prototype
+  members, comparator rows, and any Markdown derived from JSON artifacts.
+- Do not place timestamps, hostnames, usernames, environment-specific values, or absolute local
+  paths inside deterministic Phase 5 artifacts.
+- The embedding cache key must include at least preprocessing hash, checkpoint hash, encoder
+  identity, encoder configuration identity, normalization identity, and input identity.
+- Changing preprocessing hash or checkpoint hash must invalidate cache reuse deterministically.
+- Repeated publication into separate empty output roots with identical explicit inputs must produce
+  byte-identical deterministic JSON artifacts.
+- Write generated artifacts only beneath explicit external output roots with path-containment and
+  symlink-escape guards.
+- Do not commit medical data, embeddings, predictions, checkpoints, model weights, or other large
+  generated artifacts to Git.
+
+## Phase 5 Planned Verification
+
+- Interface-conformance tests for `FeatureEncoder3D` and `PromptableSegmenter3D`
+- Adapter tests proving explicit SegResNet feature output shape and boundary selection
+- Deterministic embedding tests for identical explicit inputs
+- Cache hit/miss and cache invalidation tests when preprocessing hash or checkpoint hash changes
+- Cosine retrieval correctness tests with fixed synthetic embeddings
+- Deterministic tie-handling tests
+- Prototype construction tests for foreground/background prototypes
+- Empty-mask behavior tests proving explicit exclusion/failure semantics
+- Prototype-only inference tests for output shape and finite-valued outputs
+- No-retrieval versus nearest-support comparison artifact tests
+- Leakage tests proving zero support/internal-test patient overlap and zero case overlap in all
+  published Phase 5 artifacts
+- Integration tests for deterministic CLI/publication paths
+- CPU synthetic smoke tests for the end-to-end Phase 5 retrieval/prototype publication surface
+- `uv run ruff check .`
+- `uv run ruff format --check .`
+- `uv run mypy src tests`
+- targeted pytest selection for the new Phase 5 unit, integration, leakage, determinism, and smoke
+  tests
+
+Full-repository training or real-data inference is not part of the Phase 5 planning scope. Any
+Phase 5 smoke path must stay synthetic and CPU-bounded unless the user later authorizes a distinct
+execution step.
+
+## Phase 5 Risks and Safeguards
+
+- Risk: SegResNet internal feature boundaries may be ambiguous or unstable across versions.
+  Safeguard: use one explicit adapter contract tied to known attributes and fail if the boundary is
+  missing or ambiguous.
+- Risk: feature-map resolution may not align cleanly with support masks.
+  Safeguard: document one deterministic mask-to-feature alignment rule and test it on synthetic
+  fixtures.
+- Risk: dense 3D embeddings can be large and expensive to cache.
+  Safeguard: keep artifact schemas explicit about shape, datatype, and cache scope, and prefer a
+  narrow first implementation before adding alternate storage strategies.
+- Risk: empty tumor masks can invalidate foreground prototype construction.
+  Safeguard: record empty-mask status explicitly and fail when no valid foreground prototype can be
+  formed.
+- Risk: cache contamination can silently mix embeddings from incompatible preprocessing or
+  checkpoints.
+  Safeguard: encode preprocessing hash, checkpoint hash, encoder identity, and normalization rule
+  directly into cache identity and validation.
+- Risk: Phase 5 can drift into Phase 6 transductive refinement.
+  Safeguard: prohibit learnable updates, EM-like refinement, iterative pseudo-labeling, and any
+  objective trace that belongs to Phase 6.
+- Risk: optional foundation-model weights may be impractical or unavailable.
+  Safeguard: keep the foundation-model adapter excluded unless code, license, weights, and compute
+  are explicitly verified practical first.
+
+## Gate 5 Scope Interpretation
+
+The blueprint wording for Gate 5 is broader than the intended Phase 5 implementation scope in this
+repository. For this project, Gate 5 should be interpreted as the non-transductive
+retrieval-and-prototype foundation milestone, not as evidence of Phase 6 transductive refinement.
+
+Phase 5 acceptance should therefore require:
+
+- reproducible feature-encoder and promptable-segmenter interfaces;
+- a valid explicit SegResNet feature adapter;
+- reproducible embedding-cache artifacts with deterministic invalidation;
+- exact cosine retrieval with deterministic tie handling;
+- reproducible foreground/background prototype artifacts;
+- valid prototype-only inference artifacts with finite outputs;
+- a deterministic no-retrieval versus nearest-support comparison artifact;
+- leakage-safe support/query separation tied to the immutable internal-test cohort; and
+- passing Phase 5 unit, integration, determinism, leakage, and synthetic smoke verification.
+
+Phase 5 acceptance must not claim:
+
+- learnable transductive adaptation;
+- EM/E-step/M-step behavior;
+- entropy or balance optimization;
+- iterative refinement traces;
+- objective improvements attributable to Phase 6 methods; or
+- external-validation findings.
+
+Those broader transductive refinement traces belong to Phase 6 and must remain explicitly out of
+scope for Phase 5 planning, implementation, testing, and gate documentation.
 
 ## Implementation Notes and Command Results
 
