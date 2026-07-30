@@ -9,11 +9,14 @@ Phase 1 is completed locally.
 Phase 2 Gate 2 close-out is completed locally from the approved real-data development-cohort QA and
 leakage artifacts.
 
-Active phase: Phase 3 baselines. Phase 3 status is in progress from base commit
-`907ea9d3f559ce959b92bc78c05c75c8187a5f32` on branch `phase/3-baselines`.
+Phase 3 Gate 3 baseline scope is treated as completed and merged for Phase 4 planning purposes on
+the user-confirmed repository state. Phase 4 close-out remains limited to the implemented few-shot
+protocol contracts and repository-wide verification required for Gate 4. It does not audit, rerun,
+verify, or modify any completed Phase 3 behavior beyond dependencies exercised by repository-wide
+checks.
 
-Phase 4 and later phases remain blocked until the Phase 3 Gate 3 baseline scope is completed,
-reviewed, and merged.
+Active phase: Phase 4 few-shot protocol is completed locally and Gate 4 is closed on branch
+`phase/4-fewshot-protocol`.
 
 ## Phase 0 Scope
 
@@ -385,7 +388,312 @@ checkpoint and prediction files remain outside Git; metric JSON is produced from
 and labels by project code; all repository quality checks and GitHub-hosted CI pass; and Gate 3 is
 closed without requiring full training on all 131 development cases.
 
-Phase 4 cannot begin before Gate 3 is merged.
+## Phase 4 Scope
+
+Phase 4 establishes the deterministic few-shot adaptation protocol on the immutable internal
+development test cohort only. The objective is protocol definition, support-manifest generation,
+adaptation-mode control, and auditable experiment orchestration. Phase 4 must not introduce
+ProtoEM-CT, retrieval, prototype memory, robustness corruptions, uncertainty analysis, external
+validation, or any Phase 5 or later method work.
+
+Phase 4 includes:
+
+- deterministic patient-level support-manifest generation derived from the existing Phase 2
+  development manifest, development split, and lesion-summary artifacts;
+- fixed support-set sizes `K = 1, 2, 5, 10, 20`;
+- at least three fixed support manifests per `K`;
+- strict support/test patient disjointness with the immutable internal-test cohort used only as the
+  Phase 4 query/test cohort;
+- lesion-burden-aware support selection where feasible from the saved Phase 2 lesion summaries,
+  while failing explicitly or falling back to documented deterministic nonstratified ranking when a
+  stratum is too small for the requested `K`;
+- adaptation-mode support for head-only, decoder-only, and full fine-tuning;
+- machine-readable logging of trainable-parameter count and adaptation duration, plus memory usage
+  when the runtime can measure it without introducing nondeterministic side effects;
+- a deterministic protocol-table artifact enumerating each support manifest, adaptation mode,
+  source hashes, and cohort-role assignments;
+- CLI and orchestration entry points for generating support manifests and running bounded Phase 4
+  few-shot protocol executions; and
+- unit, integration, leakage, determinism, and synthetic smoke coverage for the new contracts.
+
+Phase 4 excludes:
+
+- any change to the Phase 2 manifest or split policy artifacts;
+- any mutation of the immutable internal-test cohort definition;
+- any use of validation or test labels to tune support selection, model choice, or protocol
+  selection outside the predeclared deterministic rules;
+- any use of the external 3D-IRCADb-01 cohort;
+- any robustness, calibration, uncertainty, ensembling, or ablation-report scope beyond the Phase 4
+  protocol table and run artifacts; and
+- any ProtoEM-CT E-step, M-step, pseudo-labeling, memory-bank, or transductive prototype method.
+
+## Phase 4 Scientific and Data Boundaries
+
+Phase 4 consumes only persisted Phase 2 development artifacts and Phase 3 baseline checkpoints or
+model initialization contracts. The immutable internal test cohort remains the only query/test
+cohort for Phase 4. Support patients must be drawn from the non-test development partitions only,
+with no patient or case overlap against internal test.
+
+Support manifests are patient-level artifacts. Every support manifest must record:
+
+- the exact source development manifest hash;
+- the exact source development split hash;
+- the exact lesion-summary artifact hash when stratification is used;
+- the support-selection policy version;
+- the support-manifest seed or ranking seed;
+- the requested `K`;
+- the manifest replicate identifier; and
+- the ordered anonymous patient and case assignments.
+
+Phase 4 may use lesion burden only from saved development-cohort lesion-summary artifacts produced in
+Phase 2. No support policy may inspect internal-test labels, internal-test lesion summaries, or any
+external labels. If lesion-burden stratification is infeasible for a requested `K` because a
+stratum lacks enough training/validation patients, the artifact must record the reason and switch to
+the predefined deterministic fallback policy instead of silently changing `K` or sampling rules.
+
+## Phase 4 Planned Implementation Sequence
+
+Each numbered substage is a reviewable implementation unit. Work remains on one named substage at a
+time:
+
+1. Define Phase 4 artifact schemas and hashing contracts for support manifests, adaptation configs,
+   protocol tables, and few-shot run summaries.
+2. Implement deterministic support-candidate extraction from the Phase 2 development manifest,
+   development split, and lesion-summary artifacts.
+3. Implement lesion-burden stratification buckets and the deterministic fallback path for
+   infeasible strata.
+4. Generate three or more fixed support manifests for each `K in {1, 2, 5, 10, 20}` with immutable
+   replicate identifiers.
+5. Add leakage guards that reject any support manifest overlapping the immutable internal-test
+   cohort at patient or case level.
+6. Add adaptation-mode contracts for head-only, decoder-only, and full fine-tuning, including
+   explicit trainable-parameter-group validation and parameter-count logging.
+7. Extend the Phase 3 baseline execution path with bounded Phase 4 adaptation-run orchestration,
+   duration logging, and memory logging where available.
+8. Emit the deterministic protocol-table artifact linking support manifests, adaptation modes,
+   checkpoints or initialization sources, and output artifacts.
+9. Add Phase 4 CLI commands for support-manifest generation, protocol-table generation, and bounded
+   synthetic few-shot smoke execution.
+10. Add unit, integration, leakage, determinism, and synthetic smoke tests.
+11. Close Gate 4 without expanding into Phase 5 or ProtoEM-CT.
+
+## Phase 4 Planned Artifacts
+
+- `fewshot_support_manifest_v1` artifact for one fixed support cohort replicate
+- `fewshot_adaptation_config_v1` artifact for one adaptation mode and runtime contract
+- `fewshot_protocol_table_v1` artifact enumerating all planned `K x replicate x adaptation-mode`
+  runs
+- `fewshot_run_summary_v1` artifact capturing support-manifest hash, adaptation config hash,
+  checkpoint or initialization provenance, trainable-parameter count, duration, optional memory
+  statistics, metric artifact links, and failure codes when present
+- optional deterministic synthetic few-shot fixture artifact if the Phase 3 synthetic dataset is
+  extended to exercise support/query adaptation paths without real data
+
+All generated artifacts remain outside Git beneath explicit external output roots.
+
+## Phase 4 Planned Files and Directories
+
+The exact implementation may adjust filenames modestly, but the Phase 4 plan expects work in these
+surfaces:
+
+- `configs/phase4_fewshot_protocol.yaml`
+- `src/protoem_ct/fewshot/__init__.py`
+- `src/protoem_ct/fewshot/artifacts.py`
+- `src/protoem_ct/fewshot/support.py`
+- `src/protoem_ct/fewshot/stratification.py`
+- `src/protoem_ct/fewshot/adaptation.py`
+- `src/protoem_ct/fewshot/protocol.py`
+- `src/protoem_ct/fewshot/logging.py`
+- `src/protoem_ct/cli/main.py`
+- `src/protoem_ct/baselines/monai_segresnet.py`
+- `src/protoem_ct/baselines/provenance.py`
+- `src/protoem_ct/baselines/paths.py`
+- `tests/unit/test_phase4_support.py`
+- `tests/unit/test_phase4_stratification.py`
+- `tests/unit/test_phase4_adaptation.py`
+- `tests/unit/test_phase4_protocol_artifacts.py`
+- `tests/unit/test_phase4_leakage_guards.py`
+- `tests/integration/test_phase4_support_cli.py`
+- `tests/integration/test_phase4_protocol_cli.py`
+- `tests/integration/test_phase4_synthetic_smoke.py`
+
+If implementation reuses existing Phase 2 or Phase 3 modules instead of introducing a new
+`fewshot/` package, the same contracts still apply and the replacement file list must stay narrow
+and explicit.
+
+## Phase 4 Adaptation-Mode Contract
+
+Phase 4 defines three allowed adaptation modes:
+
+- `head_only`: only the terminal segmentation head parameters are trainable;
+- `decoder_only`: decoder plus segmentation head parameters are trainable while encoder parameters
+  remain frozen; and
+- `full_finetune`: all model parameters are trainable.
+
+Each mode must:
+
+- expose a deterministic parameter-group selection rule;
+- validate that at least one parameter and only the intended parameter groups are trainable;
+- emit the exact trainable-parameter count into the run summary artifact; and
+- fail explicitly when the selected baseline family cannot represent the requested grouping without
+  ambiguous module boundaries.
+
+The initial Phase 4 implementation should target the baseline family whose module structure makes
+these groupings explicit and testable. If a second baseline family cannot support the same grouping
+contract cleanly, the Phase 4 implementation must record that limitation rather than silently
+approximating the mode.
+
+## Phase 4 Protocol-Table Contract
+
+The protocol table is a deterministic machine-readable artifact and, if convenient, a derived
+Markdown summary. It must enumerate at minimum:
+
+- support size `K`;
+- fixed replicate identifier, with at least three replicates per `K`;
+- support-manifest artifact hash;
+- support-selection policy version and stratification status;
+- adaptation mode;
+- source development manifest hash;
+- source development split hash;
+- immutable internal-test cohort identifier or hash reference;
+- initialization or checkpoint provenance reference;
+- planned output location identifiers; and
+- run status fields once executed.
+
+The protocol table is the canonical Phase 4 inventory of planned few-shot runs. Downstream
+reporting must read from this persisted artifact rather than reconstructing the plan ad hoc.
+
+## Phase 4 Planned Verification
+
+- Unit tests for support-manifest schema validation, deterministic serialization, hash stability,
+  replicate generation, and ordered assignment behavior
+- Unit tests for lesion-burden stratification, explicit infeasibility handling, and deterministic
+  fallback selection
+- Unit tests for adaptation-mode parameter freezing, trainable-parameter counting, and explicit
+  invalid-mode errors
+- Unit tests for duration and optional memory logging fields, including the `unavailable` or null
+  path when runtime measurement is unsupported
+- Leakage tests proving zero support/test patient overlap and zero support/test case overlap for
+  every generated support manifest
+- Determinism tests proving byte-identical support manifests and protocol tables when rerun with the
+  same source artifacts, seeds, and metadata
+- Integration tests for CLI generation of support manifests and protocol tables
+- Integration tests for bounded synthetic few-shot smoke execution using saved synthetic fixtures and
+  no real-data dependency
+- `uv run ruff check .`
+- `uv run ruff format --check .`
+- `uv run mypy src tests`
+- targeted pytest selection for the new Phase 4 unit, integration, leakage, determinism, and smoke
+  tests
+
+Full-repository test-suite execution is not required by this planning document. The implementation
+phase will define the minimal Phase 4-targeted command set needed for Gate 4.
+
+## Phase 4 Risks and Safeguards
+
+- Risk: deterministic support selection can drift if upstream manifest ordering changes.
+  Safeguard: derive all rankings from saved artifact hashes, explicit seeds, and canonical sorted
+  anonymous identifiers only.
+- Risk: lesion-burden stratification can become infeasible for small `K` or skewed lesion
+  distributions.
+  Safeguard: require explicit feasibility checks and a recorded deterministic fallback policy.
+- Risk: support/query leakage can occur through patient duplication, case duplication, or reuse of
+  the internal-test cohort.
+  Safeguard: enforce patient- and case-level zero-overlap validation before publication and before
+  any run starts.
+- Risk: adaptation-mode semantics can differ across baseline families.
+  Safeguard: require explicit parameter-group validation and reject unsupported groupings.
+- Risk: duration and memory metrics can become platform-specific or unavailable.
+  Safeguard: log duration deterministically from bounded wall-clock measurement conventions and store
+  memory as an explicit optional field with a documented unavailable state.
+- Risk: protocol-table regeneration can diverge from executed runs.
+  Safeguard: make the protocol table the persisted source of truth and link every run summary back
+  to support-manifest and adaptation-config hashes.
+- Risk: Phase 4 scope can drift into ProtoEM-CT or later transductive methods.
+  Safeguard: keep the implementation limited to deterministic support selection, bounded adaptation
+  modes, and auditable orchestration only.
+
+## Gate 4 Acceptance Criteria
+
+Gate 4 is accepted when:
+
+- deterministic patient-level support manifests exist for `K = 1, 2, 5, 10, 20`;
+- each `K` has at least three fixed support manifests with stable replicate identifiers;
+- every support manifest is linked to the exact source development manifest hash and development
+  split hash;
+- support patients and cases are disjoint from the immutable internal-test cohort in every
+  generated artifact;
+- lesion-burden stratification is used where feasible and deterministic fallback behavior is
+  explicitly recorded where infeasible;
+- head-only, decoder-only, and full-fine-tuning adaptation modes are implemented with explicit
+  parameter-group validation;
+- trainable-parameter count is logged for every adaptation mode, and duration plus memory are logged
+  when available with a documented unavailable state otherwise;
+- the deterministic protocol-table artifact enumerates all planned `K x replicate x adaptation-mode`
+  runs and their source hashes;
+- unit, integration, leakage, determinism, and synthetic smoke tests for the Phase 4 contracts pass;
+- no tracked medical data, support manifests containing PHI, checkpoints, predictions, or large
+  generated artifacts are Git-visible; and
+- Gate 4 close-out remains limited to few-shot protocol definition and bounded adaptation execution,
+  without implementing ProtoEM-CT or Phase 5 methods.
+
+## Phase 4 Gate 4 Close-Out Evidence
+
+Verified on 2026-07-30 from branch `phase/4-fewshot-protocol` at user-confirmed `HEAD`
+`4f0a356`.
+
+- Deterministic support-manifest generation exists for `K = 1, 2, 5, 10, 20`, with exactly three
+  fixed replicates per `K`, for 15 total support manifests.
+- Support selection remains patient-level, support/internal-test patient overlap is zero, and
+  support/internal-test case overlap is zero in the verified synthetic publication result.
+- Lesion-burden stratification and its deterministic fallback are implemented in the Phase 4
+  support-generation path and exercised by the passing Phase 4 unit test surface.
+- Adaptation modes `head_only`, `decoder_only`, and `full_finetune` are implemented for the
+  SegResNet boundary contract. Verified unit-test parameter-count evidence on the deterministic test
+  model is:
+  - `head_only`: total `98`, trainable `15`, frozen `83`
+  - `decoder_only`: total `98`, trainable `38`, frozen `60`
+  - `full_finetune`: total `98`, trainable `98`, frozen `0`
+- Deterministic adaptation-config construction and deterministic protocol-table generation are
+  implemented and verified. The protocol table contains exactly `45` rows for
+  `5 K values x 3 replicates x 3 adaptation modes`.
+- Deterministic filesystem publication and CLI generation are implemented. One synthetic Phase 4
+  publication using existing test-fixture constructors produced:
+  - `15` support manifests
+  - `45` adaptation configs
+  - `45` protocol-table JSON rows
+  - `45` protocol-table Markdown data rows
+  - zero support/internal-test patient overlap
+  - zero support/internal-test case overlap
+  - byte-identical artifacts across two separate external output roots
+
+Exact verification commands executed:
+
+- `uv run ruff check .`
+- `uv run ruff format --check .`
+- `uv run mypy src`
+- `uv run pytest -q`
+- `uv run protoem-ct generate-phase4-fewshot-protocol --help`
+- `mktemp -d /private/tmp/protoem-ct-phase4-gate4.XXXXXX`
+- `uv run python -c 'import importlib.util; from pathlib import Path; from protoem_ct.artifacts.phase2_schemas import phase2_artifact_to_json; root = Path("/private/tmp/protoem-ct-phase4-gate4.htyLrT/inputs"); root.mkdir(parents=True, exist_ok=True); helper_path = Path("/Users/mohsenshamsijazeb/Projects/protoem-ct/tests/unit/test_fewshot_protocol.py"); spec = importlib.util.spec_from_file_location("_fewshot_protocol_helpers", helper_path); module = importlib.util.module_from_spec(spec); assert spec is not None and spec.loader is not None; spec.loader.exec_module(module); manifest = module._manifest(); split = module._split(manifest); lesion = module._lesion_artifact(manifest, split); (root / "manifest.json").write_text(phase2_artifact_to_json(manifest), encoding="utf-8"); (root / "split.json").write_text(phase2_artifact_to_json(split), encoding="utf-8"); (root / "lesion.json").write_text(phase2_artifact_to_json(lesion), encoding="utf-8"); print(root / "manifest.json"); print(root / "split.json"); print(root / "lesion.json")'`
+- `uv run protoem-ct generate-phase4-fewshot-protocol --manifest /private/tmp/protoem-ct-phase4-gate4.htyLrT/inputs/manifest.json --split /private/tmp/protoem-ct-phase4-gate4.htyLrT/inputs/split.json --lesion-artifact /private/tmp/protoem-ct-phase4-gate4.htyLrT/inputs/lesion.json --output-root /private/tmp/protoem-ct-phase4-gate4.htyLrT/out-a --initialization-reference-type baseline_provenance --initialization-reference-identifier baseline_init_001 --initialization-artifact-sha256 1111111111111111111111111111111111111111111111111111111111111111 --base-seed 1729 --config /Users/mohsenshamsijazeb/Projects/protoem-ct/configs/phase4_fewshot_protocol.yaml`
+- `uv run protoem-ct generate-phase4-fewshot-protocol --manifest /private/tmp/protoem-ct-phase4-gate4.htyLrT/inputs/manifest.json --split /private/tmp/protoem-ct-phase4-gate4.htyLrT/inputs/split.json --lesion-artifact /private/tmp/protoem-ct-phase4-gate4.htyLrT/inputs/lesion.json --output-root /private/tmp/protoem-ct-phase4-gate4.htyLrT/out-b --initialization-reference-type baseline_provenance --initialization-reference-identifier baseline_init_001 --initialization-artifact-sha256 1111111111111111111111111111111111111111111111111111111111111111 --base-seed 1729 --config /Users/mohsenshamsijazeb/Projects/protoem-ct/configs/phase4_fewshot_protocol.yaml`
+- `uv run python -c 'import json; from pathlib import Path; from protoem_ct.fewshot import fewshot_protocol_table_from_json; root_a = Path("/private/tmp/protoem-ct-phase4-gate4.htyLrT/out-a"); root_b = Path("/private/tmp/protoem-ct-phase4-gate4.htyLrT/out-b"); support_a = sorted(root_a.glob("support_manifests/k*/**/*.json")); support_b = sorted(root_b.glob("support_manifests/k*/**/*.json")); configs_a = sorted((root_a / "adaptation_configs").glob("*.json")); configs_b = sorted((root_b / "adaptation_configs").glob("*.json")); protocol_a = fewshot_protocol_table_from_json((root_a / "protocol" / "fewshot_protocol_table.json").read_bytes()); protocol_b = fewshot_protocol_table_from_json((root_b / "protocol" / "fewshot_protocol_table.json").read_bytes()); md_rows_a = sum(1 for line in (root_a / "protocol" / "fewshot_protocol_table.md").read_text(encoding="utf-8").splitlines() if line.startswith("| ")) - 2; md_rows_b = sum(1 for line in (root_b / "protocol" / "fewshot_protocol_table.md").read_text(encoding="utf-8").splitlines() if line.startswith("| ")) - 2; summary_a = json.loads((root_a / "generation_summary.json").read_text(encoding="utf-8")); summary_b = json.loads((root_b / "generation_summary.json").read_text(encoding="utf-8")); bytes_a = {path.relative_to(root_a).as_posix(): path.read_bytes() for path in root_a.rglob("*") if path.is_file()}; bytes_b = {path.relative_to(root_b).as_posix(): path.read_bytes() for path in root_b.rglob("*") if path.is_file()}; print(json.dumps({"support_manifest_count": len(support_a), "adaptation_config_count": len(configs_a), "protocol_row_count": len(protocol_a.rows), "markdown_data_row_count": md_rows_a, "patient_overlap_count": summary_a["internal_test_patient_overlap_count"], "case_overlap_count": summary_a["internal_test_case_overlap_count"], "leakage_check_passed": summary_a["leakage_check_passed"], "byte_identical_across_output_roots": bytes_a == bytes_b, "generation_summary_equal": summary_a == summary_b, "protocol_rows_equal": len(protocol_a.rows) == len(protocol_b.rows), "support_manifest_count_b": len(support_b), "adaptation_config_count_b": len(configs_b), "protocol_row_count_b": len(protocol_b.rows), "markdown_data_row_count_b": md_rows_b}, sort_keys=True))'`
+
+Exact verified results:
+
+- `uv run ruff check .`: PASS, `All checks passed!`
+- `uv run ruff format --check .`: PASS, `132 files already formatted`
+- `uv run mypy src`: PASS, `Success: no issues found in 53 source files`
+- `uv run pytest -q`: PASS, `769 passed, 2 skipped in 388.27s (0:06:28)`
+- `uv run protoem-ct generate-phase4-fewshot-protocol --help`: PASS
+- Synthetic Phase 4 publication: PASS
+- Synthetic determinism comparison across two external output roots: PASS
+
+Duration and memory remain unavailable for Phase 4 close-out because no adaptation training or
+inference execution was performed in Phase 4. This is intentional. The existing
+`fewshot_run_summary_v1` schema already supports unavailable execution measurements through nullable
+`duration_seconds` and explicit `memory_availability_status` with null memory fields.
 
 ## Implementation Notes and Command Results
 

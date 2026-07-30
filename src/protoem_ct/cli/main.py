@@ -74,6 +74,18 @@ from protoem_ct.evaluation.dummy_inference import (
     run_dummy_inference,
 )
 from protoem_ct.evaluation.metrics import EvaluationError, evaluate_predictions
+from protoem_ct.fewshot import (
+    FewshotArtifactValidationError,
+    FewshotInitializationReference,
+    FewshotProtocolError,
+    FewshotPublicationCollisionError,
+    FewshotPublicationConfigError,
+    FewshotPublicationError,
+    FewshotPublicationIOError,
+    FewshotPublicationPathError,
+    generate_and_publish_phase4_fewshot_protocol,
+    load_phase4_fewshot_protocol_settings,
+)
 from protoem_ct.reporting import ReportGenerationError, generate_synthetic_report
 
 app = typer.Typer(help="ProtoEM-CT command-line tools.")
@@ -175,6 +187,16 @@ def _raise_phase3_gate3_cli_error(exc: Exception) -> None:
     """Exit with a concise Phase 3 Gate 3 error without path leakage."""
     typer.secho(
         f"Phase 3 Gate 3 error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase4_protocol_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 4 protocol-generation error without path leakage."""
+    typer.secho(
+        f"Phase 4 few-shot protocol error: {type(exc).__name__}",
         err=True,
         fg=typer.colors.RED,
     )
@@ -983,6 +1005,121 @@ def audit_development_leakage(
     typer.echo(f"split hash: {artifact.split_hash}")
     typer.echo(f"leakage-audit hash: {artifact.audit_hash}")
     typer.echo(f"output path: {output}")
+
+
+@app.command("generate-phase4-fewshot-protocol")
+def generate_phase4_fewshot_protocol(
+    manifest_path: Annotated[
+        Path,
+        typer.Option(
+            "--manifest",
+            help="Explicit absolute Phase 2 development manifest JSON path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    split_path: Annotated[
+        Path,
+        typer.Option(
+            "--split",
+            help="Explicit absolute Phase 2 development split JSON path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    lesion_artifact_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--lesion-artifact",
+            help="Optional explicit absolute Phase 2 lesion-summary JSON path.",
+        ),
+    ] = None,
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help="Explicit absolute output root outside the repository.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    initialization_reference_type: Annotated[
+        str,
+        typer.Option(
+            "--initialization-reference-type",
+            help="Explicit initialization reference type.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    initialization_reference_identifier: Annotated[
+        str,
+        typer.Option(
+            "--initialization-reference-identifier",
+            help="Explicit initialization reference identifier.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    initialization_artifact_sha256: Annotated[
+        str | None,
+        typer.Option(
+            "--initialization-artifact-sha256",
+            help="Optional explicit initialization provenance artifact SHA-256.",
+        ),
+    ] = None,
+    initialization_checkpoint_sha256: Annotated[
+        str | None,
+        typer.Option(
+            "--initialization-checkpoint-sha256",
+            help="Optional explicit initialization checkpoint SHA-256.",
+        ),
+    ] = None,
+    base_seed: Annotated[
+        int,
+        typer.Option(
+            "--base-seed",
+            help="Explicit nonnegative base seed for deterministic config derivation.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    config_path: Annotated[
+        Path,
+        typer.Option(
+            "--config",
+            help="Path to the Phase 4 few-shot protocol OmegaConf YAML file.",
+        ),
+    ] = Path("configs/phase4_fewshot_protocol.yaml"),
+) -> None:
+    """Generate and publish deterministic Phase 4 few-shot protocol artifacts."""
+    try:
+        settings = load_phase4_fewshot_protocol_settings(config_path)
+        initialization_reference = FewshotInitializationReference(
+            reference_type=initialization_reference_type,
+            reference_identifier=initialization_reference_identifier,
+            artifact_sha256=initialization_artifact_sha256,
+            checkpoint_sha256=initialization_checkpoint_sha256,
+        )
+        result = generate_and_publish_phase4_fewshot_protocol(
+            manifest_path=manifest_path,
+            split_path=split_path,
+            lesion_artifact_path=lesion_artifact_path,
+            output_root=output_root,
+            initialization_reference=initialization_reference,
+            base_seed=base_seed,
+            settings=settings,
+        )
+    except (
+        FewshotArtifactValidationError,
+        FewshotPublicationCollisionError,
+        FewshotPublicationConfigError,
+        FewshotPublicationError,
+        FewshotPublicationIOError,
+        FewshotPublicationPathError,
+        FewshotProtocolError,
+    ) as exc:
+        _raise_phase4_protocol_cli_error(exc)
+
+    typer.echo("Phase 4 few-shot protocol generation success")
+    typer.echo(f"support manifest count: {result.support_manifest_count}")
+    typer.echo(f"adaptation config count: {result.adaptation_config_count}")
+    typer.echo(f"protocol row count: {result.protocol_row_count}")
+    typer.echo(f"protocol markdown data rows: {result.markdown_data_row_count}")
+    typer.echo(f"source manifest hash: {result.source_development_manifest_hash}")
+    typer.echo(f"source split hash: {result.source_development_split_hash}")
+    typer.echo(f"immutable test cohort hash: {result.immutable_test_cohort_hash}")
+    typer.echo(f"protocol table hash: {result.protocol_table_hash}")
+    typer.echo(f"leakage check passed: {str(result.leakage_check_passed).lower()}")
+    typer.echo(f"output root: {result.output_root}")
 
 
 @app.command("create-data")
