@@ -1,0 +1,6 @@
+phase5_foundation_retrieval:
+  schema_version: v1
+  synthetic_mode_only: true
+  nearest_support_top_k: 1
+  emit_confidence_margin: true
+  foundation_model_adapter_enabled: false
