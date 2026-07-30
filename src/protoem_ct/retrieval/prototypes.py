@@ -251,6 +251,8 @@ def _build_prototype(
     )
     contributing_voxel_count = 0
     source_identifiers: list[str] = []
+    source_patient_ids: list[str] = []
+    source_case_ids: list[str] = []
     for item in resolved_supports:
         feature_vectors = np.moveaxis(item.feature_array, 1, -1)
         selection_mask = item.aligned_mask if prototype_kind == "foreground" else ~item.aligned_mask
@@ -260,6 +262,8 @@ def _build_prototype(
         contributing_voxel_count += int(selected_vectors.shape[0])
         accumulator += selected_vectors.astype(_FLOAT_DTYPE, copy=False).sum(axis=0)
         source_identifiers.append(item.support_identifier)
+        source_patient_ids.append(item.support_patient_id)
+        source_case_ids.append(item.support_case_id)
     if contributing_voxel_count == 0:
         if prototype_kind == "foreground":
             raise EmptyForegroundPrototypeError(
@@ -283,6 +287,8 @@ def _build_prototype(
     checkpoint_hash = resolved_supports[0].metadata.checkpoint_hash
     dataset_manifest_hash = resolved_supports[0].dataset_manifest_hash
     feature_stage = resolved_supports[0].metadata.feature_stage
+    sorted_source_patient_ids = tuple(sorted(source_patient_ids))
+    sorted_source_case_ids = tuple(sorted(source_case_ids))
     if prototype_kind == "foreground":
         foreground_draft = ForegroundPrototype(
             prototype_kind="ignored",
@@ -296,6 +302,8 @@ def _build_prototype(
             checkpoint_hash=checkpoint_hash,
             dataset_manifest_hash=dataset_manifest_hash,
             feature_stage=feature_stage,
+            source_patient_ids=sorted_source_patient_ids,
+            source_case_ids=sorted_source_case_ids,
             prototype_content_sha256=content_sha256,
             prototype_identity_sha256="0" * _SHA256_HEX_LENGTH,
         )
@@ -311,6 +319,8 @@ def _build_prototype(
             checkpoint_hash=checkpoint_hash,
             dataset_manifest_hash=dataset_manifest_hash,
             feature_stage=feature_stage,
+            source_patient_ids=sorted_source_patient_ids,
+            source_case_ids=sorted_source_case_ids,
             prototype_content_sha256=content_sha256,
             prototype_identity_sha256=hash_support_prototype_identity(foreground_draft),
         )
@@ -326,6 +336,8 @@ def _build_prototype(
         checkpoint_hash=checkpoint_hash,
         dataset_manifest_hash=dataset_manifest_hash,
         feature_stage=feature_stage,
+        source_patient_ids=sorted_source_patient_ids,
+        source_case_ids=sorted_source_case_ids,
         prototype_content_sha256=content_sha256,
         prototype_identity_sha256="0" * _SHA256_HEX_LENGTH,
     )
@@ -341,6 +353,8 @@ def _build_prototype(
         checkpoint_hash=checkpoint_hash,
         dataset_manifest_hash=dataset_manifest_hash,
         feature_stage=feature_stage,
+        source_patient_ids=sorted_source_patient_ids,
+        source_case_ids=sorted_source_case_ids,
         prototype_content_sha256=content_sha256,
         prototype_identity_sha256=hash_support_prototype_identity(background_draft),
     )

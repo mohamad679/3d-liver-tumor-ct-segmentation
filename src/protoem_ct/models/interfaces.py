@@ -282,6 +282,8 @@ class SupportPrototype:
     checkpoint_hash: str = ""
     dataset_manifest_hash: str | None = None
     feature_stage: str = ""
+    source_patient_ids: tuple[str, ...] = ()
+    source_case_ids: tuple[str, ...] = ()
     prototype_content_sha256: str = ""
     prototype_identity_sha256: str = ""
 
@@ -322,6 +324,20 @@ class SupportPrototype:
             _require_sha256(self.dataset_manifest_hash, field_name="dataset_manifest_hash")
         if self.feature_stage:
             _require_identifier(self.feature_stage, field_name="feature_stage")
+        if self.source_patient_ids:
+            normalized_patient_ids = tuple(sorted(self.source_patient_ids))
+            for item in normalized_patient_ids:
+                _require_identifier(item, field_name="source_patient_ids")
+            if len(set(normalized_patient_ids)) != len(normalized_patient_ids):
+                raise RetrievalContractValidationError("source_patient_ids must be unique.")
+            object.__setattr__(self, "source_patient_ids", normalized_patient_ids)
+        if self.source_case_ids:
+            normalized_case_ids = tuple(sorted(self.source_case_ids))
+            for item in normalized_case_ids:
+                _require_identifier(item, field_name="source_case_ids")
+            if len(set(normalized_case_ids)) != len(normalized_case_ids):
+                raise RetrievalContractValidationError("source_case_ids must be unique.")
+            object.__setattr__(self, "source_case_ids", normalized_case_ids)
         if self.prototype_content_sha256:
             _require_sha256(
                 self.prototype_content_sha256,
