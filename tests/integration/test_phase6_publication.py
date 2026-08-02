@@ -8,7 +8,10 @@ from pathlib import Path
 import pytest
 
 from protoem_ct.protoem import (
+    PHASE6_ABLATION_COMPARISON_JSON_NAME,
+    PHASE6_ABLATION_COMPARISON_MARKDOWN_NAME,
     PHASE6_ABLATION_PLAN_NAME,
+    PHASE6_ABLATION_RUN_INVENTORY_JSON_NAME,
     PHASE6_CONVERGENCE_PLOT_NAME,
     PHASE6_EFFECTIVE_CONFIG_NAME,
     PHASE6_FINAL_INFERENCE_NAME,
@@ -130,4 +133,7 @@ def test_ablation_plan_and_final_inference_files_exist(tmp_path: Path) -> None:
     _ = run_and_publish_phase6_protoem(output_root=output_root, settings=settings)
 
     assert (output_root / PHASE6_ABLATION_PLAN_NAME).exists()
+    assert (output_root / PHASE6_ABLATION_COMPARISON_JSON_NAME).exists()
+    assert (output_root / PHASE6_ABLATION_COMPARISON_MARKDOWN_NAME).exists()
+    assert (output_root / PHASE6_ABLATION_RUN_INVENTORY_JSON_NAME).exists()
     assert (output_root / PHASE6_FINAL_INFERENCE_NAME).exists()

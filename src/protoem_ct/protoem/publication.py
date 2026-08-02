@@ -107,6 +107,9 @@ PHASE6_COLLAPSE_RECORD_NAME: Final[str] = "collapse_record.json"
 PHASE6_FINAL_INFERENCE_NAME: Final[str] = "final_inference.json"
 PHASE6_RUN_SUMMARY_NAME: Final[str] = "run_summary.json"
 PHASE6_SUMMARY_MARKDOWN_NAME: Final[str] = "phase6_summary.md"
+PHASE6_ABLATION_COMPARISON_JSON_NAME: Final[str] = "ablation_comparison.json"
+PHASE6_ABLATION_COMPARISON_MARKDOWN_NAME: Final[str] = "ablation_comparison_table.md"
+PHASE6_ABLATION_RUN_INVENTORY_JSON_NAME: Final[str] = "ablation_run_inventory.json"
 
 _FLOAT_DTYPE: Final[np.dtype[np.float64]] = np.dtype(np.float64)
 _MASK_DTYPE: Final[np.dtype[np.uint8]] = np.dtype(np.uint8)
@@ -254,6 +257,9 @@ class Phase6PublicationResult:
     collapse_record_path: Path | None
     final_inference_path: Path | None
     ablation_plan_path: Path
+    ablation_comparison_path: Path
+    ablation_comparison_markdown_path: Path
+    ablation_run_inventory_path: Path
     convergence_plot_path: Path
     summary_markdown_path: Path
 
@@ -582,6 +588,22 @@ def run_and_publish_phase6_protoem(
     )
     run_summary_json = protoem_run_summary_to_json(execution_package.run_summary)
     ablation_plan_json = _phase6_ablation_plan_to_json(build_protoem_ablation_execution_plan())
+    from protoem_ct.protoem.comparison import (
+        build_protoem_ablation_comparison_table,
+        build_protoem_ablation_run_inventory,
+        protoem_ablation_comparison_table_to_json,
+        protoem_ablation_run_inventory_to_json,
+        render_protoem_ablation_comparison_markdown_from_json,
+    )
+
+    ablation_comparison = build_protoem_ablation_comparison_table(settings=settings)
+    ablation_comparison_json = protoem_ablation_comparison_table_to_json(ablation_comparison)
+    ablation_comparison_markdown = render_protoem_ablation_comparison_markdown_from_json(
+        ablation_comparison_json
+    )
+    ablation_run_inventory_json = protoem_ablation_run_inventory_to_json(
+        build_protoem_ablation_run_inventory(comparison_table=ablation_comparison)
+    )
 
     summary_markdown = render_phase6_summary_markdown_from_json_artifacts(
         effective_config_json=effective_config_json,
@@ -600,6 +622,9 @@ def run_and_publish_phase6_protoem(
         PHASE6_STOPPING_RECORD_NAME: stopping_record_json,
         PHASE6_RUN_SUMMARY_NAME: run_summary_json,
         PHASE6_ABLATION_PLAN_NAME: ablation_plan_json,
+        PHASE6_ABLATION_COMPARISON_JSON_NAME: ablation_comparison_json,
+        PHASE6_ABLATION_COMPARISON_MARKDOWN_NAME: ablation_comparison_markdown,
+        PHASE6_ABLATION_RUN_INVENTORY_JSON_NAME: ablation_run_inventory_json,
         PHASE6_CONVERGENCE_PLOT_NAME: convergence_plot_png,
         PHASE6_SUMMARY_MARKDOWN_NAME: summary_markdown,
     }
@@ -636,6 +661,11 @@ def run_and_publish_phase6_protoem(
             else None
         ),
         ablation_plan_path=validated_output_root / PHASE6_ABLATION_PLAN_NAME,
+        ablation_comparison_path=validated_output_root / PHASE6_ABLATION_COMPARISON_JSON_NAME,
+        ablation_comparison_markdown_path=(
+            validated_output_root / PHASE6_ABLATION_COMPARISON_MARKDOWN_NAME
+        ),
+        ablation_run_inventory_path=validated_output_root / PHASE6_ABLATION_RUN_INVENTORY_JSON_NAME,
         convergence_plot_path=validated_output_root / PHASE6_CONVERGENCE_PLOT_NAME,
         summary_markdown_path=validated_output_root / PHASE6_SUMMARY_MARKDOWN_NAME,
     )
@@ -1265,7 +1295,10 @@ def _sha256_text(text: str) -> str:
 
 
 __all__ = [
+    "PHASE6_ABLATION_COMPARISON_JSON_NAME",
+    "PHASE6_ABLATION_COMPARISON_MARKDOWN_NAME",
     "PHASE6_ABLATION_PLAN_NAME",
+    "PHASE6_ABLATION_RUN_INVENTORY_JSON_NAME",
     "PHASE6_CONFIG_ROOT_KEY",
     "PHASE6_CONVERGENCE_PLOT_NAME",
     "PHASE6_EFFECTIVE_CONFIG_NAME",
