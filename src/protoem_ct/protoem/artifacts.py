@@ -77,6 +77,7 @@ SUPPORTED_PROTOEM_PHASE5_SCHEMA_REFERENCES: Final[frozenset[str]] = frozenset(
         "phase5_comparison_record",
         "phase5_method_definition",
         "phase5_run_summary",
+        "prototype_only_inference_result",
         "prototype_inference_summary",
         "prototype_memory",
         "retrieval_comparison_table",
