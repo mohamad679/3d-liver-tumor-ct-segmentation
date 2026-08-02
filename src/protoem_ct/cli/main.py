@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import json
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Final, cast
 
+import numpy as np
 import typer
+from omegaconf import DictConfig, OmegaConf
 
 from protoem_ct.artifacts import Phase2ArtifactError
+from protoem_ct.artifacts.hashing import JsonValue, canonical_json_bytes, sha256_json
 from protoem_ct.baselines import (
     BASELINE_PREDICTION_MANIFEST_VERSION,
     BASELINE_SYNTHETIC_DATASET_NAME,
@@ -69,11 +74,27 @@ from protoem_ct.data.synthetic import (
     load_synthetic_config,
 )
 from protoem_ct.data.validation import NiftiValidationError, validate_nifti_pair
+from protoem_ct.evaluation.calibration import compute_binary_calibration_ece
+from protoem_ct.evaluation.degradation import build_phase7_degradation_result
 from protoem_ct.evaluation.dummy_inference import (
     DummyInferenceError,
     run_dummy_inference,
 )
-from protoem_ct.evaluation.metrics import EvaluationError, evaluate_predictions
+from protoem_ct.evaluation.failure_detection import (
+    compute_failure_detection_auroc,
+    compute_uncertainty_error_correlation,
+)
+from protoem_ct.evaluation.metrics import (
+    EvaluationError,
+    compute_binary_confusion_counts,
+    dice_from_counts,
+    evaluate_predictions,
+)
+from protoem_ct.evaluation.risk_coverage import compute_risk_coverage
+from protoem_ct.evaluation.subgroups import (
+    LesionSubgroupCase,
+    build_phase7_lesion_subgroup_result,
+)
 from protoem_ct.fewshot import (
     FewshotArtifactValidationError,
     FewshotInitializationReference,
@@ -106,6 +127,63 @@ from protoem_ct.retrieval import (
     load_phase5_foundation_retrieval_settings,
     run_and_publish_phase5_retrieval,
 )
+from protoem_ct.robustness.artifacts import (
+    PHASE7_CORRUPTION_MANIFEST_SCHEMA_NAME,
+    PHASE7_CORRUPTION_MANIFEST_SCHEMA_VERSION,
+    PHASE7_CORRUPTION_SPECIFICATION_SCHEMA_NAME,
+    PHASE7_CORRUPTION_SPECIFICATION_SCHEMA_VERSION,
+    PHASE7_RUN_SUMMARY_SCHEMA_NAME,
+    PHASE7_RUN_SUMMARY_SCHEMA_VERSION,
+    Phase7CorruptionManifest,
+    Phase7CorruptionSpecification,
+    Phase7GeometryRecord,
+    Phase7RunSummary,
+    Phase7TransformResult,
+    phase7_corruption_manifest_to_json,
+    phase7_corruption_specification_to_dict,
+    phase7_run_summary_to_json,
+)
+from protoem_ct.robustness.blur import (
+    apply_gaussian_blur,
+    gaussian_blur_parameters_for_severity,
+)
+from protoem_ct.robustness.crop import apply_crop_fov_perturbation
+from protoem_ct.robustness.geometry import SpatialGrid, build_spatial_grid, validate_binary_mask
+from protoem_ct.robustness.intensity import apply_intensity_transform
+from protoem_ct.robustness.noise import apply_gaussian_noise, gaussian_noise_parameters_for_severity
+from protoem_ct.robustness.publication import (
+    PHASE7_RUN_SUMMARY_NAME,
+    Phase7PublicationCollisionError,
+    Phase7PublicationError,
+    Phase7PublicationInputs,
+    Phase7PublicationIOError,
+    Phase7PublicationPathError,
+    build_phase7_geometry_records_collection_json,
+    build_phase7_transform_results_collection_json,
+    publish_phase7_artifacts,
+)
+from protoem_ct.robustness.resampling import (
+    apply_anisotropic_downsampling,
+    apply_slice_thickness_simulation,
+)
+from protoem_ct.uncertainty.artifacts import (
+    phase7_calibration_result_to_json,
+    phase7_degradation_result_to_json,
+    phase7_lesion_subgroup_result_to_json,
+    phase7_risk_coverage_result_to_json,
+    phase7_uncertainty_result_to_json,
+)
+from protoem_ct.uncertainty.contracts import (
+    BinaryPredictiveProbabilityMap,
+    array_content_sha256,
+    build_binary_predictive_probability_map,
+    build_tta_probability_samples,
+    build_tta_sample_manifest,
+    build_tta_sample_record,
+)
+from protoem_ct.uncertainty.entropy import compute_predictive_entropy
+from protoem_ct.uncertainty.publication import canonical_phase7_failure_detection_results_json
+from protoem_ct.uncertainty.tta import TTAVarianceResult, compute_tta_probability_variance
 
 app = typer.Typer(help="ProtoEM-CT command-line tools.")
 
@@ -236,6 +314,16 @@ def _raise_phase6_protoem_cli_error(exc: Exception) -> None:
     """Exit with a concise Phase 6 ProtoEM error without path or data leakage."""
     typer.secho(
         f"Phase 6 ProtoEM error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase7_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 7 error without path or synthetic artifact leakage."""
+    typer.secho(
+        f"Phase 7 robustness/uncertainty error: {type(exc).__name__}",
         err=True,
         fg=typer.colors.RED,
     )
@@ -1250,6 +1338,701 @@ def run_phase6_protoem_command(
     typer.echo(f"effective config artifact: {result.effective_config_path}")
     typer.echo(f"objective trace artifact: {result.objective_trace_path}")
     typer.echo(f"output root: {result.output_root}")
+
+
+PHASE7_CONFIG_ROOT_KEY: Final[str] = "phase7_robustness_uncertainty"
+PHASE7_CONFIG_SCHEMA_VERSION: Final[str] = "v1"
+_PHASE7_REQUIRED_CORRUPTIONS: Final[tuple[str, ...]] = (
+    "hu_window_shift",
+    "intensity_scale",
+    "intensity_offset",
+    "contrast_shift",
+    "gaussian_noise",
+    "gaussian_blur",
+    "slice_thickness",
+    "anisotropic_downsampling",
+    "crop_fov",
+)
+
+
+class Phase7CliConfigError(ValueError):
+    """Raised when the Phase 7 synthetic CLI configuration is invalid."""
+
+
+@dataclass(frozen=True, slots=True)
+class Phase7SyntheticSettings:
+    """Validated bounded synthetic Phase 7 CLI settings."""
+
+    effective_config_mapping: dict[str, JsonValue]
+    deterministic_seed: int
+    corruption_specs: tuple[Phase7CorruptionSpecification, ...]
+    calibration_bin_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class Phase7SyntheticPublicationResult:
+    """Small command result for one bounded synthetic Phase 7 publication."""
+
+    output_root: Path
+    config_hash: str
+    corruption_manifest_hash: str
+    uncertainty_type: str
+    calibration_ece: float | None
+    risk_coverage_point_count: int
+    transform_count: int
+    geometry_record_count: int
+    run_summary_path: Path
+    reused_existing_output: bool
+
+
+def load_phase7_robustness_uncertainty_settings(
+    config_path: Path,
+) -> Phase7SyntheticSettings:
+    """Load versioned synthetic-only Phase 7 settings from an OmegaConf YAML file."""
+
+    try:
+        raw_config = OmegaConf.load(config_path)
+    except OSError as exc:
+        raise Phase7CliConfigError("Phase 7 config could not be read.") from exc
+    if not isinstance(raw_config, DictConfig):
+        raise Phase7CliConfigError("Phase 7 config must be an OmegaConf mapping.")
+    container = OmegaConf.to_container(raw_config, resolve=True)
+    if not isinstance(container, dict):
+        raise Phase7CliConfigError("Phase 7 config must resolve to a mapping.")
+    root = _expect_phase7_mapping(container.get(PHASE7_CONFIG_ROOT_KEY), PHASE7_CONFIG_ROOT_KEY)
+    if set(root) != {
+        "schema_version",
+        "synthetic_mode_only",
+        "deterministic_seed",
+        "calibration_bin_count",
+        "corruptions",
+    }:
+        raise Phase7CliConfigError("Phase 7 config root contains unexpected fields.")
+    if root["schema_version"] != PHASE7_CONFIG_SCHEMA_VERSION:
+        raise Phase7CliConfigError("Phase 7 config schema_version must be v1.")
+    if root["synthetic_mode_only"] is not True:
+        raise Phase7CliConfigError("Phase 7 CLI supports synthetic-only execution.")
+    deterministic_seed = _expect_phase7_int(root["deterministic_seed"], "deterministic_seed")
+    calibration_bin_count = _expect_phase7_int(
+        root["calibration_bin_count"],
+        "calibration_bin_count",
+    )
+    if calibration_bin_count <= 0:
+        raise Phase7CliConfigError("calibration_bin_count must be positive.")
+    corruptions = _expect_phase7_sequence(root["corruptions"], "corruptions")
+    if len(corruptions) != len(_PHASE7_REQUIRED_CORRUPTIONS):
+        raise Phase7CliConfigError("Phase 7 config must list every required corruption once.")
+    specs = tuple(
+        _phase7_corruption_specification_from_config(
+            item,
+            default_seed=deterministic_seed,
+            index=index,
+        )
+        for index, item in enumerate(corruptions)
+    )
+    names = tuple(spec.corruption_name for spec in specs)
+    if names != _PHASE7_REQUIRED_CORRUPTIONS:
+        raise Phase7CliConfigError("Phase 7 corruptions must use canonical ordering.")
+    effective_config = _json_value_mapping({PHASE7_CONFIG_ROOT_KEY: root})
+    return Phase7SyntheticSettings(
+        effective_config_mapping=effective_config,
+        deterministic_seed=deterministic_seed,
+        corruption_specs=specs,
+        calibration_bin_count=calibration_bin_count,
+    )
+
+
+@app.command("run-phase7-robustness-uncertainty")
+def run_phase7_robustness_uncertainty_command(
+    config_path: Annotated[
+        Path,
+        typer.Option(
+            "--config",
+            help="Path to the Phase 7 robustness/uncertainty synthetic YAML file.",
+        ),
+    ] = Path("configs/phase7_robustness_uncertainty.yaml"),
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help="Explicit absolute external output root for the synthetic Phase 7 run.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+) -> None:
+    """Run the bounded CPU synthetic Phase 7 robustness and uncertainty publication path."""
+
+    try:
+        settings = load_phase7_robustness_uncertainty_settings(config_path)
+        result = run_and_publish_phase7_robustness_uncertainty(
+            settings=settings,
+            output_root=output_root,
+        )
+    except (
+        Phase7CliConfigError,
+        Phase7PublicationCollisionError,
+        Phase7PublicationError,
+        Phase7PublicationIOError,
+        Phase7PublicationPathError,
+        ValueError,
+    ) as exc:
+        _raise_phase7_cli_error(exc)
+
+    typer.echo("Phase 7 robustness/uncertainty success")
+    typer.echo("mode: synthetic_only")
+    typer.echo(f"config identity: {result.config_hash}")
+    typer.echo(f"corruption manifest: {result.corruption_manifest_hash}")
+    typer.echo(f"uncertainty type: {result.uncertainty_type}")
+    typer.echo(f"transform count: {result.transform_count}")
+    typer.echo(f"geometry record count: {result.geometry_record_count}")
+    typer.echo(f"calibration ece: {result.calibration_ece}")
+    typer.echo(f"risk coverage points: {result.risk_coverage_point_count}")
+    typer.echo(f"run summary artifact: {result.run_summary_path}")
+    typer.echo(f"reused existing output: {str(result.reused_existing_output).lower()}")
+    typer.echo(f"output root: {result.output_root}")
+
+
+def run_and_publish_phase7_robustness_uncertainty(
+    *,
+    settings: Phase7SyntheticSettings,
+    output_root: Path,
+) -> Phase7SyntheticPublicationResult:
+    """Build a bounded synthetic Phase 7 run and publish validated artifacts."""
+
+    inputs, summary = _build_phase7_synthetic_publication_inputs(settings)
+    published = publish_phase7_artifacts(output_root=output_root, inputs=inputs)
+    return Phase7SyntheticPublicationResult(
+        output_root=published.output_root,
+        config_hash=cast(str, summary["config_hash"]),
+        corruption_manifest_hash=cast(str, summary["corruption_manifest_hash"]),
+        uncertainty_type=cast(str, summary["uncertainty_type"]),
+        calibration_ece=cast(float | None, summary["calibration_ece"]),
+        risk_coverage_point_count=cast(int, summary["risk_coverage_point_count"]),
+        transform_count=cast(int, summary["transform_count"]),
+        geometry_record_count=cast(int, summary["geometry_record_count"]),
+        run_summary_path=published.output_root / PHASE7_RUN_SUMMARY_NAME,
+        reused_existing_output=published.reused_existing_output,
+    )
+
+
+def _build_phase7_synthetic_publication_inputs(
+    settings: Phase7SyntheticSettings,
+) -> tuple[Phase7PublicationInputs, dict[str, JsonValue]]:
+    shape = (4, 5, 6)
+    image = np.linspace(-120.0, 140.0, num=np.prod(shape), dtype=np.float64).reshape(shape)
+    reference_mask = np.ascontiguousarray((image > 35.0).astype(np.uint8))
+    validate_binary_mask(reference_mask, expected_shape=shape)
+    grid = build_spatial_grid(
+        shape=shape,
+        affine=np.diag([1.0, 1.0, 1.0, 1.0]),
+        orientation=("R", "A", "S"),
+    )
+    foreground_probability = _synthetic_foreground_probability(image)
+    baseline_prediction = np.ascontiguousarray(
+        foreground_probability.reshape(shape) > 0.5,
+        dtype=np.uint8,
+    )
+
+    config_json = canonical_json_bytes(settings.effective_config_mapping) + b"\n"
+    config_hash = sha256_json(settings.effective_config_mapping)
+    manifest = _build_phase7_corruption_manifest(
+        settings=settings,
+        config_hash=config_hash,
+        input_image_hash=array_content_sha256(image),
+        input_mask_hash=array_content_sha256(reference_mask),
+    )
+    transform_results: list[Phase7TransformResult] = []
+    geometry_records: list[Phase7GeometryRecord] = []
+    corrupted_prediction = baseline_prediction
+
+    for spec in settings.corruption_specs:
+        transform_result, geometry_record, transformed_image, transformed_mask = (
+            _apply_phase7_synthetic_corruption(
+                image=image,
+                mask=reference_mask,
+                grid=grid,
+                specification=spec,
+            )
+        )
+        transform_results.append(transform_result)
+        if geometry_record is not None:
+            geometry_records.append(geometry_record)
+        if spec.corruption_name == "crop_fov":
+            if transformed_mask is not None:
+                validate_binary_mask(transformed_mask, expected_shape=shape)
+            corrupted_prediction = np.ascontiguousarray(
+                _synthetic_foreground_probability(transformed_image).reshape(shape) > 0.5,
+                dtype=np.uint8,
+            )
+
+    if not geometry_records:
+        raise Phase7CliConfigError("synthetic Phase 7 flow produced no geometry records.")
+    common_grid_hash = geometry_records[-1].geometry_record_hash
+    baseline_probability = _phase7_probability_map(
+        foreground_probability,
+        source_prediction_hash=array_content_sha256(baseline_prediction),
+        common_grid_hash=common_grid_hash,
+    )
+    entropy = compute_predictive_entropy(baseline_probability)
+    tta_result = _compute_phase7_synthetic_tta(
+        baseline_probability,
+        foreground_probability=foreground_probability,
+        common_grid_hash=common_grid_hash,
+        manifest_hash=manifest.corruption_manifest_hash,
+    )
+    calibration = compute_binary_calibration_ece(
+        baseline_probability,
+        reference_mask.reshape((1, 1, *shape)),
+        bin_count=settings.calibration_bin_count,
+        common_grid_geometry_record_hash=common_grid_hash,
+    )
+    risk = compute_risk_coverage(
+        reference_mask=reference_mask.reshape((1, 1, *shape)),
+        prediction_map=baseline_prediction.reshape((1, 1, *shape)),
+        uncertainty_map=tta_result.foreground_variance_map,
+        uncertainty_result_hash=tta_result.uncertainty_result.uncertainty_result_hash,
+        common_grid_geometry_record_hash=common_grid_hash,
+    )
+    errors = np.ascontiguousarray(baseline_prediction != reference_mask, dtype=np.uint8)
+    correlation = compute_uncertainty_error_correlation(
+        uncertainty_values=tta_result.foreground_variance_map.reshape(-1),
+        error_indicators=errors.reshape(-1),
+    )
+    auroc = compute_failure_detection_auroc(
+        case_uncertainty_scores=np.asarray(
+            [tta_result.mean_foreground_variance, float(np.mean(entropy.entropy_map))],
+            dtype=np.float64,
+        ),
+        failure_indicators=np.asarray([0, 1], dtype=np.uint8),
+    )
+    baseline_dice = dice_from_counts(
+        compute_binary_confusion_counts(
+            reference_mask.astype(np.bool_),
+            baseline_prediction.astype(np.bool_),
+        )
+    )
+    corrupted_dice = dice_from_counts(
+        compute_binary_confusion_counts(
+            reference_mask.astype(np.bool_),
+            corrupted_prediction.astype(np.bool_),
+        )
+    )
+    degradation = build_phase7_degradation_result(
+        baseline_artifact_hash=array_content_sha256(baseline_prediction),
+        corrupted_artifact_hash=array_content_sha256(corrupted_prediction),
+        metric_name="dice",
+        metric_direction="higher_is_better",
+        baseline_value=baseline_dice,
+        corrupted_value=corrupted_dice,
+    )
+    subgroup = build_phase7_lesion_subgroup_result(
+        (
+            LesionSubgroupCase(
+                case_id="synthetic_query_case",
+                reference_mask=reference_mask,
+                prediction_mask=baseline_prediction,
+            ),
+            LesionSubgroupCase(
+                case_id="synthetic_empty_case",
+                reference_mask=np.zeros(shape, dtype=np.uint8),
+                prediction_mask=np.zeros(shape, dtype=np.uint8),
+            ),
+        ),
+        metric_name="dice",
+    )
+    run_summary = _build_phase7_run_summary(
+        config_hash=config_hash,
+        manifest_hash=manifest.corruption_manifest_hash,
+        phase6_run_summary_hash=sha256_json(
+            {
+                "schema_name": "phase6_synthetic_final_surface_reference",
+                "schema_version": "v1",
+                "prediction_hash": array_content_sha256(baseline_prediction),
+                "probability_hash": baseline_probability.probability_map_identity_hash,
+            }
+        ),
+        uncertainty_hash=tta_result.uncertainty_result.uncertainty_result_hash,
+        calibration_hash=calibration.calibration_result.calibration_result_hash,
+        risk_hash=risk.risk_coverage_result.risk_coverage_result_hash,
+        degradation_hash=degradation.degradation_result_hash,
+        subgroup_hash=subgroup.result.lesion_subgroup_result_hash,
+    )
+    inputs = Phase7PublicationInputs(
+        effective_config_json=config_json,
+        corruption_manifest_json=phase7_corruption_manifest_to_json(manifest),
+        transform_results_json=build_phase7_transform_results_collection_json(
+            tuple(transform_results)
+        ),
+        geometry_records_json=build_phase7_geometry_records_collection_json(
+            tuple(geometry_records)
+        ),
+        uncertainty_result_json=phase7_uncertainty_result_to_json(tta_result.uncertainty_result),
+        calibration_result_json=phase7_calibration_result_to_json(calibration.calibration_result),
+        risk_coverage_result_json=phase7_risk_coverage_result_to_json(risk.risk_coverage_result),
+        failure_detection_json=canonical_phase7_failure_detection_results_json(
+            correlation_result=correlation,
+            auroc_result=auroc,
+        ),
+        degradation_result_json=phase7_degradation_result_to_json(degradation),
+        lesion_subgroup_result_json=phase7_lesion_subgroup_result_to_json(subgroup.result),
+        phase7_run_summary_json=phase7_run_summary_to_json(run_summary),
+    )
+    summary: dict[str, JsonValue] = {
+        "calibration_ece": calibration.calibration_result.ece,
+        "config_hash": config_hash,
+        "corruption_manifest_hash": manifest.corruption_manifest_hash,
+        "geometry_record_count": len(geometry_records),
+        "risk_coverage_point_count": len(risk.risk_coverage_result.points),
+        "transform_count": len(transform_results),
+        "uncertainty_type": tta_result.uncertainty_result.uncertainty_type,
+    }
+    return inputs, summary
+
+
+def _apply_phase7_synthetic_corruption(
+    *,
+    image: np.ndarray,
+    mask: np.ndarray,
+    grid: SpatialGrid,
+    specification: Phase7CorruptionSpecification,
+) -> tuple[Phase7TransformResult, Phase7GeometryRecord | None, np.ndarray, np.ndarray | None]:
+    if specification.corruption_name in {
+        "hu_window_shift",
+        "intensity_scale",
+        "intensity_offset",
+        "contrast_shift",
+    }:
+        intensity_output = apply_intensity_transform(
+            image,
+            specification,
+            mask=mask,
+            spatial_grid=grid,
+        )
+        return (
+            intensity_output.transform_result,
+            intensity_output.geometry_record,
+            intensity_output.image,
+            intensity_output.mask,
+        )
+    if specification.corruption_name == "gaussian_noise":
+        noise_output = apply_gaussian_noise(image, specification, mask=mask)
+        return (
+            noise_output.transform_result,
+            None,
+            noise_output.transformed_image,
+            noise_output.transformed_mask,
+        )
+    if specification.corruption_name == "gaussian_blur":
+        blur_output = apply_gaussian_blur(image, specification, mask=mask)
+        return (
+            blur_output.transform_result,
+            None,
+            blur_output.transformed_image,
+            blur_output.transformed_mask,
+        )
+    if specification.corruption_name == "slice_thickness":
+        slice_output = apply_slice_thickness_simulation(
+            image=image,
+            image_grid=grid,
+            specification=specification,
+            mask=mask,
+            mask_grid=grid,
+            target_common_grid=grid,
+        )
+        return (
+            slice_output.transform_result,
+            slice_output.geometry_record,
+            slice_output.restored_image,
+            slice_output.restored_mask,
+        )
+    if specification.corruption_name == "anisotropic_downsampling":
+        anisotropic_output = apply_anisotropic_downsampling(
+            image=image,
+            image_grid=grid,
+            specification=specification,
+            mask=mask,
+            mask_grid=grid,
+            target_common_grid=grid,
+        )
+        return (
+            anisotropic_output.transform_result,
+            anisotropic_output.geometry_record,
+            anisotropic_output.restored_image,
+            anisotropic_output.restored_mask,
+        )
+    if specification.corruption_name == "crop_fov":
+        crop_output = apply_crop_fov_perturbation(
+            image=image,
+            image_grid=grid,
+            corruption_specification=specification,
+            evaluation_mask=mask,
+            mask_grid=grid,
+        )
+        return (
+            crop_output.transform_result,
+            crop_output.geometry_record,
+            crop_output.restored_image,
+            crop_output.restored_mask,
+        )
+    raise Phase7CliConfigError("unsupported Phase 7 corruption in synthetic flow.")
+
+
+def _synthetic_foreground_probability(image: np.ndarray) -> np.ndarray:
+    scaled = 1.0 / (1.0 + np.exp(-np.asarray(image, dtype=np.float64) / 45.0))
+    return np.ascontiguousarray(scaled.reshape((1, 1, *image.shape)), dtype=np.float64)
+
+
+def _phase7_probability_map(
+    foreground_probability: np.ndarray,
+    *,
+    source_prediction_hash: str,
+    common_grid_hash: str,
+) -> BinaryPredictiveProbabilityMap:
+    foreground = np.ascontiguousarray(foreground_probability, dtype=np.float64)
+    background = np.ascontiguousarray(1.0 - foreground, dtype=np.float64)
+    return build_binary_predictive_probability_map(
+        foreground_probability_map=foreground,
+        background_probability_map=background,
+        source_prediction_identity_hash=source_prediction_hash,
+        common_grid_identity_hash=common_grid_hash,
+    )
+
+
+def _compute_phase7_synthetic_tta(
+    baseline_probability: BinaryPredictiveProbabilityMap,
+    *,
+    foreground_probability: np.ndarray,
+    common_grid_hash: str,
+    manifest_hash: str,
+) -> TTAVarianceResult:
+    shifted_foreground = np.ascontiguousarray(
+        np.clip(foreground_probability + 0.025, 0.0, 1.0),
+        dtype=np.float64,
+    )
+    sample_1 = baseline_probability
+    sample_2 = _phase7_probability_map(
+        shifted_foreground,
+        source_prediction_hash=array_content_sha256(shifted_foreground > 0.5),
+        common_grid_hash=common_grid_hash,
+    )
+    records = (
+        build_tta_sample_record(
+            sample_index=0,
+            sample_id="synthetic_identity",
+            probability_map_identity_hash=sample_1.probability_map_identity_hash,
+            common_grid_identity_hash=common_grid_hash,
+            transform_manifest_hash=manifest_hash,
+        ),
+        build_tta_sample_record(
+            sample_index=1,
+            sample_id="synthetic_shifted",
+            probability_map_identity_hash=sample_2.probability_map_identity_hash,
+            common_grid_identity_hash=common_grid_hash,
+            transform_manifest_hash=manifest_hash,
+        ),
+    )
+    manifest = build_tta_sample_manifest(records)
+    samples = build_tta_probability_samples(
+        sample_manifest=manifest,
+        probability_maps=(sample_1, sample_2),
+    )
+    return compute_tta_probability_variance(samples)
+
+
+def _build_phase7_corruption_manifest(
+    *,
+    settings: Phase7SyntheticSettings,
+    config_hash: str,
+    input_image_hash: str,
+    input_mask_hash: str,
+) -> Phase7CorruptionManifest:
+    payload: dict[str, JsonValue] = {
+        "config_hash": config_hash,
+        "deterministic_seed": settings.deterministic_seed,
+        "input_image_content_hash": input_image_hash,
+        "input_mask_content_hash": input_mask_hash,
+        "manifest_id": "phase7_synthetic_manifest",
+        "schema_name": PHASE7_CORRUPTION_MANIFEST_SCHEMA_NAME,
+        "schema_version": PHASE7_CORRUPTION_MANIFEST_SCHEMA_VERSION,
+        "specifications": [
+            phase7_corruption_specification_to_dict(spec) for spec in settings.corruption_specs
+        ],
+    }
+    return Phase7CorruptionManifest(
+        schema_name=PHASE7_CORRUPTION_MANIFEST_SCHEMA_NAME,
+        schema_version=PHASE7_CORRUPTION_MANIFEST_SCHEMA_VERSION,
+        corruption_manifest_hash=sha256_json(payload),
+        manifest_id="phase7_synthetic_manifest",
+        config_hash=config_hash,
+        input_image_content_hash=input_image_hash,
+        input_mask_content_hash=input_mask_hash,
+        deterministic_seed=settings.deterministic_seed,
+        specifications=settings.corruption_specs,
+    )
+
+
+def _build_phase7_run_summary(
+    *,
+    config_hash: str,
+    manifest_hash: str,
+    phase6_run_summary_hash: str,
+    uncertainty_hash: str,
+    calibration_hash: str,
+    risk_hash: str,
+    degradation_hash: str,
+    subgroup_hash: str,
+) -> Phase7RunSummary:
+    payload: dict[str, JsonValue] = {
+        "calibration_result_hash": calibration_hash,
+        "config_hash": config_hash,
+        "corruption_manifest_hash": manifest_hash,
+        "degradation_result_hash": degradation_hash,
+        "execution_status": "completed",
+        "failure_code": None,
+        "failure_message": None,
+        "lesion_subgroup_result_hash": subgroup_hash,
+        "phase6_run_summary_hash": phase6_run_summary_hash,
+        "risk_coverage_result_hash": risk_hash,
+        "schema_name": PHASE7_RUN_SUMMARY_SCHEMA_NAME,
+        "schema_version": PHASE7_RUN_SUMMARY_SCHEMA_VERSION,
+        "uncertainty_result_hash": uncertainty_hash,
+    }
+    return Phase7RunSummary(
+        schema_name=PHASE7_RUN_SUMMARY_SCHEMA_NAME,
+        schema_version=PHASE7_RUN_SUMMARY_SCHEMA_VERSION,
+        phase7_run_summary_hash=sha256_json(payload),
+        config_hash=config_hash,
+        corruption_manifest_hash=manifest_hash,
+        phase6_run_summary_hash=phase6_run_summary_hash,
+        uncertainty_result_hash=uncertainty_hash,
+        calibration_result_hash=calibration_hash,
+        risk_coverage_result_hash=risk_hash,
+        degradation_result_hash=degradation_hash,
+        lesion_subgroup_result_hash=subgroup_hash,
+        execution_status="completed",
+        failure_code=None,
+        failure_message=None,
+        duration_seconds=None,
+        memory_availability_status="unavailable",
+        peak_host_memory_bytes=None,
+    )
+
+
+def _phase7_corruption_specification_from_config(
+    value: object,
+    *,
+    default_seed: int,
+    index: int,
+) -> Phase7CorruptionSpecification:
+    mapping = _expect_phase7_mapping(value, f"corruptions[{index}]")
+    if set(mapping) != {
+        "corruption_name",
+        "severity",
+        "parameters",
+        "deterministic_seed",
+        "changes_geometry",
+        "image_interpolation",
+        "mask_interpolation",
+        "common_grid_restoration_required",
+    }:
+        raise Phase7CliConfigError("corruption config contains unexpected fields.")
+    name = _expect_phase7_string(mapping["corruption_name"], "corruption_name")
+    severity = _expect_phase7_string(mapping["severity"], "severity")
+    parameters = _json_value_mapping(_expect_phase7_mapping(mapping["parameters"], "parameters"))
+    if name == "gaussian_noise":
+        expected_parameters = gaussian_noise_parameters_for_severity(severity)
+        if parameters != expected_parameters:
+            raise Phase7CliConfigError(
+                "gaussian_noise parameters must match the explicit severity contract."
+            )
+    elif name == "gaussian_blur":
+        expected_parameters = gaussian_blur_parameters_for_severity(severity)
+        if parameters != expected_parameters:
+            raise Phase7CliConfigError(
+                "gaussian_blur parameters must match the explicit severity contract."
+            )
+    seed_value = mapping["deterministic_seed"]
+    deterministic_seed = (
+        default_seed + index
+        if seed_value == "default_plus_index"
+        else _expect_phase7_optional_int(seed_value, "deterministic_seed")
+    )
+    payload: dict[str, JsonValue] = {
+        "changes_geometry": _expect_phase7_bool(mapping["changes_geometry"], "changes_geometry"),
+        "common_grid_restoration_required": _expect_phase7_bool(
+            mapping["common_grid_restoration_required"],
+            "common_grid_restoration_required",
+        ),
+        "corruption_name": name,
+        "deterministic_seed": deterministic_seed,
+        "image_interpolation": _expect_phase7_string(
+            mapping["image_interpolation"],
+            "image_interpolation",
+        ),
+        "mask_interpolation": _expect_phase7_string(
+            mapping["mask_interpolation"],
+            "mask_interpolation",
+        ),
+        "parameters": parameters,
+        "schema_name": PHASE7_CORRUPTION_SPECIFICATION_SCHEMA_NAME,
+        "schema_version": PHASE7_CORRUPTION_SPECIFICATION_SCHEMA_VERSION,
+        "severity": severity,
+    }
+    return Phase7CorruptionSpecification(
+        schema_name=PHASE7_CORRUPTION_SPECIFICATION_SCHEMA_NAME,
+        schema_version=PHASE7_CORRUPTION_SPECIFICATION_SCHEMA_VERSION,
+        corruption_specification_hash=sha256_json(payload),
+        corruption_name=name,
+        severity=severity,
+        parameters=parameters,
+        deterministic_seed=deterministic_seed,
+        changes_geometry=cast(bool, payload["changes_geometry"]),
+        image_interpolation=cast(str, payload["image_interpolation"]),
+        mask_interpolation=cast(str, payload["mask_interpolation"]),
+        common_grid_restoration_required=cast(
+            bool,
+            payload["common_grid_restoration_required"],
+        ),
+    )
+
+
+def _expect_phase7_mapping(value: object, field_name: str) -> dict[str, object]:
+    if not isinstance(value, dict):
+        raise Phase7CliConfigError(f"{field_name} must be a mapping.")
+    return cast(dict[str, object], value)
+
+
+def _expect_phase7_sequence(value: object, field_name: str) -> list[object]:
+    if not isinstance(value, list):
+        raise Phase7CliConfigError(f"{field_name} must be a list.")
+    return value
+
+
+def _expect_phase7_string(value: object, field_name: str) -> str:
+    if not isinstance(value, str):
+        raise Phase7CliConfigError(f"{field_name} must be a string.")
+    return value
+
+
+def _expect_phase7_bool(value: object, field_name: str) -> bool:
+    if not isinstance(value, bool):
+        raise Phase7CliConfigError(f"{field_name} must be boolean.")
+    return value
+
+
+def _expect_phase7_int(value: object, field_name: str) -> int:
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        raise Phase7CliConfigError(f"{field_name} must be a nonnegative integer.")
+    return value
+
+
+def _expect_phase7_optional_int(value: object, field_name: str) -> int | None:
+    if value is None:
+        return None
+    return _expect_phase7_int(value, field_name)
+
+
+def _json_value_mapping(mapping: dict[str, object]) -> dict[str, JsonValue]:
+    return cast(dict[str, JsonValue], json.loads(canonical_json_bytes(mapping)))
 
 
 @app.command("create-data")

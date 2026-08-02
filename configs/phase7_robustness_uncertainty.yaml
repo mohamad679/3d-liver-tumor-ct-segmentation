@@ -1,0 +1,92 @@
+phase7_robustness_uncertainty:
+  schema_version: v1
+  synthetic_mode_only: true
+  deterministic_seed: 1729
+  calibration_bin_count: 5
+  corruptions:
+    - corruption_name: hu_window_shift
+      severity: low
+      parameters:
+        window_center_shift_hu: 25.0
+        window_min_hu: -200.0
+        window_max_hu: 250.0
+      deterministic_seed: null
+      changes_geometry: false
+      image_interpolation: linear
+      mask_interpolation: nearest_neighbor
+      common_grid_restoration_required: false
+    - corruption_name: intensity_scale
+      severity: low
+      parameters:
+        scale_factor: 0.95
+      deterministic_seed: null
+      changes_geometry: false
+      image_interpolation: linear
+      mask_interpolation: nearest_neighbor
+      common_grid_restoration_required: false
+    - corruption_name: intensity_offset
+      severity: low
+      parameters:
+        offset_hu: 10.0
+      deterministic_seed: null
+      changes_geometry: false
+      image_interpolation: linear
+      mask_interpolation: nearest_neighbor
+      common_grid_restoration_required: false
+    - corruption_name: contrast_shift
+      severity: low
+      parameters:
+        contrast_center_hu: 0.0
+        contrast_factor: 0.9
+      deterministic_seed: null
+      changes_geometry: false
+      image_interpolation: linear
+      mask_interpolation: nearest_neighbor
+      common_grid_restoration_required: false
+    - corruption_name: gaussian_noise
+      severity: low
+      parameters:
+        sigma_hu: 5.0
+      deterministic_seed: default_plus_index
+      changes_geometry: false
+      image_interpolation: linear
+      mask_interpolation: nearest_neighbor
+      common_grid_restoration_required: false
+    - corruption_name: gaussian_blur
+      severity: low
+      parameters:
+        sigma_voxels: 0.5
+        truncate: 2.0
+        boundary_mode: edge
+      deterministic_seed: null
+      changes_geometry: false
+      image_interpolation: linear
+      mask_interpolation: nearest_neighbor
+      common_grid_restoration_required: false
+    - corruption_name: slice_thickness
+      severity: low
+      parameters:
+        simulated_spacing: [2.0, 1.0, 1.0]
+      deterministic_seed: null
+      changes_geometry: true
+      image_interpolation: linear
+      mask_interpolation: nearest_neighbor
+      common_grid_restoration_required: true
+    - corruption_name: anisotropic_downsampling
+      severity: low
+      parameters:
+        downsampling_factors: [1.0, 1.5, 1.0]
+      deterministic_seed: null
+      changes_geometry: true
+      image_interpolation: linear
+      mask_interpolation: nearest_neighbor
+      common_grid_restoration_required: true
+    - corruption_name: crop_fov
+      severity: low
+      parameters:
+        crop_margins: [[1, 1], [1, 0], [1, 1]]
+      deterministic_seed: null
+      changes_geometry: true
+      image_interpolation: linear
+      mask_interpolation: nearest_neighbor
+      common_grid_restoration_required: true
