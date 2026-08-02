@@ -1,0 +1,22 @@
+phase6_protoem_ct:
+  schema_version: v1
+  synthetic_mode_only: true
+  explicit_seed: 1729
+  max_iterations: 1
+  minimum_iterations: 1
+  convergence_tolerance: 1.0e-6
+  temperature: 1.0
+  confidence_threshold: 0.55
+  foreground_prior: 0.5
+  update_schedule: fixed_em_like
+  prototype_mode: single_prototype
+  objective_weights:
+    support: 1.0
+    query_entropy: 1.0
+    class_balance: 1.0
+    consistency: 1.0
+    proximal: 1.0
+  phase5_initialization_schema_name: phase5_run_summary
+  phase5_prototype_schema_name: prototype_memory
+  phase5_inference_schema_name: prototype_only_inference_result
+  positive_step_schedule: null

@@ -228,7 +228,113 @@ validation, or any Phase 5/ProtoEM-CT behavior.
 
 ## Gate 6
 
-- [ ] Pending definition.
+- [x] Validated Phase 5 initialization boundary is implemented and verified
+- [x] Pure deterministic E-step and M-step are implemented and verified
+- [x] Support, entropy, class-balance, consistency, proximal, and total objectives are recorded
+- [x] Confidence masking is implemented and verified
+- [x] Bounded fixed-iteration and tolerance stopping are implemented
+- [x] Foreground, background, and no-confident-voxel collapse handling is implemented
+- [x] NaN and other non-finite failures are handled explicitly
+- [x] Complete per-iteration objective trace is persisted and self-validating
+- [x] `fixed_em_like` baseline remains available and unchanged as the default baseline
+- [x] Explicit parameterized positive-step schedule is implemented without training
+- [x] Final inference is produced only for completed runs
+- [x] Deterministic publication is implemented and verified from persisted JSON artifacts
+- [x] Deterministic 12-row ablation comparison is implemented and verified
+- [x] Query-label leakage is rejected from initialization and optimization APIs
+- [x] No Phase 7 robustness, uncertainty, calibration, or external-validation functionality is claimed
+
+### Gate 6 Evidence
+
+Gate 6 status: PASSED locally on 2026-08-02 after one repository defect fix.
+
+Repository-wide verification after the fix:
+
+- `uv run ruff check .`: PASS, `All checks passed!`
+- `uv run ruff format --check .`: PASS, `182 files already formatted`
+- `uv run mypy src`: PASS, `Success: no issues found in 76 source files`
+- `uv run pytest -q`: PASS, `1115 passed, 3 skipped in 602.21s (0:10:02)`
+- `uv run pre-commit run --all-files`: PASS
+- `uv run protoem-ct run-phase6-protoem --help`: PASS
+
+Required source/test modification during Gate 6 evaluation:
+
+- `tests/unit/test_phase6_inference.py`: formatting-only fix applied after the first
+  `uv run ruff format --check .` reported `File would be reformatted`. No scientific behavior,
+  source logic, objective, optimization, publication, or Phase 5 behavior was changed.
+
+Independent synthetic Phase 6 executions:
+
+- `ROOT_A="$(mktemp -d /tmp/protoem-ct-phase6-gate-a.XXXXXX)"`
+- `ROOT_B="$(mktemp -d /tmp/protoem-ct-phase6-gate-b.XXXXXX)"`
+- `uv run protoem-ct run-phase6-protoem --config configs/phase6_protoem_ct.yaml --output-root "$ROOT_A"`:
+  PASS
+- `uv run protoem-ct run-phase6-protoem --config configs/phase6_protoem_ct.yaml --output-root "$ROOT_B"`:
+  PASS
+
+Synthetic run results from the persisted artifacts:
+
+- Execution status: `completed` for both runs
+- Config identity: `f408a3d2adfc746a7ac6b3de908b4e1a97436e2f22d5a8eab18f20e570a5437c`
+- Initialization identity: `055266b363f5a9aa3455091acc3a4e4ed5d6e0c04ebb4f30811db6041ac9e8fa`
+- Objective-trace hash: `acc3b3db5fd5627cc43559a4bf9dad1b006a39e6c4d9a97420b977e189fcf602`
+- Stopping-record hash: `dc285d9b281e92c3274652c8dfbac3fc58f684d96b6ec67af467a9296d199c4a`
+- Stopping reason: `max_iterations`
+- Completed iteration count: `1`
+- Converged: `false`
+- Failed: `false`
+- Final inference exists: `true`
+
+Objective-trace verification:
+
+- Trace is non-empty: `1` iteration
+- Iteration indices are zero-based and contiguous: `[0]`
+- Trace self-validation succeeded through the Phase 6 serializer
+- The persisted iteration record contains:
+  `support_objective`, `query_entropy_objective`, `class_balance_objective`,
+  `consistency_objective`, `proximal_objective`, `total_objective`,
+  `confident_voxel_count`, `foreground_assignment_count`, `background_assignment_count`,
+  `foreground_fraction`, `convergence_delta`, `finite_status_ok`,
+  `collapse_status_detected`, `state_identity_hash_before`, `state_identity_hash_after`,
+  `prototype_identity_hash_before`, and `prototype_identity_hash_after`
+
+Deterministic publication and reproducibility:
+
+- JSON and Markdown outputs were byte-identical across the two synthetic runs for:
+  `ablation_comparison.json`, `ablation_comparison_table.md`, `ablation_plan.json`,
+  `ablation_run_inventory.json`, `effective_config.json`, `final_inference.json`,
+  `initialization_summary.json`, `objective_trace.json`, `phase6_summary.md`,
+  `run_summary.json`, and `stopping_record.json`
+- `convergence_plot.png` existence was verified and regeneration from
+  `objective_trace.json` matched the saved PNG bytes on this platform
+- No generated Gate 6 artifacts were found inside the repository worktree
+
+Verified 12-row ablation comparison statuses in canonical order:
+
+1. `full_protoem`: `executed`
+2. `no_retrieval`: `phase5_baseline_link`
+3. `no_transduction`: `phase5_baseline_link`
+4. `no_class_balance`: `executed`
+5. `no_proximal`: `executed`
+6. `single_prototype`: `executed`
+7. `multiple_prototypes`: `unsupported`
+8. `fixed_update_schedule`: `executed`
+9. `learned_update_schedule`: `unsupported`
+10. `head_only`: `provenance_only`
+11. `decoder_only`: `provenance_only`
+12. `full_finetune`: `provenance_only`
+
+Leakage and scope evidence:
+
+- Query labels and query reference masks are absent from the public initialization and optimization
+  APIs by contract and by the Phase 6 unit/integration tests
+- The only reference-mask use in the Phase 6 comparison flow is post-prediction metric evaluation
+  for synthetic testing; it does not alter initialization identity, optimization traces, stopping
+  records, inference identities, or prediction hashes
+- Positive-step parameters, when present, are explicit caller-supplied parameters. They are not
+  trained from data in Phase 6
+- Gate 6 does not claim theoretical convergence, real-data execution, GPU execution, robustness,
+  uncertainty, calibration, external validation, or any Phase 7 result
 
 ## Gate 7
 

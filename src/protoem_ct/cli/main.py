@@ -86,6 +86,15 @@ from protoem_ct.fewshot import (
     generate_and_publish_phase4_fewshot_protocol,
     load_phase4_fewshot_protocol_settings,
 )
+from protoem_ct.protoem import (
+    Phase6PublicationCollisionError,
+    Phase6PublicationConfigError,
+    Phase6PublicationError,
+    Phase6PublicationIOError,
+    Phase6PublicationPathError,
+    load_phase6_protoem_settings,
+    run_and_publish_phase6_protoem,
+)
 from protoem_ct.reporting import ReportGenerationError, generate_synthetic_report
 from protoem_ct.retrieval import (
     Phase5ComparisonCollisionError,
@@ -217,6 +226,16 @@ def _raise_phase5_retrieval_cli_error(exc: Exception) -> None:
     """Exit with a concise Phase 5 retrieval error without path or data leakage."""
     typer.secho(
         f"Phase 5 retrieval error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase6_protoem_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 6 ProtoEM error without path or data leakage."""
+    typer.secho(
+        f"Phase 6 ProtoEM error: {type(exc).__name__}",
         err=True,
         fg=typer.colors.RED,
     )
@@ -1184,6 +1203,52 @@ def run_phase5_retrieval_command(
     typer.echo(f"comparison markdown: {result.markdown_path}")
     typer.echo(f"run summary artifact: {result.run_summary_path}")
     typer.echo(f"effective config artifact: {result.effective_config_path}")
+    typer.echo(f"output root: {result.output_root}")
+
+
+@app.command("run-phase6-protoem")
+def run_phase6_protoem_command(
+    config_path: Annotated[
+        Path,
+        typer.Option(
+            "--config",
+            help="Path to the Phase 6 ProtoEM-CT OmegaConf YAML file.",
+        ),
+    ] = Path("configs/phase6_protoem_ct.yaml"),
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help="Explicit absolute external output root for the synthetic Phase 6 run.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+) -> None:
+    """Run the bounded synthetic Phase 6 ProtoEM-CT publication path."""
+
+    try:
+        settings = load_phase6_protoem_settings(config_path)
+        result = run_and_publish_phase6_protoem(
+            output_root=output_root,
+            settings=settings,
+        )
+    except (
+        Phase6PublicationCollisionError,
+        Phase6PublicationConfigError,
+        Phase6PublicationError,
+        Phase6PublicationIOError,
+        Phase6PublicationPathError,
+    ) as exc:
+        _raise_phase6_protoem_cli_error(exc)
+
+    typer.echo("Phase 6 ProtoEM success")
+    typer.echo("mode: synthetic_only")
+    typer.echo(f"execution status: {result.execution_status}")
+    typer.echo(f"config identity: {result.config_hash}")
+    typer.echo(f"initialization identity: {result.initialization_identity_hash}")
+    typer.echo(f"stopping reason: {result.stopping_reason}")
+    typer.echo(f"run summary artifact: {result.run_summary_path}")
+    typer.echo(f"effective config artifact: {result.effective_config_path}")
+    typer.echo(f"objective trace artifact: {result.objective_trace_path}")
     typer.echo(f"output root: {result.output_root}")
 
 

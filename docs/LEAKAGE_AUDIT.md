@@ -118,3 +118,30 @@ evidence.
 
 Phase 4 retained the immutable internal-test cohort boundary and published no tracked support
 artifacts, checkpoints, predictions, or medical data into the repository.
+
+## Phase 6 Query-Label and Evaluation-Mask Isolation
+
+Status: PASSED for the verified local Gate 6 synthetic close-out on 2026-08-02.
+
+This Phase 6 note records leakage-boundary evidence only. It is not model-performance,
+external-validation, robustness, uncertainty, calibration, GPU, or clinical-validity evidence.
+
+- Verification surface:
+  - repository-wide `uv run pytest -q`: PASS, `1115 passed, 3 skipped`
+  - repository-wide `uv run mypy src`: PASS
+  - two independent synthetic `uv run protoem-ct run-phase6-protoem` executions: PASS
+- Phase 6 query-label leakage result: no query labels enter the initialization, E-step, M-step,
+  optimization, stopping, final-inference, or ablation execution APIs
+- Public-API enforcement evidence is covered by the Phase 6 unit and integration tests for
+  initialization, objective, state, optimization, stopping, inference, learned schedule, ablation,
+  and transductive flow
+- Synthetic reference-mask isolation result: synthetic reference masks are used only after final
+  prediction for deterministic Dice/IoU comparison fields. They do not alter initialization
+  identity, objective traces, stopping records, inference identities, or prediction hashes
+- Support/query patient and case overlap remained rejected by the completed Phase 5 boundary and
+  Phase 6 initialization contract
+- Real 3D-IRCADb-01 access remained absent: confirmed
+- No external labels influenced Phase 6 configuration, stopping, threshold selection, ablation
+  execution, or publication: confirmed
+
+Gate 6 leakage recommendation: pass.

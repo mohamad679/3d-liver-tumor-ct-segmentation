@@ -11,11 +11,13 @@ leakage artifacts.
 
 Phase 3 Gate 3 baseline scope is treated as completed and merged for later-phase planning purposes
 on the user-confirmed repository state. Phase 4 is treated as completed with Gate 4 closed for
-planning purposes on the user-confirmed repository state. This Phase 5 planning update does not
-audit, rerun, verify, or modify any completed Phase 3 or Phase 4 behavior.
+planning purposes on the user-confirmed repository state. Phase 5 is treated as completed and
+merged for later-phase planning purposes on the user-confirmed repository state. This Phase 6
+planning update does not audit, rerun, verify, or modify any completed Phase 5 implementation.
 
-Active phase: Phase 5 foundation-retrieval planning on branch `phase/5-foundation-retrieval` from
-base commit `41b152a`.
+Phase 6 implementation and Gate 6 close-out are completed locally on 2026-08-02.
+
+Active phase: none. Phase 7 has not started.
 
 ## Phase 0 Scope
 
@@ -1006,6 +1008,252 @@ Phase 5 acceptance must not claim:
 
 Those broader transductive refinement traces belong to Phase 6 and must remain explicitly out of
 scope for Phase 5 planning, implementation, testing, and gate documentation.
+
+## Phase 6 Scope
+
+Phase 6 is limited to ProtoEM-CT objective-driven transductive adaptation on the immutable internal
+test cohort using the completed Phase 5 retrieval-and-prototype foundation. Phase 6 does not
+include any Phase 7 work. In particular, Phase 6 must not include robustness corruptions, stress
+testing, uncertainty analysis, calibration, external validation, reporting claims beyond the
+internal development setting, or any new method family that is not part of the ProtoEM-CT
+objective-driven transductive adaptation path.
+
+Phase 6 includes:
+
+- deterministic objective contracts for ProtoEM-CT transductive adaptation built on frozen Phase 5
+  retrieval/prototype components;
+- explicit transductive state schemas for query-conditioned adaptation traces, objective terms, and
+  iteration summaries;
+- bounded query-time optimization over the declared ProtoEM-CT objective using support-derived
+  supervision and unlabeled query volumes only;
+- deterministic initialization from Phase 5 prototype-only inference and retrieval artifacts;
+- explicit stopping, failure, and non-convergence behavior;
+- deterministic publication of adaptation summaries and internal-test evaluation artifacts; and
+- unit, integration, determinism, leakage, and bounded synthetic smoke coverage for the Phase 6
+  contracts.
+
+Phase 6 excludes:
+
+- any change to completed Phase 5 retrieval, cache, prototype, or baseline implementation beyond
+  the narrow integration hooks required to call them;
+- any new CLI surface, config expansion, artifact publication, or execution path in this planning
+  substage;
+- any external 3D-IRCADb-01 access or validation;
+- any Phase 7 robustness, corruption, uncertainty, calibration, or ablation work;
+- any use of external labels for tuning, selection, or thresholding; and
+- any claim that Phase 6 planning alone establishes scientific efficacy.
+
+## Phase 6 Scientific and Data Boundaries
+
+Phase 6 consumes only persisted Phase 2 development artifacts, the immutable internal-test cohort
+definition, completed Phase 4 support-manifest/protocol artifacts, completed Phase 5 retrieval and
+prototype artifacts, and existing Phase 3/Phase 4 baseline checkpoints or initialization
+references. Query adaptation is transductive with respect to unlabeled internal-test query volumes
+only. Support labels remain the only label source allowed inside the adaptation objective.
+
+Phase 6 must keep support/query patient disjointness and support/query case disjointness intact. No
+query ground-truth labels may enter objective construction, stopping decisions, hyperparameter
+selection, checkpoint selection, retrieval tuning, or adaptation-mode selection. Any adaptation
+trace must remain auditable from persisted artifacts rather than transient logs or in-memory state.
+
+The planned Phase 6 objective is ProtoEM-CT-specific and must be recorded as explicit weighted
+terms with stable naming, deterministic default coefficients, and documented finite-value guards.
+Changing term definitions or coefficients changes artifact identity and invalidates direct
+comparisons across runs.
+
+## Phase 6 Planned Implementation Sequence
+
+Each numbered substage is a reviewable implementation unit. Work remains on one named substage at a
+time in this order:
+
+0. Planning only: define the complete Phase 6 implementation plan in `docs/PHASE_PLAN.md` without
+   modifying code, tests, configs, CLI, artifacts, objectives, EM steps, or inference behavior.
+1. Define Phase 6 artifact schemas, canonical JSON payloads, and hashing contracts for
+   transductive objective configuration, iteration summaries, run summaries, and failure records.
+2. Define the narrow Phase 6 integration boundary that reads completed Phase 5 retrieval/prototype
+   outputs and produces ProtoEM-CT adaptation inputs without changing Phase 5 semantics.
+3. Define the ProtoEM-CT objective contract, including named objective terms, coefficient schema,
+   finite-value checks, explicit reduction rules, and deterministic empty-case behavior.
+4. Implement deterministic transductive state containers and initialization from Phase 5
+   prototype-only query predictions, support prototypes, and retrieval results.
+5. Implement bounded iterative adaptation orchestration with explicit iteration order, objective
+   evaluation order, stopping criteria, max-iteration handling, and failure/non-convergence status.
+6. Implement objective bookkeeping and persisted per-iteration summaries, including total objective,
+   per-term values, update magnitude summaries, and termination reason.
+7. Implement deterministic final prediction/export wiring for the adapted internal-test query path
+   while preserving existing Phase 5 behavior for non-adaptive baselines.
+8. Implement publication/reporting surfaces for Phase 6 JSON artifacts and any derived Markdown
+   summaries generated only from saved JSON artifacts.
+9. Add targeted unit, integration, determinism, leakage, and bounded synthetic smoke tests for the
+   Phase 6 contracts.
+10. Run final Phase 6 verification and evaluate Gate 6 without implementing any Phase 7 method.
+
+## Phase 6 Planned Artifacts
+
+- `protoem_ct_objective_config_v1` artifact recording the declared Phase 6 objective terms,
+  coefficients, initialization identity, and stopping policy
+- `protoem_ct_iteration_summary_v1` artifact recording one deterministic adaptation iteration with
+  total objective, per-term values, convergence statistics, and failure flags
+- `protoem_ct_run_summary_v1` artifact recording one complete Phase 6 transductive run with source
+  hashes, support/query identities, stopping reason, iteration count, and output references
+- `protoem_ct_failure_record_v1` artifact recording explicit invalid-input, non-finite,
+  non-convergent, or unsupported-state failures
+- optional derived Markdown summaries generated only from saved JSON artifacts
+
+All generated artifacts remain outside Git beneath explicit external output roots.
+
+## Phase 6 Planned Files and Directories
+
+The exact implementation may adjust filenames modestly, but the Phase 6 plan expects work in these
+surfaces while keeping Phase 5 implementation unchanged:
+
+- `docs/PHASE_PLAN.md`
+- `configs/phase6_protoem_ct.yaml`
+- `src/protoem_ct/protoem/__init__.py`
+- `src/protoem_ct/protoem/artifacts.py`
+- `src/protoem_ct/protoem/contracts.py`
+- `src/protoem_ct/protoem/objective.py`
+- `src/protoem_ct/protoem/state.py`
+- `src/protoem_ct/protoem/initialize.py`
+- `src/protoem_ct/protoem/optimize.py`
+- `src/protoem_ct/protoem/stopping.py`
+- `src/protoem_ct/protoem/publication.py`
+- `src/protoem_ct/protoem/inference.py`
+- `src/protoem_ct/retrieval/publication.py`
+- `src/protoem_ct/retrieval/inference.py`
+- `src/protoem_ct/cli/main.py`
+- `src/protoem_ct/artifacts/hashing.py`
+- `tests/unit/test_phase6_artifacts.py`
+- `tests/unit/test_phase6_objective.py`
+- `tests/unit/test_phase6_state.py`
+- `tests/unit/test_phase6_initialize.py`
+- `tests/unit/test_phase6_optimize.py`
+- `tests/unit/test_phase6_stopping.py`
+- `tests/unit/test_phase6_failures.py`
+- `tests/unit/test_phase6_leakage.py`
+- `tests/integration/test_phase6_cli.py`
+- `tests/integration/test_phase6_publication.py`
+- `tests/integration/test_phase6_transductive_flow.py`
+- `tests/smoke/test_phase6_protoem_smoke.py`
+
+## Phase 6 Objective and Orchestration Contracts
+
+Phase 6 must define the ProtoEM-CT objective as a fixed named collection of terms rather than an
+implicit computation embedded inside an optimization loop. Each term must state:
+
+- required inputs and their provenance;
+- tensor reduction rule and normalization rule;
+- coefficient name and default value;
+- valid value range or finite-value expectation; and
+- failure behavior when required inputs are absent or degenerate.
+
+The orchestration contract must keep iteration order deterministic. Given identical explicit inputs,
+identical source artifacts, identical coefficients, and identical iteration limits, the saved
+iteration summaries and final run summary must be byte-identical where the implementation claims
+determinism.
+
+Stopping behavior must be explicit. The planned contract requires a bounded maximum iteration count,
+an explicit improvement threshold or equivalent stopping criterion, and distinct terminal statuses
+for converged, max-iteration-reached, invalid-state, and failed runs. Silent early termination is
+not allowed.
+
+Phase 6 must preserve a clean comparison boundary against completed Phase 5 artifacts. The
+prototype-only Phase 5 path remains the non-adaptive reference. Phase 6 outputs must record the
+exact source Phase 5 artifact identities used for initialization so comparisons are traceable and do
+not blur the boundary between non-transductive retrieval and ProtoEM-CT transductive adaptation.
+
+## Phase 6 Planned Verification
+
+- Artifact-schema and canonical-serialization tests for all Phase 6 JSON contracts
+- Objective-term tests for deterministic values, finite-value guards, and explicit degenerate-case
+  handling
+- Initialization tests proving deterministic construction from fixed Phase 5 retrieval/prototype
+  artifacts
+- Optimization-loop tests for iteration ordering, objective bookkeeping, stopping behavior, and
+  failure propagation
+- Determinism tests proving byte-identical iteration summaries and run summaries for identical
+  explicit inputs
+- Leakage tests proving no query-label usage, no support/query identity overlap, and no mutation of
+  immutable internal-test assignments
+- Integration tests for the end-to-end transductive flow using synthetic fixtures and bounded CPU
+  execution only
+- Synthetic smoke tests for a minimal ProtoEM-CT run surface
+- `uv run ruff check .`
+- `uv run ruff format --check .`
+- `uv run mypy src tests`
+- targeted pytest selection for the new Phase 6 unit, integration, leakage, determinism, and smoke
+  tests
+
+Full development-cohort training, external validation, Phase 7 robustness execution, and long GPU
+runs are not part of the Phase 6 planning scope.
+
+## Phase 6 Risks and Safeguards
+
+- Risk: Phase 6 objective scope can drift into Phase 7 robustness or uncertainty work.
+  Safeguard: keep the plan explicitly limited to ProtoEM-CT objective-driven transductive
+  adaptation and exclude all Phase 7 surfaces by name.
+- Risk: transductive adaptation can accidentally consume query labels or hidden evaluation signals.
+  Safeguard: require explicit leakage tests, auditable source-hash linkage, and no query-label
+  inputs anywhere in the adaptation contract.
+- Risk: iterative optimization can become nondeterministic.
+  Safeguard: make iteration order, stopping rules, and artifact serialization explicit and test
+  byte-identical outputs where determinism is claimed.
+- Risk: objective terms can become numerically unstable or non-finite on degenerate cases.
+  Safeguard: require per-term finite-value guards, explicit empty-case handling, and persisted
+  failure records.
+- Risk: Phase 6 integration can silently alter Phase 5 behavior.
+  Safeguard: keep a narrow initialization boundary, record source Phase 5 artifact hashes, and keep
+  the Phase 5 non-adaptive path as a reference.
+- Risk: transductive state artifacts can become large or difficult to audit.
+  Safeguard: persist compact structured summaries by iteration and keep raw intermediate tensors out
+  of Git and out of required deterministic artifacts.
+
+## Gate 6 Acceptance Criteria
+
+Gate 6 is accepted when:
+
+- the Phase 6 implementation remains explicitly limited to ProtoEM-CT objective-driven
+  transductive adaptation and does not include any Phase 7 work;
+- deterministic Phase 6 artifact schemas exist for objective configuration, iteration summaries, run
+  summaries, and failure records;
+- the ProtoEM-CT objective contract is explicit, finite-guarded, and recorded by named terms with
+  deterministic coefficients;
+- deterministic initialization from completed Phase 5 retrieval/prototype artifacts is implemented
+  and source hashes are recorded in Phase 6 run artifacts;
+- bounded iterative adaptation with explicit stopping and failure statuses is implemented;
+- deterministic final adapted internal-test query outputs and machine-readable Phase 6 summaries are
+  produced from saved artifacts;
+- unit, integration, determinism, leakage, and bounded synthetic smoke tests for the Phase 6
+  contracts pass;
+- no tracked medical data, PHI-bearing manifests, embeddings, predictions, checkpoints, or large
+  generated artifacts are Git-visible; and
+- Gate 6 close-out does not claim external validation, robustness findings, uncertainty findings,
+  calibration findings, or any Phase 7 result.
+
+### Gate 6 Close-Out Status
+
+Gate 6 passed locally on 2026-08-02.
+
+Verified close-out evidence:
+
+- `uv run ruff check .`: PASS
+- `uv run ruff format --check .`: PASS after one formatting-only fix in
+  `tests/unit/test_phase6_inference.py`
+- `uv run mypy src`: PASS
+- `uv run pytest -q`: PASS, `1115 passed, 3 skipped`
+- `uv run pre-commit run --all-files`: PASS
+- `uv run protoem-ct run-phase6-protoem --help`: PASS
+- Two independent synthetic `run-phase6-protoem` executions completed successfully
+- JSON and Markdown publication artifacts were byte-identical across the two synthetic runs
+- The synthetic objective trace was non-empty, zero-based, contiguous, and self-validating
+- The synthetic stopping record was self-validating with stop reason `max_iterations`
+- The synthetic ablation comparison contained exactly 12 records in canonical order with explicit
+  `executed`, `phase5_baseline_link`, `unsupported`, and `provenance_only` statuses
+- Query labels and query reference masks remained outside initialization and optimization APIs
+
+This close-out remains limited to ProtoEM-CT objective-driven transductive adaptation on bounded
+synthetic executions. It does not claim theoretical convergence, real-data Phase 6 efficacy, GPU
+execution, robustness, uncertainty, calibration, external validation, or any Phase 7 result.
 
 ## Implementation Notes and Command Results
 

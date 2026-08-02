@@ -465,3 +465,17 @@
   reduction, saved-prediction import, metric JSON generation, and metadata logging for both
   approved baseline families without claiming scientific efficacy, full-cohort training,
   generalization, or clinical validity.
+
+### 2026-08-02: Treat learned_positive_step as Explicit Parameterized Positive-Step Input
+
+- Status: accepted
+- Context: Phase 6 implements an optional positive-step schedule path, but Phase 6 does not include
+  training of those step parameters, optimizer-driven fitting, or any claim that the schedule was
+  learned from data.
+- Decision: In Phase 6 close-out, `learned_positive_step` is documented scientifically as an
+  explicit parameterized positive-step schedule whose raw step parameters are supplied by config or
+  caller input. The implementation must not describe those parameters as trained or learned from
+  data unless a later phase adds real schedule training evidence.
+- Consequences: Gate 6 documentation, publication Markdown, ablation comparison, and run summaries
+  state that positive-step parameters are supplied, not trained. Phase 6 can execute the optional
+  parameterized schedule path without claiming schedule learning or Phase 7 functionality.
