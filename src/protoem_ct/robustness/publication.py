@@ -11,9 +11,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, cast
 
-from protoem_ct.artifacts.hashing import JsonValue, canonical_json_bytes
+from protoem_ct.artifacts.hashing import JsonValue, canonical_json_bytes, sha256_json
 from protoem_ct.data import InvalidDatasetRootError, validate_explicit_external_output_root
 from protoem_ct.robustness.artifacts import (
+    PHASE7_CORRUPTION_NAMES,
+    Phase7CorruptionManifest,
     Phase7GeometryRecord,
     Phase7RunSummary,
     Phase7TransformResult,
@@ -337,13 +339,42 @@ class _ValidatedPhase7PublicationInputs:
         degradation = phase7_degradation_result_from_json(inputs.degradation_result_json)
         subgroup = phase7_lesion_subgroup_result_from_json(inputs.lesion_subgroup_result_json)
         summary = phase7_run_summary_from_json(inputs.phase7_run_summary_json)
-        _validate_cross_artifact_hashes(
+        transform_results_hash = _hash_json_mapping_bytes(
+            build_phase7_transform_results_collection_json(transform_results)
+        )
+        geometry_records_hash = _hash_json_mapping_bytes(
+            build_phase7_geometry_records_collection_json(geometry_records)
+        )
+        failure_detection_hash = _hash_json_mapping_bytes(inputs.failure_detection_json)
+        publication_payload_hash = _phase7_publication_payload_hash(
+            effective_config_json=effective_config_json,
+            corruption_manifest_hash=corruption_manifest.corruption_manifest_hash,
+            transform_results_hash=transform_results_hash,
+            geometry_records_hash=geometry_records_hash,
             uncertainty_result_hash=uncertainty.uncertainty_result_hash,
             calibration_result_hash=calibration.calibration_result_hash,
             risk_coverage_result_hash=risk.risk_coverage_result_hash,
+            failure_detection_result_hash=failure_detection_hash,
+            degradation_result_hash=degradation.degradation_result_hash,
+            lesion_subgroup_result_hash=subgroup.lesion_subgroup_result_hash,
+        )
+        _validate_transform_manifest_geometry_consistency(
+            manifest=corruption_manifest,
+            transform_results=transform_results,
+            geometry_records=geometry_records,
+        )
+        _validate_cross_artifact_hashes(
+            config_hash=_hash_json_mapping_bytes(effective_config_json),
+            uncertainty_result_hash=uncertainty.uncertainty_result_hash,
+            calibration_result_hash=calibration.calibration_result_hash,
+            risk_coverage_result_hash=risk.risk_coverage_result_hash,
+            failure_detection_result_hash=failure_detection_hash,
             degradation_result_hash=degradation.degradation_result_hash,
             lesion_subgroup_result_hash=subgroup.lesion_subgroup_result_hash,
             manifest_hash=corruption_manifest.corruption_manifest_hash,
+            transform_results_hash=transform_results_hash,
+            geometry_records_hash=geometry_records_hash,
+            publication_payload_hash=publication_payload_hash,
             summary=summary,
         )
         return cls(
@@ -368,26 +399,115 @@ class _ValidatedPhase7PublicationInputs:
 
 def _validate_cross_artifact_hashes(
     *,
+    config_hash: str,
     uncertainty_result_hash: str,
     calibration_result_hash: str,
     risk_coverage_result_hash: str,
+    failure_detection_result_hash: str,
     degradation_result_hash: str,
     lesion_subgroup_result_hash: str,
     manifest_hash: str,
+    transform_results_hash: str,
+    geometry_records_hash: str,
+    publication_payload_hash: str,
     summary: Phase7RunSummary,
 ) -> None:
+    if summary.config_hash != config_hash:
+        raise Phase7PublicationValidationError("run summary config hash mismatch.")
     if summary.corruption_manifest_hash != manifest_hash:
         raise Phase7PublicationValidationError("run summary manifest hash mismatch.")
     expected = {
+        "transform_results_hash": transform_results_hash,
+        "geometry_records_hash": geometry_records_hash,
         "uncertainty_result_hash": uncertainty_result_hash,
         "calibration_result_hash": calibration_result_hash,
         "risk_coverage_result_hash": risk_coverage_result_hash,
+        "failure_detection_result_hash": failure_detection_result_hash,
         "degradation_result_hash": degradation_result_hash,
         "lesion_subgroup_result_hash": lesion_subgroup_result_hash,
+        "publication_payload_hash": publication_payload_hash,
     }
     for field_name, value in expected.items():
         if getattr(summary, field_name) != value:
             raise Phase7PublicationValidationError(f"run summary {field_name} mismatch.")
+
+
+def _validate_transform_manifest_geometry_consistency(
+    *,
+    manifest: Phase7CorruptionManifest,
+    transform_results: tuple[Phase7TransformResult, ...],
+    geometry_records: tuple[Phase7GeometryRecord, ...],
+) -> None:
+    specification_names = tuple(item.corruption_name for item in manifest.specifications)
+    if set(specification_names) != PHASE7_CORRUPTION_NAMES:
+        raise Phase7PublicationValidationError("corruption manifest coverage is incomplete.")
+    if len(set(specification_names)) != len(specification_names):
+        raise Phase7PublicationValidationError("corruption manifest contains duplicate names.")
+    if len(transform_results) != len(manifest.specifications):
+        raise Phase7PublicationValidationError("transform result count must match manifest.")
+    geometry_hashes = {item.geometry_record_hash for item in geometry_records}
+    referenced_geometry_hashes: set[str] = set()
+    for index, (specification, result) in enumerate(
+        zip(manifest.specifications, transform_results, strict=True)
+    ):
+        if result.corruption_specification_hash != specification.corruption_specification_hash:
+            raise Phase7PublicationValidationError(
+                f"transform result {index} specification hash mismatch."
+            )
+        if specification.changes_geometry or specification.common_grid_restoration_required:
+            if result.geometry_record_hash is None:
+                raise Phase7PublicationValidationError(
+                    f"transform result {index} requires a geometry record."
+                )
+            if not result.common_grid_restored:
+                raise Phase7PublicationValidationError(
+                    f"transform result {index} must restore the common grid."
+                )
+        if result.geometry_record_hash is not None:
+            if result.geometry_record_hash not in geometry_hashes:
+                raise Phase7PublicationValidationError(
+                    f"transform result {index} geometry hash is missing."
+                )
+            referenced_geometry_hashes.add(result.geometry_record_hash)
+    if referenced_geometry_hashes != geometry_hashes:
+        raise Phase7PublicationValidationError(
+            "geometry records must match referenced transform result hashes."
+        )
+
+
+def _phase7_publication_payload_hash(
+    *,
+    effective_config_json: bytes,
+    corruption_manifest_hash: str,
+    transform_results_hash: str,
+    geometry_records_hash: str,
+    uncertainty_result_hash: str,
+    calibration_result_hash: str,
+    risk_coverage_result_hash: str,
+    failure_detection_result_hash: str,
+    degradation_result_hash: str,
+    lesion_subgroup_result_hash: str,
+) -> str:
+    return sha256_json(
+        {
+            "config_hash": _hash_json_mapping_bytes(effective_config_json),
+            "corruption_manifest_hash": corruption_manifest_hash,
+            "degradation_result_hash": degradation_result_hash,
+            "failure_detection_result_hash": failure_detection_result_hash,
+            "geometry_records_hash": geometry_records_hash,
+            "lesion_subgroup_result_hash": lesion_subgroup_result_hash,
+            "risk_coverage_result_hash": risk_coverage_result_hash,
+            "calibration_result_hash": calibration_result_hash,
+            "schema_name": "phase7_publication_payload",
+            "schema_version": PHASE7_PUBLICATION_COLLECTION_SCHEMA_VERSION,
+            "transform_results_hash": transform_results_hash,
+            "uncertainty_result_hash": uncertainty_result_hash,
+        }
+    )
+
+
+def _hash_json_mapping_bytes(data: bytes | str) -> str:
+    return sha256_json(_parse_json_mapping(data))
 
 
 def _transform_results_from_json(data: bytes | str) -> tuple[Phase7TransformResult, ...]:

@@ -585,7 +585,11 @@ def _affine_hash(affine: AffineTuple) -> str:
 
 def _array_content_sha256(array: np.ndarray) -> str:
     contiguous = np.ascontiguousarray(array)
-    return hashlib.sha256(contiguous.tobytes(order="C")).hexdigest()
+    digest = hashlib.sha256()
+    digest.update(str(contiguous.dtype).encode("utf-8"))
+    digest.update(str(tuple(int(item) for item in contiguous.shape)).encode("utf-8"))
+    digest.update(contiguous.tobytes(order="C"))
+    return digest.hexdigest()
 
 
 __all__ = [

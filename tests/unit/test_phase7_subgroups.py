@@ -21,6 +21,8 @@ from protoem_ct.uncertainty.artifacts import (
     phase7_lesion_subgroup_result_to_json,
 )
 
+HEX_GRID = "4" * 64
+
 
 def _mask_with_count(count: int) -> np.ndarray:
     mask = np.zeros((5, 5, 5), dtype=np.uint8)
@@ -47,8 +49,10 @@ def test_exact_subgroup_dice_on_known_masks() -> None:
     analysis = build_phase7_lesion_subgroup_result(
         (LesionSubgroupCase("case_small", reference, prediction),),
         metric_name="dice",
+        common_grid_geometry_record_hash=HEX_GRID,
     )
 
+    assert analysis.result.common_grid_geometry_record_hash == HEX_GRID
     small = next(record for record in analysis.result.records if record.subgroup_name == "small")
     assert small.metric_availability_status == "available"
     assert small.eligible_case_count == 1
@@ -64,6 +68,7 @@ def test_exact_subgroup_iou_on_known_masks() -> None:
     analysis = build_phase7_lesion_subgroup_result(
         (LesionSubgroupCase("case_small", reference, prediction),),
         metric_name="iou",
+        common_grid_geometry_record_hash=HEX_GRID,
     )
 
     small = next(record for record in analysis.result.records if record.subgroup_name == "small")
@@ -78,6 +83,7 @@ def test_empty_lesion_handling_and_counts_persisted() -> None:
             LesionSubgroupCase("small_case", _mask_with_count(2), _mask_with_count(2)),
         ),
         metric_name="dice",
+        common_grid_geometry_record_hash=HEX_GRID,
     )
 
     empty_record = next(
@@ -102,16 +108,28 @@ def test_nonbinary_and_shape_rejection() -> None:
         build_phase7_lesion_subgroup_result(
             (LesionSubgroupCase("case_a", nonbinary, prediction),),
             metric_name="dice",
+            common_grid_geometry_record_hash=HEX_GRID,
         )
     with pytest.raises(Phase7SubgroupInputError):
         build_phase7_lesion_subgroup_result(
             (LesionSubgroupCase("case_a", reference, prediction[:, :, :1]),),
             metric_name="dice",
+            common_grid_geometry_record_hash=HEX_GRID,
         )
     with pytest.raises(Phase7SubgroupInputError):
         build_phase7_lesion_subgroup_result(
             (LesionSubgroupCase("case_a", reference[0], prediction[0]),),
             metric_name="dice",
+            common_grid_geometry_record_hash=HEX_GRID,
+        )
+
+
+def test_common_grid_geometry_hash_required() -> None:
+    with pytest.raises(Phase7SubgroupInputError, match="common_grid_geometry_record_hash"):
+        build_phase7_lesion_subgroup_result(
+            (LesionSubgroupCase("case_a", _mask_with_count(1), _mask_with_count(1)),),
+            metric_name="dice",
+            common_grid_geometry_record_hash="not-a-sha",
         )
 
 
@@ -122,8 +140,16 @@ def test_subgroup_artifact_deterministic_and_self_hashing() -> None:
         LesionSubgroupCase("case_medium", _mask_with_count(20), _mask_with_count(18)),
     )
 
-    first = build_phase7_lesion_subgroup_result(cases, metric_name="dice")
-    second = build_phase7_lesion_subgroup_result(cases, metric_name="dice")
+    first = build_phase7_lesion_subgroup_result(
+        cases,
+        metric_name="dice",
+        common_grid_geometry_record_hash=HEX_GRID,
+    )
+    second = build_phase7_lesion_subgroup_result(
+        cases,
+        metric_name="dice",
+        common_grid_geometry_record_hash=HEX_GRID,
+    )
 
     assert second.result == first.result
     assert phase7_lesion_subgroup_result_to_json(second.result) == (
@@ -144,10 +170,12 @@ def test_non_contiguous_masks_produce_same_subgroup_artifact() -> None:
     contiguous = build_phase7_lesion_subgroup_result(
         (LesionSubgroupCase("case_a", reference, prediction),),
         metric_name="dice",
+        common_grid_geometry_record_hash=HEX_GRID,
     )
     non_contiguous = build_phase7_lesion_subgroup_result(
         (LesionSubgroupCase("case_a", reference[:, :, ::-1][:, :, ::-1], prediction.T.T),),
         metric_name="dice",
+        common_grid_geometry_record_hash=HEX_GRID,
     )
 
     assert non_contiguous.result == contiguous.result

@@ -35,6 +35,7 @@ LESION_SUBGROUP_ORDER: Final[tuple[LesionSubgroupName, ...]] = (
     "medium",
     "large",
 )
+_SHA256_LENGTH: Final[int] = 64
 
 
 class Phase7SubgroupError(ValueError):
@@ -96,16 +97,22 @@ def build_phase7_lesion_subgroup_result(
     cases: tuple[LesionSubgroupCase, ...],
     *,
     metric_name: MaskMetricName,
+    common_grid_geometry_record_hash: str,
 ) -> LesionSubgroupAnalysis:
     """Build deterministic lesion-size subgroup metrics from common-grid masks.
 
     Reference masks are accepted only by this evaluation API. Callers are
-    responsible for restoring predictions and references to a validated common
-    grid before calling this function.
+    responsible for restoring predictions and references to the validated common
+    grid identified by `common_grid_geometry_record_hash` before calling this
+    function.
     """
 
     if metric_name not in {"dice", "iou"}:
         raise Phase7SubgroupInputError("metric_name must be 'dice' or 'iou'.")
+    _require_sha256(
+        common_grid_geometry_record_hash,
+        field_name="common_grid_geometry_record_hash",
+    )
     if not cases:
         raise Phase7SubgroupInputError("at least one subgroup case is required.")
 
@@ -153,6 +160,7 @@ def build_phase7_lesion_subgroup_result(
         for subgroup_name in LESION_SUBGROUP_ORDER
     )
     payload = {
+        "common_grid_geometry_record_hash": common_grid_geometry_record_hash,
         "metric_name": metric_name,
         "prediction_content_hash": sha256_json({"cases": prediction_hash_records}),
         "records": [phase7_lesion_subgroup_record_to_dict(record) for record in records],
@@ -168,6 +176,7 @@ def build_phase7_lesion_subgroup_result(
         lesion_subgroup_result_hash=sha256_json(payload),
         reference_mask_content_hash=cast(str, payload["reference_mask_content_hash"]),
         prediction_content_hash=cast(str, payload["prediction_content_hash"]),
+        common_grid_geometry_record_hash=common_grid_geometry_record_hash,
         metric_name=metric_name,
         subgroup_policy_name=LESION_SUBGROUP_POLICY_NAME,
         thresholds_voxels=LESION_SUBGROUP_THRESHOLDS_VOXELS,
@@ -226,6 +235,11 @@ def _build_subgroup_record(
 def _require_case_id(value: str) -> None:
     if not value or not value.replace("_", "").replace("-", "").isalnum():
         raise Phase7SubgroupInputError("case_id must be a conservative identifier.")
+
+
+def _require_sha256(value: str, *, field_name: str) -> None:
+    if len(value) != _SHA256_LENGTH or any(item not in "0123456789abcdef" for item in value):
+        raise Phase7SubgroupInputError(f"{field_name} must be a lowercase SHA-256 hash.")
 
 
 def _require_binary_mask(mask: np.ndarray, *, field_name: str) -> np.ndarray:

@@ -443,6 +443,7 @@ class Phase7LesionSubgroupResult:
     lesion_subgroup_result_hash: str
     reference_mask_content_hash: str
     prediction_content_hash: str
+    common_grid_geometry_record_hash: str
     metric_name: str
     subgroup_policy_name: str
     thresholds_voxels: tuple[int, ...]
@@ -457,6 +458,10 @@ class Phase7LesionSubgroupResult:
         )
         _require_sha256(self.reference_mask_content_hash, field_name="reference_mask_content_hash")
         _require_sha256(self.prediction_content_hash, field_name="prediction_content_hash")
+        _require_sha256(
+            self.common_grid_geometry_record_hash,
+            field_name="common_grid_geometry_record_hash",
+        )
         _require_identifier(self.metric_name, field_name="metric_name")
         _require_identifier(self.subgroup_policy_name, field_name="subgroup_policy_name")
         if not self.thresholds_voxels:
@@ -680,6 +685,7 @@ def phase7_lesion_subgroup_result_identity_payload(
 
     return {
         "metric_name": result.metric_name,
+        "common_grid_geometry_record_hash": result.common_grid_geometry_record_hash,
         "prediction_content_hash": result.prediction_content_hash,
         "records": [phase7_lesion_subgroup_record_to_dict(item) for item in result.records],
         "reference_mask_content_hash": result.reference_mask_content_hash,
@@ -1046,6 +1052,10 @@ def phase7_lesion_subgroup_result_from_mapping(
             mapping["prediction_content_hash"],
             field_name="prediction_content_hash",
         ),
+        common_grid_geometry_record_hash=_expect_string(
+            mapping["common_grid_geometry_record_hash"],
+            field_name="common_grid_geometry_record_hash",
+        ),
         metric_name=_expect_string(mapping["metric_name"], field_name="metric_name"),
         subgroup_policy_name=_expect_string(
             mapping["subgroup_policy_name"],
@@ -1235,6 +1245,7 @@ _LESION_SUBGROUP_RESULT_FIELDS: Final[frozenset[str]] = frozenset(
         "lesion_subgroup_result_hash",
         "reference_mask_content_hash",
         "prediction_content_hash",
+        "common_grid_geometry_record_hash",
         "metric_name",
         "subgroup_policy_name",
         "thresholds_voxels",

@@ -1638,10 +1638,42 @@ def _build_phase7_synthetic_publication_inputs(
             ),
         ),
         metric_name="dice",
+        common_grid_geometry_record_hash=common_grid_hash,
+    )
+    transform_results_json = build_phase7_transform_results_collection_json(
+        tuple(transform_results)
+    )
+    geometry_records_json = build_phase7_geometry_records_collection_json(tuple(geometry_records))
+    failure_detection_json = canonical_phase7_failure_detection_results_json(
+        correlation_result=correlation,
+        auroc_result=auroc,
+    )
+    uncertainty_result_json = phase7_uncertainty_result_to_json(tta_result.uncertainty_result)
+    calibration_result_json = phase7_calibration_result_to_json(calibration.calibration_result)
+    risk_coverage_result_json = phase7_risk_coverage_result_to_json(risk.risk_coverage_result)
+    degradation_result_json = phase7_degradation_result_to_json(degradation)
+    lesion_subgroup_result_json = phase7_lesion_subgroup_result_to_json(subgroup.result)
+    manifest_json = phase7_corruption_manifest_to_json(manifest)
+    transform_results_hash = _phase7_json_hash(transform_results_json)
+    geometry_records_hash = _phase7_json_hash(geometry_records_json)
+    failure_detection_hash = _phase7_json_hash(failure_detection_json)
+    publication_payload_hash = _phase7_publication_payload_hash(
+        config_hash=config_hash,
+        manifest_hash=manifest.corruption_manifest_hash,
+        transform_results_hash=transform_results_hash,
+        geometry_records_hash=geometry_records_hash,
+        uncertainty_hash=tta_result.uncertainty_result.uncertainty_result_hash,
+        calibration_hash=calibration.calibration_result.calibration_result_hash,
+        risk_hash=risk.risk_coverage_result.risk_coverage_result_hash,
+        failure_detection_hash=failure_detection_hash,
+        degradation_hash=degradation.degradation_result_hash,
+        subgroup_hash=subgroup.result.lesion_subgroup_result_hash,
     )
     run_summary = _build_phase7_run_summary(
         config_hash=config_hash,
         manifest_hash=manifest.corruption_manifest_hash,
+        transform_results_hash=transform_results_hash,
+        geometry_records_hash=geometry_records_hash,
         phase6_run_summary_hash=sha256_json(
             {
                 "schema_name": "phase6_synthetic_final_surface_reference",
@@ -1653,27 +1685,22 @@ def _build_phase7_synthetic_publication_inputs(
         uncertainty_hash=tta_result.uncertainty_result.uncertainty_result_hash,
         calibration_hash=calibration.calibration_result.calibration_result_hash,
         risk_hash=risk.risk_coverage_result.risk_coverage_result_hash,
+        failure_detection_hash=failure_detection_hash,
         degradation_hash=degradation.degradation_result_hash,
         subgroup_hash=subgroup.result.lesion_subgroup_result_hash,
+        publication_payload_hash=publication_payload_hash,
     )
     inputs = Phase7PublicationInputs(
         effective_config_json=config_json,
-        corruption_manifest_json=phase7_corruption_manifest_to_json(manifest),
-        transform_results_json=build_phase7_transform_results_collection_json(
-            tuple(transform_results)
-        ),
-        geometry_records_json=build_phase7_geometry_records_collection_json(
-            tuple(geometry_records)
-        ),
-        uncertainty_result_json=phase7_uncertainty_result_to_json(tta_result.uncertainty_result),
-        calibration_result_json=phase7_calibration_result_to_json(calibration.calibration_result),
-        risk_coverage_result_json=phase7_risk_coverage_result_to_json(risk.risk_coverage_result),
-        failure_detection_json=canonical_phase7_failure_detection_results_json(
-            correlation_result=correlation,
-            auroc_result=auroc,
-        ),
-        degradation_result_json=phase7_degradation_result_to_json(degradation),
-        lesion_subgroup_result_json=phase7_lesion_subgroup_result_to_json(subgroup.result),
+        corruption_manifest_json=manifest_json,
+        transform_results_json=transform_results_json,
+        geometry_records_json=geometry_records_json,
+        uncertainty_result_json=uncertainty_result_json,
+        calibration_result_json=calibration_result_json,
+        risk_coverage_result_json=risk_coverage_result_json,
+        failure_detection_json=failure_detection_json,
+        degradation_result_json=degradation_result_json,
+        lesion_subgroup_result_json=lesion_subgroup_result_json,
         phase7_run_summary_json=phase7_run_summary_to_json(run_summary),
     )
     summary: dict[str, JsonValue] = {
@@ -1874,12 +1901,16 @@ def _build_phase7_run_summary(
     *,
     config_hash: str,
     manifest_hash: str,
+    transform_results_hash: str,
+    geometry_records_hash: str,
     phase6_run_summary_hash: str,
     uncertainty_hash: str,
     calibration_hash: str,
     risk_hash: str,
+    failure_detection_hash: str,
     degradation_hash: str,
     subgroup_hash: str,
+    publication_payload_hash: str,
 ) -> Phase7RunSummary:
     payload: dict[str, JsonValue] = {
         "calibration_result_hash": calibration_hash,
@@ -1888,12 +1919,16 @@ def _build_phase7_run_summary(
         "degradation_result_hash": degradation_hash,
         "execution_status": "completed",
         "failure_code": None,
+        "failure_detection_result_hash": failure_detection_hash,
         "failure_message": None,
+        "geometry_records_hash": geometry_records_hash,
         "lesion_subgroup_result_hash": subgroup_hash,
         "phase6_run_summary_hash": phase6_run_summary_hash,
+        "publication_payload_hash": publication_payload_hash,
         "risk_coverage_result_hash": risk_hash,
         "schema_name": PHASE7_RUN_SUMMARY_SCHEMA_NAME,
         "schema_version": PHASE7_RUN_SUMMARY_SCHEMA_VERSION,
+        "transform_results_hash": transform_results_hash,
         "uncertainty_result_hash": uncertainty_hash,
     }
     return Phase7RunSummary(
@@ -1902,18 +1937,60 @@ def _build_phase7_run_summary(
         phase7_run_summary_hash=sha256_json(payload),
         config_hash=config_hash,
         corruption_manifest_hash=manifest_hash,
+        transform_results_hash=transform_results_hash,
+        geometry_records_hash=geometry_records_hash,
         phase6_run_summary_hash=phase6_run_summary_hash,
         uncertainty_result_hash=uncertainty_hash,
         calibration_result_hash=calibration_hash,
         risk_coverage_result_hash=risk_hash,
+        failure_detection_result_hash=failure_detection_hash,
         degradation_result_hash=degradation_hash,
         lesion_subgroup_result_hash=subgroup_hash,
+        publication_payload_hash=publication_payload_hash,
         execution_status="completed",
         failure_code=None,
         failure_message=None,
         duration_seconds=None,
         memory_availability_status="unavailable",
         peak_host_memory_bytes=None,
+    )
+
+
+def _phase7_json_hash(data: bytes | str) -> str:
+    decoded = json.loads(data)
+    if not isinstance(decoded, dict):
+        raise Phase7CliConfigError("Phase 7 publication JSON root must be an object.")
+    return sha256_json(decoded)
+
+
+def _phase7_publication_payload_hash(
+    *,
+    config_hash: str,
+    manifest_hash: str,
+    transform_results_hash: str,
+    geometry_records_hash: str,
+    uncertainty_hash: str,
+    calibration_hash: str,
+    risk_hash: str,
+    failure_detection_hash: str,
+    degradation_hash: str,
+    subgroup_hash: str,
+) -> str:
+    return sha256_json(
+        {
+            "config_hash": config_hash,
+            "corruption_manifest_hash": manifest_hash,
+            "degradation_result_hash": degradation_hash,
+            "failure_detection_result_hash": failure_detection_hash,
+            "geometry_records_hash": geometry_records_hash,
+            "lesion_subgroup_result_hash": subgroup_hash,
+            "risk_coverage_result_hash": risk_hash,
+            "calibration_result_hash": calibration_hash,
+            "schema_name": "phase7_publication_payload",
+            "schema_version": "v1",
+            "transform_results_hash": transform_results_hash,
+            "uncertainty_result_hash": uncertainty_hash,
+        }
     )
 
 

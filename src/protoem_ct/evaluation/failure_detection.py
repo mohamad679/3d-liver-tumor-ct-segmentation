@@ -20,7 +20,7 @@ PHASE7_FAILURE_DETECTION_AUROC_SCHEMA_VERSION: Final[str] = "v1"
 
 AvailabilityStatus = Literal["available", "unavailable"]
 
-_CORRELATION_METHOD: Final[str] = "pearson"
+_CORRELATION_METHOD: Final[str] = "spearman_average_rank"
 _AUROC_METHOD: Final[str] = "mann_whitney_pairwise"
 _AVAILABILITY_STATUSES: Final[frozenset[str]] = frozenset({"available", "unavailable"})
 _UNAVAILABLE_REASONS: Final[frozenset[str]] = frozenset(
@@ -50,7 +50,7 @@ class FailureDetectionIdentityError(Phase7FailureDetectionError):
 
 @dataclass(frozen=True, slots=True)
 class Phase7UncertaintyErrorCorrelationResult:
-    """Voxel-level Pearson correlation between uncertainty and binary errors."""
+    """Voxel-level Spearman correlation between uncertainty and binary errors."""
 
     schema_name: str
     schema_version: str
@@ -83,7 +83,7 @@ class Phase7UncertaintyErrorCorrelationResult:
             _require_sha256(self.valid_mask_content_hash, field_name="valid_mask_content_hash")
         _require_nonnegative_int(self.valid_voxel_count, field_name="valid_voxel_count")
         if self.correlation_method != _CORRELATION_METHOD:
-            raise FailureDetectionInputError("correlation_method must be 'pearson'.")
+            raise FailureDetectionInputError("correlation_method must be 'spearman_average_rank'.")
         _require_availability(
             self.availability_status,
             self.unavailable_reason,
@@ -175,12 +175,13 @@ def compute_uncertainty_error_correlation(
     error_indicators: np.ndarray,
     valid_mask: np.ndarray | None = None,
 ) -> Phase7UncertaintyErrorCorrelationResult:
-    """Compute deterministic voxel Pearson correlation for post-prediction evaluation.
+    """Compute deterministic voxel Spearman correlation for post-prediction evaluation.
 
-    The formula is `sum((u - mean_u) * (e - mean_e)) / sqrt(sum((u - mean_u)^2)
-    * sum((e - mean_e)^2))`, where `e` is a binary error indicator. Reference masks
-    may be used by callers to construct `error_indicators`, but this API accepts no
-    prediction, optimization, model, query-label, or reference-mask inputs.
+    Values are converted to deterministic average ranks, including tied uncertainty
+    values and tied binary errors, then Pearson correlation is computed over those
+    ranks. Reference masks may be used by callers to construct `error_indicators`,
+    but this API accepts no prediction, optimization, model, query-label, or
+    reference-mask inputs.
     """
 
     uncertainty, errors, mask = _prepare_voxel_inputs(
@@ -199,8 +200,10 @@ def compute_uncertainty_error_correlation(
         unavailable_reason = "insufficient_valid_voxels"
         correlation_value = None
     else:
-        uncertainty_delta = selected_uncertainty - float(np.mean(selected_uncertainty))
-        error_delta = selected_errors - float(np.mean(selected_errors))
+        uncertainty_ranks = _average_ranks(selected_uncertainty)
+        error_ranks = _average_ranks(selected_errors)
+        uncertainty_delta = uncertainty_ranks - float(np.mean(uncertainty_ranks))
+        error_delta = error_ranks - float(np.mean(error_ranks))
         uncertainty_sum_squares = float(np.dot(uncertainty_delta, uncertainty_delta))
         error_sum_squares = float(np.dot(error_delta, error_delta))
         if uncertainty_sum_squares == 0.0:
@@ -229,6 +232,23 @@ def compute_uncertainty_error_correlation(
         availability_status=availability_status,
         unavailable_reason=unavailable_reason,
     )
+
+
+def _average_ranks(values: np.ndarray) -> np.ndarray:
+    """Return deterministic one-based average ranks for finite one-dimensional values."""
+
+    order = np.argsort(values, kind="mergesort")
+    ranks = np.empty(values.shape, dtype=_FLOAT_DTYPE)
+    sorted_values = values[order]
+    start = 0
+    while start < int(sorted_values.size):
+        stop = start + 1
+        while stop < int(sorted_values.size) and sorted_values[stop] == sorted_values[start]:
+            stop += 1
+        average_rank = (float(start + 1) + float(stop)) / 2.0
+        ranks[order[start:stop]] = average_rank
+        start = stop
+    return ranks
 
 
 def compute_failure_detection_auroc(

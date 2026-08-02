@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import inspect
-import math
 
 import numpy as np
 import pytest
@@ -19,7 +18,7 @@ from protoem_ct.evaluation.failure_detection import (
 )
 
 
-def test_exact_pearson_correlation_known_case() -> None:
+def test_exact_spearman_average_rank_correlation_known_case() -> None:
     result = compute_uncertainty_error_correlation(
         uncertainty_values=np.array([0.0, 1.0, 2.0, 3.0]),
         error_indicators=np.array([0, 0, 1, 1]),
@@ -27,9 +26,19 @@ def test_exact_pearson_correlation_known_case() -> None:
 
     assert result.availability_status == "available"
     assert result.unavailable_reason is None
-    assert result.correlation_method == "pearson"
+    assert result.correlation_method == "spearman_average_rank"
     assert result.valid_voxel_count == 4
-    assert result.correlation_value == pytest.approx(2.0 / math.sqrt(5.0))
+    assert result.correlation_value == pytest.approx(4.0 / np.sqrt(20.0))
+
+
+def test_spearman_correlation_uses_average_ranks_for_ties() -> None:
+    result = compute_uncertainty_error_correlation(
+        uncertainty_values=np.array([0.1, 0.1, 0.9, 0.9]),
+        error_indicators=np.array([0, 1, 0, 1]),
+    )
+
+    assert result.availability_status == "available"
+    assert result.correlation_value == pytest.approx(0.0)
 
 
 def test_correlation_uses_valid_mask() -> None:

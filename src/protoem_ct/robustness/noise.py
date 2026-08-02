@@ -272,12 +272,20 @@ def _build_completed_transform_result(
 
 def _array_content_sha256(array: np.ndarray) -> str:
     contiguous = np.ascontiguousarray(array.astype(_FLOAT_DTYPE, copy=False))
-    return hashlib.sha256(contiguous.tobytes(order="C")).hexdigest()
+    digest = hashlib.sha256()
+    digest.update(str(contiguous.dtype).encode("utf-8"))
+    digest.update(str(tuple(int(item) for item in contiguous.shape)).encode("utf-8"))
+    digest.update(contiguous.tobytes(order="C"))
+    return digest.hexdigest()
 
 
 def _mask_content_sha256(mask: np.ndarray) -> str:
     canonical = np.ascontiguousarray(mask.astype(np.uint8, copy=False))
-    return hashlib.sha256(canonical.tobytes(order="C")).hexdigest()
+    digest = hashlib.sha256()
+    digest.update(str(canonical.dtype).encode("utf-8"))
+    digest.update(str(tuple(int(item) for item in canonical.shape)).encode("utf-8"))
+    digest.update(canonical.tobytes(order="C"))
+    return digest.hexdigest()
 
 
 __all__ = [

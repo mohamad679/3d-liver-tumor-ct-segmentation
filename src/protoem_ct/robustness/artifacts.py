@@ -302,12 +302,16 @@ class Phase7RunSummary:
     phase7_run_summary_hash: str
     config_hash: str
     corruption_manifest_hash: str
+    transform_results_hash: str
+    geometry_records_hash: str
     phase6_run_summary_hash: str
     uncertainty_result_hash: str | None
     calibration_result_hash: str | None
     risk_coverage_result_hash: str | None
+    failure_detection_result_hash: str | None
     degradation_result_hash: str | None
     lesion_subgroup_result_hash: str | None
+    publication_payload_hash: str
     execution_status: str
     failure_code: str | None
     failure_message: str | None
@@ -321,6 +325,8 @@ class Phase7RunSummary:
         _require_sha256(self.phase7_run_summary_hash, field_name="phase7_run_summary_hash")
         _require_sha256(self.config_hash, field_name="config_hash")
         _require_sha256(self.corruption_manifest_hash, field_name="corruption_manifest_hash")
+        _require_sha256(self.transform_results_hash, field_name="transform_results_hash")
+        _require_sha256(self.geometry_records_hash, field_name="geometry_records_hash")
         _require_sha256(self.phase6_run_summary_hash, field_name="phase6_run_summary_hash")
         _require_optional_sha256(self.uncertainty_result_hash, field_name="uncertainty_result_hash")
         _require_optional_sha256(self.calibration_result_hash, field_name="calibration_result_hash")
@@ -328,11 +334,16 @@ class Phase7RunSummary:
             self.risk_coverage_result_hash,
             field_name="risk_coverage_result_hash",
         )
+        _require_optional_sha256(
+            self.failure_detection_result_hash,
+            field_name="failure_detection_result_hash",
+        )
         _require_optional_sha256(self.degradation_result_hash, field_name="degradation_result_hash")
         _require_optional_sha256(
             self.lesion_subgroup_result_hash,
             field_name="lesion_subgroup_result_hash",
         )
+        _require_sha256(self.publication_payload_hash, field_name="publication_payload_hash")
         _require_allowed(
             self.execution_status, PHASE7_EXECUTION_STATUSES, field_name="execution_status"
         )
@@ -357,6 +368,7 @@ class Phase7RunSummary:
                 self.uncertainty_result_hash,
                 self.calibration_result_hash,
                 self.risk_coverage_result_hash,
+                self.failure_detection_result_hash,
                 self.degradation_result_hash,
                 self.lesion_subgroup_result_hash,
             )
@@ -536,12 +548,16 @@ def phase7_run_summary_identity_payload(summary: Phase7RunSummary) -> dict[str, 
         "degradation_result_hash": summary.degradation_result_hash,
         "execution_status": summary.execution_status,
         "failure_code": summary.failure_code,
+        "failure_detection_result_hash": summary.failure_detection_result_hash,
         "failure_message": summary.failure_message,
+        "geometry_records_hash": summary.geometry_records_hash,
         "lesion_subgroup_result_hash": summary.lesion_subgroup_result_hash,
         "phase6_run_summary_hash": summary.phase6_run_summary_hash,
+        "publication_payload_hash": summary.publication_payload_hash,
         "risk_coverage_result_hash": summary.risk_coverage_result_hash,
         "schema_name": summary.schema_name,
         "schema_version": summary.schema_version,
+        "transform_results_hash": summary.transform_results_hash,
         "uncertainty_result_hash": summary.uncertainty_result_hash,
     }
 
@@ -793,6 +809,14 @@ def phase7_run_summary_from_mapping(mapping: MappingLike) -> Phase7RunSummary:
             mapping["corruption_manifest_hash"],
             field_name="corruption_manifest_hash",
         ),
+        transform_results_hash=_expect_string(
+            mapping["transform_results_hash"],
+            field_name="transform_results_hash",
+        ),
+        geometry_records_hash=_expect_string(
+            mapping["geometry_records_hash"],
+            field_name="geometry_records_hash",
+        ),
         phase6_run_summary_hash=_expect_string(
             mapping["phase6_run_summary_hash"],
             field_name="phase6_run_summary_hash",
@@ -809,6 +833,10 @@ def phase7_run_summary_from_mapping(mapping: MappingLike) -> Phase7RunSummary:
             mapping["risk_coverage_result_hash"],
             field_name="risk_coverage_result_hash",
         ),
+        failure_detection_result_hash=_expect_optional_string(
+            mapping["failure_detection_result_hash"],
+            field_name="failure_detection_result_hash",
+        ),
         degradation_result_hash=_expect_optional_string(
             mapping["degradation_result_hash"],
             field_name="degradation_result_hash",
@@ -816,6 +844,10 @@ def phase7_run_summary_from_mapping(mapping: MappingLike) -> Phase7RunSummary:
         lesion_subgroup_result_hash=_expect_optional_string(
             mapping["lesion_subgroup_result_hash"],
             field_name="lesion_subgroup_result_hash",
+        ),
+        publication_payload_hash=_expect_string(
+            mapping["publication_payload_hash"],
+            field_name="publication_payload_hash",
         ),
         execution_status=_expect_string(mapping["execution_status"], field_name="execution_status"),
         failure_code=_expect_optional_string(mapping["failure_code"], field_name="failure_code"),
@@ -979,12 +1011,16 @@ _RUN_SUMMARY_FIELDS: Final[frozenset[str]] = frozenset(
         "phase7_run_summary_hash",
         "config_hash",
         "corruption_manifest_hash",
+        "transform_results_hash",
+        "geometry_records_hash",
         "phase6_run_summary_hash",
         "uncertainty_result_hash",
         "calibration_result_hash",
         "risk_coverage_result_hash",
+        "failure_detection_result_hash",
         "degradation_result_hash",
         "lesion_subgroup_result_hash",
+        "publication_payload_hash",
         "execution_status",
         "failure_code",
         "failure_message",

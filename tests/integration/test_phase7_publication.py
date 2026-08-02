@@ -113,6 +113,19 @@ HEX_5 = "5" * 64
 HEX_6 = "6" * 64
 HEX_7 = "7" * 64
 HEX_8 = "8" * 64
+HEX_9 = "9" * 64
+_CORRUPTION_ORDER = (
+    "hu_window_shift",
+    "intensity_scale",
+    "intensity_offset",
+    "contrast_shift",
+    "gaussian_noise",
+    "gaussian_blur",
+    "slice_thickness",
+    "anisotropic_downsampling",
+    "crop_fov",
+)
+_GEOMETRY_CORRUPTIONS = frozenset({"slice_thickness", "anisotropic_downsampling", "crop_fov"})
 
 
 def test_valid_publication_with_synthetic_validated_json_bytes(tmp_path: Path) -> None:
@@ -242,14 +255,42 @@ def test_cross_artifact_hash_mismatch_rejected() -> None:
 
 
 def _publication_inputs() -> Phase7PublicationInputs:
-    manifest = _manifest()
-    transform = _transform_result()
-    geometry = _geometry_record()
+    effective_config_mapping = {
+        "phase7_robustness_uncertainty": {
+            "schema_version": "v1",
+            "synthetic_mode_only": True,
+        }
+    }
+    config_json = canonical_json_bytes(effective_config_mapping) + b"\n"
+    config_hash = sha256_json(effective_config_mapping)
+    manifest = _manifest(config_hash=config_hash)
+    geometry_records = tuple(
+        _geometry_record(transform_name=specification.corruption_name)
+        for specification in manifest.specifications
+        if specification.changes_geometry
+    )
+    geometry_by_name = {record.transform_name: record for record in geometry_records}
+    transform_results = tuple(
+        _transform_result(
+            specification_hash=specification.corruption_specification_hash,
+            geometry_record_hash=(
+                geometry_by_name[specification.corruption_name].geometry_record_hash
+                if specification.changes_geometry
+                else None
+            ),
+            common_grid_restored=specification.changes_geometry,
+        )
+        for specification in manifest.specifications
+    )
     uncertainty = _uncertainty_result()
-    calibration = _calibration_result()
-    risk = _risk_coverage_result(uncertainty_hash=uncertainty.uncertainty_result_hash)
+    common_grid_hash = geometry_records[-1].geometry_record_hash
+    calibration = _calibration_result(common_grid_hash=common_grid_hash)
+    risk = _risk_coverage_result(
+        uncertainty_hash=uncertainty.uncertainty_result_hash,
+        common_grid_hash=common_grid_hash,
+    )
     degradation = _degradation_result()
-    subgroup = _lesion_subgroup_result()
+    subgroup = _lesion_subgroup_result(common_grid_hash=common_grid_hash)
     correlation = compute_uncertainty_error_correlation(
         uncertainty_values=np.asarray([0.1, 0.9, 0.4], dtype=np.float64),
         error_indicators=np.asarray([0, 1, 0], dtype=np.uint8),
@@ -258,49 +299,66 @@ def _publication_inputs() -> Phase7PublicationInputs:
         case_uncertainty_scores=np.asarray([0.1, 0.9], dtype=np.float64),
         failure_indicators=np.asarray([0, 1], dtype=np.uint8),
     )
+    transform_results_json = build_phase7_transform_results_collection_json(transform_results)
+    geometry_records_json = build_phase7_geometry_records_collection_json(geometry_records)
+    failure_detection_json = canonical_phase7_failure_detection_results_json(
+        correlation_result=correlation,
+        auroc_result=auroc,
+    )
+    transform_results_hash = _json_hash(transform_results_json)
+    geometry_records_hash = _json_hash(geometry_records_json)
+    failure_detection_hash = _json_hash(failure_detection_json)
     summary = _run_summary(
         manifest_hash=manifest.corruption_manifest_hash,
+        transform_results_hash=transform_results_hash,
+        geometry_records_hash=geometry_records_hash,
         uncertainty_hash=uncertainty.uncertainty_result_hash,
         calibration_hash=calibration.calibration_result_hash,
         risk_hash=risk.risk_coverage_result_hash,
+        failure_detection_hash=failure_detection_hash,
         degradation_hash=degradation.degradation_result_hash,
         subgroup_hash=subgroup.lesion_subgroup_result_hash,
+        publication_payload_hash=_publication_payload_hash(
+            config_hash=config_hash,
+            manifest_hash=manifest.corruption_manifest_hash,
+            transform_results_hash=transform_results_hash,
+            geometry_records_hash=geometry_records_hash,
+            uncertainty_hash=uncertainty.uncertainty_result_hash,
+            calibration_hash=calibration.calibration_result_hash,
+            risk_hash=risk.risk_coverage_result_hash,
+            failure_detection_hash=failure_detection_hash,
+            degradation_hash=degradation.degradation_result_hash,
+            subgroup_hash=subgroup.lesion_subgroup_result_hash,
+        ),
+        config_hash=config_hash,
     )
     return Phase7PublicationInputs(
-        effective_config_json=canonical_json_bytes(
-            {
-                "phase7_robustness_uncertainty": {
-                    "schema_version": "v1",
-                    "synthetic_mode_only": True,
-                }
-            }
-        )
-        + b"\n",
+        effective_config_json=config_json,
         corruption_manifest_json=phase7_corruption_manifest_to_json(manifest),
-        transform_results_json=build_phase7_transform_results_collection_json((transform,)),
-        geometry_records_json=build_phase7_geometry_records_collection_json((geometry,)),
+        transform_results_json=transform_results_json,
+        geometry_records_json=geometry_records_json,
         uncertainty_result_json=phase7_uncertainty_result_to_json(uncertainty),
         calibration_result_json=phase7_calibration_result_to_json(calibration),
         risk_coverage_result_json=phase7_risk_coverage_result_to_json(risk),
-        failure_detection_json=canonical_phase7_failure_detection_results_json(
-            correlation_result=correlation,
-            auroc_result=auroc,
-        ),
+        failure_detection_json=failure_detection_json,
         degradation_result_json=phase7_degradation_result_to_json(degradation),
         lesion_subgroup_result_json=phase7_lesion_subgroup_result_to_json(subgroup),
         phase7_run_summary_json=phase7_run_summary_to_json(summary),
     )
 
 
-def _corruption_specification() -> Phase7CorruptionSpecification:
+def _corruption_specification(
+    corruption_name: str = "gaussian_noise",
+) -> Phase7CorruptionSpecification:
+    changes_geometry = corruption_name in _GEOMETRY_CORRUPTIONS
     payload = {
-        "changes_geometry": False,
-        "common_grid_restoration_required": False,
-        "corruption_name": "gaussian_noise",
+        "changes_geometry": changes_geometry,
+        "common_grid_restoration_required": changes_geometry,
+        "corruption_name": corruption_name,
         "deterministic_seed": 1729,
         "image_interpolation": "linear",
         "mask_interpolation": "nearest_neighbor",
-        "parameters": {"sigma_hu": 5.0},
+        "parameters": {"severity_parameter": float(_CORRUPTION_ORDER.index(corruption_name) + 1)},
         "schema_name": PHASE7_CORRUPTION_SPECIFICATION_SCHEMA_NAME,
         "schema_version": PHASE7_CORRUPTION_SPECIFICATION_SCHEMA_VERSION,
         "severity": "low",
@@ -310,24 +368,27 @@ def _corruption_specification() -> Phase7CorruptionSpecification:
     )
 
 
-def _manifest() -> Phase7CorruptionManifest:
-    specification = _corruption_specification()
+def _manifest(*, config_hash: str = HEX_1) -> Phase7CorruptionManifest:
+    specifications = tuple(_corruption_specification(name) for name in _CORRUPTION_ORDER)
     payload = {
-        "config_hash": HEX_1,
+        "config_hash": config_hash,
         "deterministic_seed": 1729,
         "input_image_content_hash": HEX_2,
         "input_mask_content_hash": HEX_3,
         "manifest_id": "phase7_synthetic_manifest",
         "schema_name": PHASE7_CORRUPTION_MANIFEST_SCHEMA_NAME,
         "schema_version": PHASE7_CORRUPTION_MANIFEST_SCHEMA_VERSION,
-        "specifications": [phase7_corruption_specification_to_dict(specification)],
+        "specifications": [
+            phase7_corruption_specification_to_dict(specification)
+            for specification in specifications
+        ],
     }
     return phase7_corruption_manifest_from_json(
         canonical_json_bytes({"corruption_manifest_hash": sha256_json(payload), **payload})
     )
 
 
-def _geometry_record() -> Phase7GeometryRecord:
+def _geometry_record(*, transform_name: str = "slice_thickness") -> Phase7GeometryRecord:
     payload = {
         "binary_mask_preserved": True,
         "common_grid_restored": True,
@@ -338,17 +399,17 @@ def _geometry_record() -> Phase7GeometryRecord:
         "input_shape": (4, 5, 6),
         "input_spacing": (1.0, 1.0, 1.0),
         "mask_interpolation": "nearest_neighbor",
-        "output_affine_hash": HEX_2,
+        "output_affine_hash": sha256_json({"grid": "output", "transform_name": transform_name}),
         "output_orientation": "RAS",
         "output_shape": (4, 5, 3),
         "output_spacing": (1.0, 1.0, 2.0),
-        "restored_affine_hash": HEX_3,
+        "restored_affine_hash": sha256_json({"grid": "restored", "transform_name": transform_name}),
         "restored_orientation": "RAS",
         "restored_shape": (4, 5, 6),
         "restored_spacing": (1.0, 1.0, 1.0),
         "schema_name": PHASE7_GEOMETRY_RECORD_SCHEMA_NAME,
         "schema_version": PHASE7_GEOMETRY_RECORD_SCHEMA_VERSION,
-        "transform_name": "slice_thickness",
+        "transform_name": transform_name,
     }
     json_payload = _json_shape(payload)
     return phase7_geometry_record_from_json(
@@ -356,15 +417,20 @@ def _geometry_record() -> Phase7GeometryRecord:
     )
 
 
-def _transform_result() -> Phase7TransformResult:
+def _transform_result(
+    *,
+    specification_hash: str = HEX_1,
+    geometry_record_hash: str | None = HEX_6,
+    common_grid_restored: bool = True,
+) -> Phase7TransformResult:
     payload = {
-        "common_grid_restored": True,
-        "corruption_specification_hash": HEX_1,
+        "common_grid_restored": common_grid_restored,
+        "corruption_specification_hash": specification_hash,
         "execution_status": "completed",
         "failure_code": None,
         "failure_message": None,
         "finite_output": True,
-        "geometry_record_hash": HEX_6,
+        "geometry_record_hash": geometry_record_hash,
         "input_image_content_hash": HEX_2,
         "input_mask_content_hash": HEX_3,
         "mask_binary_preserved": True,
@@ -400,7 +466,7 @@ def _uncertainty_result() -> Phase7UncertaintyResult:
     )
 
 
-def _calibration_result() -> Phase7CalibrationResult:
+def _calibration_result(*, common_grid_hash: str = HEX_4) -> Phase7CalibrationResult:
     bins = (
         Phase7CalibrationBin(
             schema_name=PHASE7_CALIBRATION_BIN_SCHEMA_NAME,
@@ -433,7 +499,7 @@ def _calibration_result() -> Phase7CalibrationResult:
         "binning_policy": "fixed_equal_width",
         "bins": [phase7_calibration_bin_to_dict(item) for item in bins],
         "calibration_metric": "ece",
-        "common_grid_geometry_record_hash": HEX_4,
+        "common_grid_geometry_record_hash": common_grid_hash,
         "confidence_definition": "max_binary_probability",
         "ece": 0.05,
         "prediction_content_hash": HEX_1,
@@ -449,7 +515,11 @@ def _calibration_result() -> Phase7CalibrationResult:
     )
 
 
-def _risk_coverage_result(*, uncertainty_hash: str) -> Phase7RiskCoverageResult:
+def _risk_coverage_result(
+    *,
+    uncertainty_hash: str,
+    common_grid_hash: str = HEX_4,
+) -> Phase7RiskCoverageResult:
     points = (
         Phase7RiskCoveragePoint(
             schema_name=PHASE7_RISK_COVERAGE_POINT_SCHEMA_NAME,
@@ -468,7 +538,7 @@ def _risk_coverage_result(*, uncertainty_hash: str) -> Phase7RiskCoverageResult:
     )
     payload = {
         "availability_status": "available",
-        "common_grid_geometry_record_hash": HEX_4,
+        "common_grid_geometry_record_hash": common_grid_hash,
         "ordering": "low_uncertainty_first",
         "points": [phase7_risk_coverage_point_to_dict(item) for item in points],
         "prediction_content_hash": HEX_2,
@@ -506,7 +576,7 @@ def _degradation_result() -> Phase7DegradationResult:
     )
 
 
-def _lesion_subgroup_result() -> Phase7LesionSubgroupResult:
+def _lesion_subgroup_result(*, common_grid_hash: str = HEX_4) -> Phase7LesionSubgroupResult:
     record = Phase7LesionSubgroupRecord(
         schema_name=PHASE7_LESION_SUBGROUP_RECORD_SCHEMA_NAME,
         schema_version=PHASE7_LESION_SUBGROUP_RECORD_SCHEMA_VERSION,
@@ -519,6 +589,7 @@ def _lesion_subgroup_result() -> Phase7LesionSubgroupResult:
         unavailable_reason=None,
     )
     payload = {
+        "common_grid_geometry_record_hash": common_grid_hash,
         "metric_name": "dice",
         "prediction_content_hash": HEX_2,
         "records": [phase7_lesion_subgroup_record_to_dict(record)],
@@ -536,25 +607,34 @@ def _lesion_subgroup_result() -> Phase7LesionSubgroupResult:
 def _run_summary(
     *,
     manifest_hash: str,
+    transform_results_hash: str,
+    geometry_records_hash: str,
     uncertainty_hash: str,
     calibration_hash: str,
     risk_hash: str,
+    failure_detection_hash: str,
     degradation_hash: str,
     subgroup_hash: str,
+    publication_payload_hash: str,
+    config_hash: str = HEX_1,
 ) -> Phase7RunSummary:
     payload = {
         "calibration_result_hash": calibration_hash,
-        "config_hash": HEX_1,
+        "config_hash": config_hash,
         "corruption_manifest_hash": manifest_hash,
         "degradation_result_hash": degradation_hash,
         "execution_status": "completed",
         "failure_code": None,
+        "failure_detection_result_hash": failure_detection_hash,
         "failure_message": None,
+        "geometry_records_hash": geometry_records_hash,
         "lesion_subgroup_result_hash": subgroup_hash,
         "phase6_run_summary_hash": HEX_3,
+        "publication_payload_hash": publication_payload_hash,
         "risk_coverage_result_hash": risk_hash,
         "schema_name": PHASE7_RUN_SUMMARY_SCHEMA_NAME,
         "schema_version": PHASE7_RUN_SUMMARY_SCHEMA_VERSION,
+        "transform_results_hash": transform_results_hash,
         "uncertainty_result_hash": uncertainty_hash,
     }
     return phase7_run_summary_from_json(
@@ -584,6 +664,43 @@ def _run_summary_json_from_mapping(mapping: dict[str, object]) -> bytes:
     }
     mapping["phase7_run_summary_hash"] = sha256_json(identity_payload)
     return canonical_json_bytes(mapping) + b"\n"
+
+
+def _json_hash(data: bytes | str) -> str:
+    decoded = json.loads(data)
+    assert isinstance(decoded, dict)
+    return sha256_json(decoded)
+
+
+def _publication_payload_hash(
+    *,
+    config_hash: str = HEX_1,
+    manifest_hash: str,
+    transform_results_hash: str,
+    geometry_records_hash: str,
+    uncertainty_hash: str,
+    calibration_hash: str,
+    risk_hash: str,
+    failure_detection_hash: str,
+    degradation_hash: str,
+    subgroup_hash: str,
+) -> str:
+    return sha256_json(
+        {
+            "config_hash": config_hash,
+            "corruption_manifest_hash": manifest_hash,
+            "degradation_result_hash": degradation_hash,
+            "failure_detection_result_hash": failure_detection_hash,
+            "geometry_records_hash": geometry_records_hash,
+            "lesion_subgroup_result_hash": subgroup_hash,
+            "risk_coverage_result_hash": risk_hash,
+            "calibration_result_hash": calibration_hash,
+            "schema_name": "phase7_publication_payload",
+            "schema_version": "v1",
+            "transform_results_hash": transform_results_hash,
+            "uncertainty_result_hash": uncertainty_hash,
+        }
+    )
 
 
 def _json_shape(mapping: dict[str, object]) -> dict[str, object]:
