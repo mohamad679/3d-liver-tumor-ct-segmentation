@@ -393,7 +393,7 @@ def _bundle(
                 background_score_map=background_score_map,
                 prediction_mask=prediction_mask,
                 memory=memory,
-            )
+            ),
         ),
         phase5_references=_phase5_references(),
     )

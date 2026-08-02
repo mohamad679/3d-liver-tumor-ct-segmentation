@@ -15,7 +15,9 @@ planning purposes on the user-confirmed repository state. Phase 5 is treated as 
 merged for later-phase planning purposes on the user-confirmed repository state. This Phase 6
 planning update does not audit, rerun, verify, or modify any completed Phase 5 implementation.
 
-Active phase: Phase 6 ProtoEM-CT planning substage 0 only.
+Phase 6 implementation and Gate 6 close-out are completed locally on 2026-08-02.
+
+Active phase: none. Phase 7 has not started.
 
 ## Phase 0 Scope
 
@@ -1227,6 +1229,31 @@ Gate 6 is accepted when:
   generated artifacts are Git-visible; and
 - Gate 6 close-out does not claim external validation, robustness findings, uncertainty findings,
   calibration findings, or any Phase 7 result.
+
+### Gate 6 Close-Out Status
+
+Gate 6 passed locally on 2026-08-02.
+
+Verified close-out evidence:
+
+- `uv run ruff check .`: PASS
+- `uv run ruff format --check .`: PASS after one formatting-only fix in
+  `tests/unit/test_phase6_inference.py`
+- `uv run mypy src`: PASS
+- `uv run pytest -q`: PASS, `1115 passed, 3 skipped`
+- `uv run pre-commit run --all-files`: PASS
+- `uv run protoem-ct run-phase6-protoem --help`: PASS
+- Two independent synthetic `run-phase6-protoem` executions completed successfully
+- JSON and Markdown publication artifacts were byte-identical across the two synthetic runs
+- The synthetic objective trace was non-empty, zero-based, contiguous, and self-validating
+- The synthetic stopping record was self-validating with stop reason `max_iterations`
+- The synthetic ablation comparison contained exactly 12 records in canonical order with explicit
+  `executed`, `phase5_baseline_link`, `unsupported`, and `provenance_only` statuses
+- Query labels and query reference masks remained outside initialization and optimization APIs
+
+This close-out remains limited to ProtoEM-CT objective-driven transductive adaptation on bounded
+synthetic executions. It does not claim theoretical convergence, real-data Phase 6 efficacy, GPU
+execution, robustness, uncertainty, calibration, external validation, or any Phase 7 result.
 
 ## Implementation Notes and Command Results
 
