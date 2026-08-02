@@ -629,13 +629,7 @@ def _execution_semantics_for_variant(
             "multi-prototype execution substage.",
         )
     if variant_name == "learned_update_schedule":
-        return (
-            "unsupported",
-            None,
-            None,
-            "learned_update_schedule_unsupported",
-            "learned_update_schedule is planning-only in Phase 6 substage 6.",
-        )
+        return ("protoem_execution", None, None, None, None)
     if variant_name in {"head_only", "decoder_only", "full_finetune"}:
         return (
             "unsupported",

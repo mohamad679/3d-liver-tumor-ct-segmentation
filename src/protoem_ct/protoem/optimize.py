@@ -24,6 +24,14 @@ from protoem_ct.protoem.artifacts import (
     protoem_iteration_record_to_dict,
 )
 from protoem_ct.protoem.initialize import ProtoEMInitializationBundle
+from protoem_ct.protoem.learned_schedule import (
+    LearnedScheduleOrchestrationFailure,
+    ProtoEMLearnedScheduleResult,
+    ProtoEMPositiveStepSchedule,
+    ScheduleLengthMismatchError,
+    apply_positive_step_to_m_step_result,
+    build_protoem_learned_schedule_result,
+)
 from protoem_ct.protoem.objective import (
     EmptyEffectiveBackgroundUpdateError,
     EmptyEffectiveForegroundUpdateError,
@@ -180,6 +188,7 @@ class ProtoEMOptimizationResult:
     stopping_record: ProtoEMStoppingRecord | None
     collapse_decision: ProtoEMCollapseDecision | None
     collapse_record: ProtoEMCollapseRecord | None
+    learned_schedule_result: ProtoEMLearnedScheduleResult | None
     execution_status: str
     failure_code: str | None
     failure_message: str | None
@@ -230,6 +239,13 @@ class ProtoEMOptimizationResult:
                 raise IterationConsistencyError(
                     "failed optimization results require failure_code and failure_message."
                 )
+        if self.learned_schedule_result is not None and (
+            self.learned_schedule_result.completed_iteration_count != len(self.iteration_executions)
+        ):
+            raise IterationConsistencyError(
+                "learned_schedule_result.completed_iteration_count must match the "
+                "completed iteration count."
+            )
         if self.stopping_record is not self.stopping_decision.stopping_record:
             raise IterationConsistencyError(
                 "stopping_record must be the exact artifact carried by stopping_decision."
@@ -290,16 +306,44 @@ def run_protoem_optimization(
     *,
     config: ProtoEMConfig,
     initialization_bundle: ProtoEMInitializationBundle,
+    positive_step_schedule: ProtoEMPositiveStepSchedule | None = None,
 ) -> ProtoEMOptimizationResult:
     """Run deterministic Phase 6 ProtoEM-CT orchestration over existing pure contracts."""
 
-    if config.update_schedule != "fixed_em_like":
-        raise OrchestrationInputError(
-            "Phase 6 substage 5 supports update_schedule='fixed_em_like' only."
+    if config.update_schedule == "fixed_em_like":
+        if positive_step_schedule is not None:
+            raise OrchestrationInputError(
+                "fixed_em_like does not accept one explicit positive_step_schedule."
+            )
+        return _run_fixed_em_like_optimization(
+            config=config,
+            initialization_bundle=initialization_bundle,
         )
+    if config.update_schedule == "learned_positive_step":
+        if positive_step_schedule is None:
+            raise OrchestrationInputError(
+                "learned_positive_step requires one explicit positive_step_schedule."
+            )
+        return _run_learned_positive_step_optimization(
+            config=config,
+            initialization_bundle=initialization_bundle,
+            positive_step_schedule=positive_step_schedule,
+        )
+    raise OrchestrationInputError(
+        "unsupported ProtoEM update_schedule; expected 'fixed_em_like' or 'learned_positive_step'."
+    )
+
+
+def _run_fixed_em_like_optimization(
+    *,
+    config: ProtoEMConfig,
+    initialization_bundle: ProtoEMInitializationBundle,
+) -> ProtoEMOptimizationResult:
+    """Run the existing fixed EM-like orchestration path unchanged."""
+
     if config.prototype_mode != "single_prototype":
         raise OrchestrationInputError(
-            "Phase 6 substage 5 supports prototype_mode='single_prototype' only."
+            "Phase 6 substage 7 supports prototype_mode='single_prototype' only."
         )
 
     query_features = np.ascontiguousarray(
@@ -520,6 +564,301 @@ def run_protoem_optimization(
         objective_trace=objective_trace,
         stopping_decision=stopping_decision,
         collapse_decision=final_collapse_decision,
+        learned_schedule_result=None,
+        execution_status=execution_status,
+        failure_code=failure_code,
+        failure_message=failure_message,
+    )
+
+
+def _run_learned_positive_step_optimization(
+    *,
+    config: ProtoEMConfig,
+    initialization_bundle: ProtoEMInitializationBundle,
+    positive_step_schedule: ProtoEMPositiveStepSchedule,
+) -> ProtoEMOptimizationResult:
+    """Run the parameterized positive-step schedule path over the fixed ProtoEM target M-step."""
+
+    if config.prototype_mode != "single_prototype":
+        raise OrchestrationInputError(
+            "Phase 6 substage 7 supports prototype_mode='single_prototype' only."
+        )
+    if positive_step_schedule.update_schedule_name != config.update_schedule:
+        raise OrchestrationInputError(
+            "positive_step_schedule.update_schedule_name must match config.update_schedule."
+        )
+    if positive_step_schedule.max_iteration_compatibility != config.max_iterations:
+        raise OrchestrationInputError(
+            "positive_step_schedule.max_iteration_compatibility must equal config.max_iterations."
+        )
+
+    query_features = np.ascontiguousarray(
+        np.asarray(initialization_bundle.query_feature_encoding.feature_data).astype(
+            _FLOAT_DTYPE, copy=False
+        )
+    )
+    support_foreground_reference = np.ascontiguousarray(
+        np.asarray(initialization_bundle.foreground_prototype.prototype_vector).astype(
+            _FLOAT_DTYPE, copy=False
+        )
+    )
+    support_background_reference = np.ascontiguousarray(
+        np.asarray(initialization_bundle.background_prototype.prototype_vector).astype(
+            _FLOAT_DTYPE, copy=False
+        )
+    )
+    try:
+        initial_state = build_initial_protoem_transductive_state(
+            initialization_bundle=initialization_bundle,
+            config=config,
+        )
+    except (
+        InvalidStateError,
+        StateIdentityMismatchError,
+        PosteriorConsistencyFailureError,
+        AssignmentConsistencyFailureError,
+        PrototypeStateFailureError,
+        IncompatibleStateTransitionError,
+    ) as error:
+        raise OrchestrationInputError(str(error)) from error
+
+    current_state = initial_state
+    executions: list[ProtoEMIterationExecution] = []
+    iteration_records: list[ProtoEMIterationRecord] = []
+    schedule_records = []
+    final_collapse_decision: ProtoEMCollapseDecision | None = None
+    stopping_decision: ProtoEMStoppingDecision | None = None
+    execution_status = "completed"
+    failure_code: str | None = None
+    failure_message: str | None = None
+
+    for transition_index in range(config.max_iterations):
+        try:
+            e_step_result = run_protoem_e_step(
+                query_feature_tensor=query_features,
+                foreground_prototypes=current_state.prototype_state.foreground_prototypes,
+                background_prototypes=current_state.prototype_state.background_prototypes,
+                temperature=config.temperature,
+                confidence_threshold=config.confidence_threshold,
+                foreground_prior=config.foreground_prior,
+            )
+            _ensure_finite_e_step_result(e_step_result)
+        except (
+            InvalidEStepInputError,
+            IncompatiblePrototypeBankError,
+            ZeroNormPrototypeError,
+            NumericalOrchestrationFailure,
+        ) as error:
+            execution_status = "failed"
+            failure_code = "numerical_failure"
+            failure_message = f"E-step failure: {error}"
+            stopping_decision = build_failure_stopping_decision(
+                stop_reason="numerical_failure",
+                completed_records=tuple(iteration_records),
+                failure_code=failure_code,
+                failure_message=failure_message,
+            )
+            break
+
+        collapse_decision = evaluate_protoem_collapse(
+            iteration_index=transition_index,
+            confidence_mask_result=e_step_result.confidence_mask_result,
+        )
+        if collapse_decision.hard_stop:
+            execution_status = "failed"
+            final_collapse_decision = collapse_decision
+            if collapse_decision.stop_reason is None:
+                raise IterationConsistencyError(
+                    "hard-stop collapse decisions must define one stop_reason."
+                )
+            failure_code = collapse_decision.stop_reason
+            if collapse_decision.stop_reason == "no_confident_voxels":
+                failure_message = "No confident voxels remained after the E-step."
+            else:
+                failure_message = f"Detected {collapse_decision.stop_reason} before the M-step."
+            stopping_decision = build_failure_stopping_decision(
+                stop_reason=collapse_decision.stop_reason,
+                completed_records=tuple(iteration_records),
+                failure_code=failure_code,
+                failure_message=failure_message,
+            )
+            break
+
+        try:
+            m_step_target = run_protoem_m_step(
+                query_feature_tensor=query_features,
+                foreground_posterior_map=e_step_result.foreground_posterior_map,
+                background_posterior_map=e_step_result.background_posterior_map,
+                confidence_mask=e_step_result.confidence_mask_result.confident_mask,
+                initial_foreground_prototype=support_foreground_reference,
+                initial_background_prototype=support_background_reference,
+                previous_foreground_prototype=current_state.prototype_state.foreground_prototypes,
+                previous_background_prototype=current_state.prototype_state.background_prototypes,
+                objective_weights=config.objective_weights,
+                foreground_prior=config.foreground_prior,
+                proximal_foreground_reference=support_foreground_reference,
+                proximal_background_reference=support_background_reference,
+                previous_foreground_posterior_map=current_state.posterior_state.foreground_posterior_map,
+                previous_background_posterior_map=current_state.posterior_state.background_posterior_map,
+                support_foreground_reference=support_foreground_reference,
+                support_background_reference=support_background_reference,
+            )
+            _ensure_finite_m_step_result(m_step_target)
+        except NonFiniteObjectiveError as error:
+            execution_status = "failed"
+            failure_code = "non_finite_objective"
+            failure_message = f"Non-finite objective: {error}"
+            stopping_decision = build_failure_stopping_decision(
+                stop_reason="non_finite_objective",
+                completed_records=tuple(iteration_records),
+                failure_code=failure_code,
+                failure_message=failure_message,
+            )
+            break
+        except (
+            InvalidMStepInputError,
+            NoConfidentVoxelsError,
+            EmptyEffectiveForegroundUpdateError,
+            EmptyEffectiveBackgroundUpdateError,
+            ObjectiveConsistencyFailureError,
+            NumericalOrchestrationFailure,
+        ) as error:
+            execution_status = "failed"
+            failure_code = "numerical_failure"
+            failure_message = f"M-step failure: {error}"
+            stopping_decision = build_failure_stopping_decision(
+                stop_reason="numerical_failure",
+                completed_records=tuple(iteration_records),
+                failure_code=failure_code,
+                failure_message=failure_message,
+            )
+            break
+
+        try:
+            adjusted_m_step_result, schedule_record = apply_positive_step_to_m_step_result(
+                iteration_index=transition_index,
+                schedule=positive_step_schedule,
+                source_prototype_state_identity_hash=(
+                    current_state.prototype_state.prototype_state_identity_hash
+                ),
+                current_foreground_prototype=current_state.prototype_state.foreground_prototypes,
+                current_background_prototype=current_state.prototype_state.background_prototypes,
+                target_m_step_result=m_step_target,
+                foreground_posterior_map=e_step_result.foreground_posterior_map,
+                background_posterior_map=e_step_result.background_posterior_map,
+                previous_foreground_posterior_map=(
+                    current_state.posterior_state.foreground_posterior_map
+                ),
+                previous_background_posterior_map=(
+                    current_state.posterior_state.background_posterior_map
+                ),
+                support_foreground_reference=support_foreground_reference,
+                support_background_reference=support_background_reference,
+                proximal_foreground_reference=support_foreground_reference,
+                proximal_background_reference=support_background_reference,
+                foreground_prior=config.foreground_prior,
+            )
+            _ensure_finite_m_step_result(adjusted_m_step_result)
+        except (
+            LearnedScheduleOrchestrationFailure,
+            ScheduleLengthMismatchError,
+            ObjectiveConsistencyFailureError,
+            NonFiniteObjectiveError,
+        ) as error:
+            execution_status = "failed"
+            failure_code = "numerical_failure"
+            failure_message = f"Learned schedule failure: {error}"
+            stopping_decision = build_failure_stopping_decision(
+                stop_reason="numerical_failure",
+                completed_records=tuple(iteration_records),
+                failure_code=failure_code,
+                failure_message=failure_message,
+            )
+            break
+
+        try:
+            next_state, state_transition = build_next_protoem_transductive_state(
+                source_state=current_state,
+                e_step_result=e_step_result,
+                m_step_result=adjusted_m_step_result,
+                objective_terms=adjusted_m_step_result.objective_terms,
+            )
+        except (
+            InvalidStateError,
+            StateIdentityMismatchError,
+            PosteriorConsistencyFailureError,
+            AssignmentConsistencyFailureError,
+            PrototypeStateFailureError,
+            IncompatibleStateTransitionError,
+        ) as error:
+            execution_status = "failed"
+            failure_code = "numerical_failure"
+            failure_message = f"State transition failure: {error}"
+            stopping_decision = build_failure_stopping_decision(
+                stop_reason="numerical_failure",
+                completed_records=tuple(iteration_records),
+                failure_code=failure_code,
+                failure_message=failure_message,
+            )
+            break
+
+        iteration_record = _build_iteration_record(
+            iteration_index=transition_index,
+            source_state=current_state,
+            target_state=next_state,
+            objective_terms=adjusted_m_step_result.objective_terms,
+            collapse_status_detected=False,
+        )
+        iteration_records.append(iteration_record)
+        schedule_records.append(schedule_record)
+        execution = _build_iteration_execution(
+            iteration_index=transition_index,
+            source_state=current_state,
+            e_step_result=e_step_result,
+            m_step_result=adjusted_m_step_result,
+            objective_terms=adjusted_m_step_result.objective_terms,
+            target_state=next_state,
+            state_transition=state_transition,
+            iteration_record=iteration_record,
+        )
+        executions.append(execution)
+        current_state = next_state
+
+        stopping_decision = evaluate_protoem_stopping_after_iteration(
+            config=config,
+            completed_records=tuple(iteration_records),
+            current_state=current_state,
+        )
+        if stopping_decision.should_stop:
+            break
+    else:
+        raise IterationConsistencyError(
+            "ProtoEM optimization loop exceeded config.max_iterations unexpectedly."
+        )
+
+    if stopping_decision is None:
+        raise IterationConsistencyError("ProtoEM optimization must end with one stopping decision.")
+
+    objective_trace = (
+        _build_objective_trace(tuple(iteration_records)) if iteration_records else None
+    )
+    learned_schedule_result = build_protoem_learned_schedule_result(
+        schedule=positive_step_schedule,
+        records=tuple(schedule_records),
+    )
+    if execution_status == "completed":
+        failure_code = None
+        failure_message = None
+    return _build_optimization_result(
+        config=config,
+        initialization_identity_hash=initialization_bundle.initialization_identity_hash,
+        initial_state=initial_state,
+        final_state=current_state,
+        iteration_executions=tuple(executions),
+        objective_trace=objective_trace,
+        stopping_decision=stopping_decision,
+        collapse_decision=final_collapse_decision,
+        learned_schedule_result=learned_schedule_result,
         execution_status=execution_status,
         failure_code=failure_code,
         failure_message=failure_message,
@@ -594,6 +933,15 @@ def protoem_optimization_result_identity_payload(
             result.collapse_record.collapse_record_hash
             if result.collapse_record is not None
             else None
+        ),
+        **(
+            {
+                "learned_schedule_result_hash": (
+                    result.learned_schedule_result.learned_schedule_result_identity_hash
+                )
+            }
+            if result.learned_schedule_result is not None
+            else {}
         ),
         "execution_status": result.execution_status,
         "failure_code": result.failure_code,
@@ -706,6 +1054,7 @@ def _build_optimization_result(
     objective_trace: ProtoEMObjectiveTrace | None,
     stopping_decision: ProtoEMStoppingDecision,
     collapse_decision: ProtoEMCollapseDecision | None,
+    learned_schedule_result: ProtoEMLearnedScheduleResult | None,
     execution_status: str,
     failure_code: str | None,
     failure_message: str | None,
@@ -737,6 +1086,15 @@ def _build_optimization_result(
             if collapse_decision is not None and collapse_decision.collapse_record is not None
             else None
         ),
+        **(
+            {
+                "learned_schedule_result_hash": (
+                    learned_schedule_result.learned_schedule_result_identity_hash
+                )
+            }
+            if learned_schedule_result is not None
+            else {}
+        ),
         "execution_status": execution_status,
         "failure_code": failure_code,
         "failure_message": failure_message,
@@ -757,6 +1115,7 @@ def _build_optimization_result(
         collapse_record=(
             collapse_decision.collapse_record if collapse_decision is not None else None
         ),
+        learned_schedule_result=learned_schedule_result,
         execution_status=execution_status,
         failure_code=failure_code,
         failure_message=failure_message,

@@ -25,14 +25,17 @@ from protoem_ct.protoem import (
     ProtoEMInferenceInput,
     ProtoEMInitializationBundle,
     ProtoEMIterationExecution,
+    ProtoEMLearnedScheduleResult,
     ProtoEMObjectiveWeights,
     ProtoEMOptimizationResult,
     ProtoEMPhase5ArtifactReference,
     ProtoEMPhase5ReferenceBundle,
+    ProtoEMPositiveStepSchedule,
     ProtoEMPrototypeInput,
     ProtoEMQueryFeatureInput,
     ProtoEMSupportProvenance,
     build_protoem_initialization_bundle,
+    build_protoem_positive_step_schedule,
     run_protoem_optimization,
 )
 from protoem_ct.retrieval.inference import (
@@ -465,6 +468,22 @@ def _stable_bundle_and_config() -> tuple[ProtoEMInitializationBundle, ProtoEMCon
     )
 
 
+def _schedule_for_config(
+    config: ProtoEMConfig,
+    *,
+    raw_step_parameters: tuple[float, ...] | None = None,
+    epsilon: float = 1e-6,
+) -> ProtoEMPositiveStepSchedule:
+    raw = raw_step_parameters
+    if raw is None:
+        raw = tuple(0.0 for _ in range(config.max_iterations))
+    return build_protoem_positive_step_schedule(
+        raw_step_parameters=raw,
+        epsilon=epsilon,
+        max_iteration_compatibility=config.max_iterations,
+    )
+
+
 def test_exact_one_iteration_execution() -> None:
     bundle, config = _initialization_bundle()
     config = _config_override(_config_with_threshold(0.0), max_iterations=1, minimum_iterations=1)
@@ -688,12 +707,74 @@ def test_input_arrays_remain_unchanged() -> None:
     assert np.array_equal(features, before)
 
 
-def test_learned_positive_step_is_not_implemented() -> None:
+def test_learned_positive_step_requires_explicit_schedule() -> None:
     bundle, config = _initialization_bundle()
     learned = _config_override(_config_with_threshold(0.0), update_schedule="learned_positive_step")
 
     with pytest.raises(OrchestrationInputError):
         run_protoem_optimization(config=learned, initialization_bundle=bundle)
+
+
+def test_learned_positive_step_dispatch_with_explicit_schedule() -> None:
+    bundle, _ = _initialization_bundle()
+    learned = _config_override(
+        _config_with_threshold(0.0),
+        update_schedule="learned_positive_step",
+        max_iterations=1,
+        minimum_iterations=1,
+    )
+
+    result = run_protoem_optimization(
+        config=learned,
+        initialization_bundle=bundle,
+        positive_step_schedule=_schedule_for_config(learned),
+    )
+
+    assert result.execution_status == "completed"
+    assert isinstance(result.learned_schedule_result, ProtoEMLearnedScheduleResult)
+    assert result.learned_schedule_result.completed_iteration_count == 1
+
+
+def test_schedule_parameter_changes_alter_result_identity() -> None:
+    bundle, _ = _initialization_bundle()
+    learned = _config_override(
+        _config_with_threshold(0.0),
+        update_schedule="learned_positive_step",
+        max_iterations=1,
+        minimum_iterations=1,
+    )
+
+    first = run_protoem_optimization(
+        config=learned,
+        initialization_bundle=bundle,
+        positive_step_schedule=_schedule_for_config(learned, raw_step_parameters=(0.0,)),
+    )
+    second = run_protoem_optimization(
+        config=learned,
+        initialization_bundle=bundle,
+        positive_step_schedule=_schedule_for_config(learned, raw_step_parameters=(0.5,)),
+    )
+
+    assert first.result_identity_hash != second.result_identity_hash
+
+
+def test_objective_trace_and_stopping_behavior_remain_valid_for_learned_schedule() -> None:
+    bundle, _ = _initialization_bundle()
+    learned = _config_override(
+        _config_with_threshold(0.0),
+        update_schedule="learned_positive_step",
+        max_iterations=1,
+        minimum_iterations=1,
+    )
+    result = run_protoem_optimization(
+        config=learned,
+        initialization_bundle=bundle,
+        positive_step_schedule=_schedule_for_config(learned),
+    )
+
+    assert result.objective_trace is not None
+    assert result.stopping_record is not None
+    assert result.stopping_record.completed_iteration_count == 1
 
 
 def test_query_labels_reference_masks_absent_from_public_apis() -> None:

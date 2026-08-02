@@ -181,21 +181,16 @@ def test_no_retrieval_links_to_phase5_no_retrieval_artifact() -> None:
     assert result.phase5_reference_schema_name == "phase5_comparison_record"
 
 
-def test_learned_update_schedule_remains_explicitly_unsupported() -> None:
-    config = _config()
+def test_learned_update_schedule_becomes_protoem_executable_in_plan() -> None:
     plan = build_protoem_ablation_execution_plan()
     entry = next(
         item
         for item in plan.entries
         if item.ablation_definition.variant_name == "learned_update_schedule"
     )
-
-    result = build_protoem_ablation_execution_result(plan_entry=entry, base_config=config)
-
-    assert result.result_mode == "unsupported"
-    assert result.effective_config is not None
-    assert result.effective_config.update_schedule == "learned_positive_step"
-    assert result.unsupported_code == "learned_update_schedule_unsupported"
+    assert entry.execution_mode == "protoem_execution"
+    assert entry.unsupported_code is None
+    assert entry.unsupported_message is None
 
 
 def test_multiple_prototypes_remains_unsupported_if_current_path_cannot_execute() -> None:
