@@ -361,7 +361,10 @@ class Phase7DegradationResult:
                 raise Phase7UncertaintyArtifactValidationError(
                     "available degradation requires baseline, corrupted, and absolute values."
                 )
-            expected_absolute = self.baseline_value - self.corrupted_value
+            if self.metric_direction == "higher_is_better":
+                expected_absolute = self.baseline_value - self.corrupted_value
+            else:
+                expected_absolute = self.corrupted_value - self.baseline_value
             if not math.isclose(
                 self.absolute_degradation,
                 expected_absolute,
@@ -369,7 +372,7 @@ class Phase7DegradationResult:
                 abs_tol=1e-12,
             ):
                 raise Phase7UncertaintyArtifactValidationError(
-                    "absolute_degradation must equal baseline_value - corrupted_value."
+                    "absolute_degradation must match metric_direction."
                 )
             if abs(self.baseline_value) >= self.relative_epsilon:
                 expected_relative = expected_absolute / abs(self.baseline_value)

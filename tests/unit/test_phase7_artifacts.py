@@ -682,6 +682,17 @@ def test_availability_and_degenerate_case_consistency() -> None:
     )
     assert near_zero.relative_degradation is None
 
+    lower_is_better = _degradation_result(
+        metric_name="risk",
+        metric_direction="lower_is_better",
+        baseline_value=0.2,
+        corrupted_value=0.5,
+        absolute_degradation=0.3,
+        relative_degradation=1.5,
+    )
+    assert lower_is_better.availability_status == "available"
+    assert lower_is_better.absolute_degradation == pytest.approx(0.3)
+
 
 def test_identity_payloads_exclude_runtime_and_local_environment_fields() -> None:
     payloads = [
