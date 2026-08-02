@@ -17,7 +17,7 @@ planning update does not audit, rerun, verify, or modify any completed Phase 5 i
 
 Phase 6 implementation and Gate 6 close-out are completed locally on 2026-08-02.
 
-Active phase: none. Phase 7 has not started.
+Active phase: Phase 7 planning for deterministic robustness and uncertainty assessment only.
 
 ## Phase 0 Scope
 
@@ -1254,6 +1254,451 @@ Verified close-out evidence:
 This close-out remains limited to ProtoEM-CT objective-driven transductive adaptation on bounded
 synthetic executions. It does not claim theoretical convergence, real-data Phase 6 efficacy, GPU
 execution, robustness, uncertainty, calibration, external validation, or any Phase 7 result.
+
+## Phase 7 Scope
+
+Phase 7 is limited to deterministic robustness and uncertainty assessment on the completed internal
+development workflow. Phase 7 consumes completed Phase 6 prediction and publication contracts where
+needed, but it must not re-audit, rerun, redesign, or modify completed Phase 6 scientific behavior.
+
+Phase 7 includes:
+
+- deterministic robustness transforms for HU-window shift, intensity scale and offset, contrast
+  shift, Gaussian noise, Gaussian blur, slice-thickness simulation, anisotropic downsampling and
+  resampling, and crop/FOV perturbation;
+- explicit geometry-safety validation for image/mask alignment, affine, spacing, orientation,
+  shape, interpolation mode, binary-mask preservation, common-grid restoration, and geometry-change
+  records;
+- predictive-entropy uncertainty maps and a deterministic TTA-variance interface or small
+  deterministic ensemble interface;
+- deterministic calibration, risk-coverage, uncertainty-error correlation, statistically eligible
+  failure-detection AUROC, lesion-size subgroup, absolute-degradation, and relative-degradation
+  artifacts;
+- versioned corruption manifests with persisted severity parameters, deterministic seeds, canonical
+  hashes, and machine-readable artifacts;
+- JSON-first publication where plots, Markdown, and tables are derived only from validated persisted
+  artifacts; and
+- bounded CPU synthetic workflow coverage for the complete Phase 7 contract.
+
+Phase 7 explicitly excludes:
+
+- Phase 8 external validation and any access to real 3D-IRCADb-01;
+- real-data claims, GPU claims, checkpoint selection, model retraining, or hyperparameter tuning on
+  internal test data;
+- LLM/VLM work;
+- theoretical robustness, calibration, uncertainty, or clinical-validity claims;
+- external labels for tuning, model selection, threshold selection, prompt construction, or protocol
+  iteration;
+- generated-artifact commits, including generated images, masks, predictions, embeddings, reports,
+  weights, checkpoints, medical data, or large files; and
+- any modification of completed Phase 5 or Phase 6 scientific behavior.
+
+## Phase 7 Dependency-Aware Implementation Sequence
+
+Each numbered substage is a reviewable unit. Work remains on one named substage at a time, and a
+downstream substage may not infer or invent an upstream contract before that dependency is approved.
+
+0. Planning only: define the complete Phase 7 implementation plan in `docs/PHASE_PLAN.md` without
+   modifying source, tests, configs, CLI, publication, artifacts, transforms, uncertainty
+   computation, or evaluation behavior.
+1. Artifact contracts: define versioned immutable schemas, strict mapping reconstruction, canonical
+   JSON payloads, and self-hash validation for corruption specifications, corruption manifests,
+   transform results, geometry records, uncertainty results, calibration results, risk-coverage
+   results, degradation results, lesion subgroup results, and Phase 7 run summaries.
+2. Geometry contracts: define pure geometry validators, image/mask spatial-alignment checks,
+   common-grid restoration contracts, interpolation policy, binary-mask preservation checks, and
+   explicit permitted geometry-change records.
+3. Uncertainty contracts: define immutable contracts for binary predictive distributions, entropy
+   maps, deterministic TTA samples, uncertainty summaries, and evaluation eligibility records.
+4. Intensity transforms: implement HU-window shift, intensity scale, intensity offset, and contrast
+   shift using deterministic severity-to-parameter mappings and persisted transform parameters.
+5. Noise and blur transforms: implement Gaussian noise with local seeded RNG only and Gaussian blur
+   with deterministic sigma parameters, finite-output validation, and no mask filtering.
+6. Resampling transforms: implement slice-thickness simulation and anisotropic
+   downsampling/resampling with explicit spacing changes, image interpolation, nearest-neighbor mask
+   interpolation, and common-grid restoration.
+7. Crop/FOV transforms: implement deterministic crop/FOV perturbation with persisted crop
+   parameters, explicit padding/restoration, no silent label removal, and empty-lesion handling.
+8. Predictive entropy: implement binary predictive entropy from validated probabilities with
+   explicit zero-probability handling and deterministic finite outputs.
+9. TTA or ensemble uncertainty: implement deterministic TTA variance or a small deterministic
+   ensemble interface with explicit sample manifests, common-grid alignment before aggregation, and
+   mask-free prediction APIs.
+10. Calibration evaluation: implement deterministic calibration artifacts using the exact binning
+    and expected-calibration-error formula defined below, with explicit degenerate-bin handling.
+11. Risk-coverage evaluation: implement deterministic risk-coverage artifacts using uncertainty
+    ordering, stable tie-breaking, coverage definitions, and risk definitions recorded below.
+12. Failure analysis: implement uncertainty-error correlation and failure-detection AUROC with
+    strict eligibility checks for sample count and class diversity. Ineligible AUROC must be
+    unavailable, not fabricated.
+13. Subgroup and degradation analysis: implement lesion-size subgroup analysis, absolute
+    degradation, relative degradation, valid-case counts, empty-lesion counts, and near-zero
+    baseline handling.
+14. Publication: implement JSON-first atomic publication, deterministic Markdown/tables/plots from
+    validated JSON only, path/symlink safety, and no generated artifacts in Git.
+15. CLI and synthetic smoke: add a versioned Phase 7 config and bounded CPU synthetic CLI execution
+    that covers every required corruption family, uncertainty artifact, and evaluation artifact
+    without real data, downloaded checkpoints, GPU use, or external cohort access.
+16. Leakage safety: verify that labels enter only evaluation paths, transforms and uncertainty
+    prediction APIs do not use labels for prediction, no Phase 8 or real external-cohort access
+    exists, and no generated artifacts are Git-visible.
+17. Independent scientific review: read-only review first for formula correctness, corruption
+    definitions, geometry safety, uncertainty validity, calibration validity, AUROC eligibility,
+    degradation interpretation, scope boundaries, and Gate 7 recommendation.
+18. Independent engineering review: read-only review first for determinism, canonical hashes,
+    serialization, typing, atomic publication, path safety, test coverage, Git hygiene, and Gate 7
+    recommendation.
+19. Gate 7 close-out: run final repository verification once, execute two independent synthetic
+    Phase 7 runs, compare deterministic artifacts, validate geometry safety and corruption-manifest
+    reproducibility, update close-out documentation only after verified evidence, and do not begin
+    Phase 8.
+
+### Phase 7 Dependency Graph
+
+- Wave 0: substage 0.
+- Wave 1: substages 1, 2, and 3 may proceed independently after planning approval.
+- Wave 2: substages 4, 5, 6, and 7 depend on approved artifact and geometry contracts.
+- Wave 3: substage 8 depends on approved uncertainty and artifact contracts; substage 9 depends on
+  approved uncertainty contracts, approved transform implementations, and approved geometry
+  contracts.
+- Wave 4: substages 10 and 11 depend on approved entropy/TTA or ensemble outputs and artifact
+  contracts; substage 12 depends on approved uncertainty implementations and artifact contracts;
+  substage 13 depends on approved transform implementations and artifact contracts.
+- Wave 5: substage 14 depends on all approved implementation and evaluation contracts; substage 15
+  depends on publication and all core implementation agents; substage 16 depends on integrated
+  Phase 7 implementation.
+- Wave 6: substages 17 and 18 depend on complete integrated implementation; substage 19 depends on
+  approved scientific and engineering reviews with all blockers resolved.
+
+## Phase 7 Planned Files and Directories
+
+The exact implementation may adjust filenames modestly, but Phase 7 planning expects work in these
+surfaces while preserving completed Phase 5 and Phase 6 behavior:
+
+- `configs/phase7_robustness_uncertainty.yaml`
+- `src/protoem_ct/robustness/__init__.py`
+- `src/protoem_ct/robustness/artifacts.py`
+- `src/protoem_ct/robustness/geometry.py`
+- `src/protoem_ct/robustness/intensity.py`
+- `src/protoem_ct/robustness/noise.py`
+- `src/protoem_ct/robustness/blur.py`
+- `src/protoem_ct/robustness/resampling.py`
+- `src/protoem_ct/robustness/crop.py`
+- `src/protoem_ct/robustness/publication.py`
+- `src/protoem_ct/uncertainty/__init__.py`
+- `src/protoem_ct/uncertainty/artifacts.py`
+- `src/protoem_ct/uncertainty/contracts.py`
+- `src/protoem_ct/uncertainty/entropy.py`
+- `src/protoem_ct/uncertainty/tta.py`
+- `src/protoem_ct/uncertainty/publication.py`
+- `src/protoem_ct/evaluation/calibration.py`
+- `src/protoem_ct/evaluation/risk_coverage.py`
+- `src/protoem_ct/evaluation/failure_detection.py`
+- `src/protoem_ct/evaluation/degradation.py`
+- `src/protoem_ct/evaluation/subgroups.py`
+- `src/protoem_ct/cli/main.py`
+- `tests/unit/test_phase7_artifacts.py`
+- `tests/unit/test_phase7_geometry.py`
+- `tests/unit/test_phase7_uncertainty_contracts.py`
+- `tests/unit/test_phase7_intensity.py`
+- `tests/unit/test_phase7_noise_blur.py`
+- `tests/unit/test_phase7_resampling.py`
+- `tests/unit/test_phase7_crop_fov.py`
+- `tests/unit/test_phase7_entropy.py`
+- `tests/unit/test_phase7_tta.py`
+- `tests/unit/test_phase7_calibration.py`
+- `tests/unit/test_phase7_risk_coverage.py`
+- `tests/unit/test_phase7_failure_detection.py`
+- `tests/unit/test_phase7_degradation.py`
+- `tests/unit/test_phase7_subgroups.py`
+- `tests/unit/test_phase7_leakage.py`
+- `tests/integration/test_phase7_publication.py`
+- `tests/integration/test_phase7_cli.py`
+- `tests/smoke/test_phase7_robustness_smoke.py`
+
+All generated Phase 7 artifacts must be written only beneath explicit external output roots and must
+remain untracked.
+
+## Phase 7 Artifact and Contract Plan
+
+Planned versioned schemas:
+
+- `robustness_corruption_spec_v1`: one named corruption with severity, deterministic parameters,
+  seed where applicable, input geometry reference, output geometry reference, and identity hash.
+- `robustness_corruption_manifest_v1`: ordered collection of corruption specs with canonical
+  severity definitions, source config hash, seed policy, and manifest hash.
+- `robustness_transform_result_v1`: transform result metadata with input content hash, output
+  content hash, geometry record hash, applied parameter payload, mask-preservation status, and
+  result hash.
+- `robustness_geometry_record_v1`: original grid, transformed grid, restored common grid, spacing,
+  orientation, affine hash, shape, interpolation policy, binary-mask-preservation status, and record
+  hash.
+- `uncertainty_result_v1`: predictive entropy, TTA variance or ensemble variance, probability
+  content hashes, uncertainty map hashes, eligibility status, and result hash.
+- `calibration_result_v1`: calibration-bin records, ECE, binning policy, valid-voxel count,
+  degenerate-bin handling, and result hash.
+- `risk_coverage_result_v1`: ordered coverage/risk points, ordering policy, tie policy, valid-voxel
+  count, and result hash.
+- `failure_detection_result_v1`: uncertainty-error correlation, AUROC eligibility status, AUROC
+  value when eligible, ineligibility reason when not eligible, and result hash.
+- `degradation_result_v1`: baseline metric, corrupted metric, absolute degradation, relative
+  degradation, validity status, and result hash.
+- `lesion_subgroup_result_v1`: subgroup thresholds, per-subgroup counts, per-subgroup metrics,
+  empty-lesion counts, and result hash.
+- `phase7_run_summary_v1`: config hash, corruption manifest hash, transform result hashes,
+  uncertainty result hashes, evaluation result hashes, publication hashes, execution status,
+  unavailable runtime/memory fields, and run-summary hash.
+
+All schemas must reject unknown fields during reconstruction, validate embedded self-hashes, reject
+NaN and Infinity, use existing canonical JSON and SHA-256 hashing utilities, and exclude timestamps,
+absolute paths, hostnames, hardware, runtime duration, display-only text, and local filesystem
+details from scientific identity payloads where they do not affect scientific results.
+
+## Phase 7 Severity and Geometry Contracts
+
+Severity levels are deterministic named levels: `none`, `low`, `medium`, and `high`. `none` is the
+identity transform and must still produce a validated transform record. The first implementation
+must define a fixed parameter table in tracked config or artifacts, not fit severity parameters from
+data.
+
+Planned default severity semantics:
+
+- HU-window shift: add a deterministic window-center shift in HU before clipping to the configured
+  CT window; persisted field `window_center_shift_hu`.
+- Intensity scale: multiply CT intensities by a positive finite scale; persisted field
+  `scale_factor`.
+- Intensity offset: add a finite HU offset; persisted field `offset_hu`.
+- Contrast shift: apply `mean + contrast_factor * (x - mean)` using a fixed mean source from config
+  or artifact, not a fitted test-set statistic unless explicitly recorded as a synthetic fixture
+  constant; persisted fields `contrast_factor` and `contrast_center_hu`.
+- Gaussian noise: add local-RNG Gaussian noise with persisted `sigma_hu` and `seed`; no global RNG
+  mutation.
+- Gaussian blur: apply deterministic image-only Gaussian blur with persisted physical or voxel sigma
+  and boundary mode; masks are not blurred.
+- Slice-thickness simulation: resample along the slice axis to a coarser spacing and restore to the
+  common grid, with persisted original spacing, simulated spacing, interpolation mode, and
+  restoration mode.
+- Anisotropic downsampling/resampling: downsample selected axes by persisted finite factors and
+  restore to the common grid before metrics.
+- Crop/FOV perturbation: crop or pad by persisted voxel margins or fractions, restore to the common
+  grid, and record whether any foreground label was removed for evaluation diagnostics.
+
+Geometry safety rules:
+
+- Every image and mask must have matching shape, affine, spacing, orientation, and grid identity
+  before paired transform or evaluation.
+- Transforms that intentionally change geometry must emit a geometry-change record before
+  restoration.
+- Metrics are computed only after prediction and reference mask are restored to an explicit common
+  grid and alignment is revalidated.
+- Image interpolation may use documented linear or B-spline interpolation; mask interpolation must
+  use nearest neighbor only.
+- Masks must remain binary after every transform and restoration step. Non-binary masks fail
+  validation instead of being silently repaired.
+- Affines must be finite, non-singular, and within the explicit tolerance defined by the geometry
+  contract. Shape, spacing, and orientation mismatches must fail unless covered by a validated
+  geometry-change record and restored common-grid record.
+- Empty-lesion masks are permitted only when explicitly represented in downstream evaluation
+  artifacts. Empty-lesion handling must not alter prediction, uncertainty, or optimization logic.
+
+## Phase 7 Uncertainty and Evaluation Formulas
+
+Predictive entropy uses binary probabilities `p_fg` and `p_bg = 1 - p_fg` on valid voxels:
+
+`H(p) = -p_fg * log(p_fg) - p_bg * log(p_bg)`.
+
+The implementation must define the log base in the artifact identity. Natural log is the planned
+default. Terms with probability exactly zero contribute zero by definition. Inputs must be finite
+and satisfy voxelwise probability-sum validation within a strict tolerance. No clipping is allowed
+except an explicitly documented numerical safeguard that preserves the `0 log 0 = 0` convention.
+
+TTA or ensemble variance:
+
+- For `N` aligned probability samples `p_i(x)`, mean probability is
+  `mean_p(x) = (1/N) * sum_i p_i(x)`.
+- Variance is the population variance
+  `var_p(x) = (1/N) * sum_i (p_i(x) - mean_p(x))^2`.
+- `N >= 2` is required for variance. Single-sample inputs are ineligible for variance and must
+  record an unavailable status.
+- Every sample must be generated from an explicit deterministic TTA manifest or approved ensemble
+  member manifest and restored to the common grid before aggregation.
+
+Calibration:
+
+- Planned primary metric is expected calibration error (ECE) over valid voxels.
+- Confidence is `max(p_fg, p_bg)` unless a downstream binary foreground-confidence contract is
+  explicitly selected and recorded.
+- Correctness is `prediction == reference_mask` on the common grid after final prediction.
+- Fixed bins are half-open intervals `[bin_lower, bin_upper)` except the final bin, which is closed
+  on the upper edge.
+- Per-bin accuracy is mean correctness for voxels in the bin; per-bin confidence is mean confidence
+  for voxels in the bin.
+- Empty bins contribute zero weighted error and retain explicit `voxel_count = 0`.
+- `ECE = sum_b (voxel_count_b / valid_voxel_count) * abs(accuracy_b - confidence_b)`.
+- If `valid_voxel_count = 0`, ECE is unavailable with an explicit reason.
+
+Risk-coverage:
+
+- Uncertainty scores are ordered ascending for retention, because lower uncertainty is retained
+  first.
+- Tie-breaking is deterministic by flattened voxel index in row-major canonical array order.
+- Coverage at prefix length `k` is `k / valid_voxel_count`.
+- Risk is the mean error indicator among retained voxels: `mean(prediction != reference_mask)`.
+- The curve must include fixed coverage points or every deterministic prefix as defined by the
+  artifact policy. Missing points cannot be smoothed or fabricated.
+- If no valid voxels exist, risk-coverage is unavailable with an explicit reason.
+
+Uncertainty-error correlation:
+
+- Error is the binary indicator `prediction != reference_mask` on the common grid.
+- The planned default is Spearman rank correlation between uncertainty score and error indicator
+  with deterministic average ranks for ties.
+- Correlation is unavailable when valid voxel count is insufficient, uncertainty is constant, or
+  error is constant.
+
+Failure-detection AUROC:
+
+- AUROC is case-level unless a later artifact explicitly records a voxel-level failure-detection
+  scope.
+- A case is a failure when the selected post-prediction metric crosses the predeclared failure
+  threshold, for example Dice below a fixed threshold stored in the artifact.
+- The failure score is the case-level uncertainty summary, such as mean entropy or mean TTA
+  variance, selected before evaluation and stored in the artifact.
+- AUROC is eligible only when there are at least two cases, at least one failure, at least one
+  non-failure, finite scores for all included cases, and no missing labels for the eligibility
+  scope.
+- Ineligible AUROC must be recorded as unavailable with a reason; no fallback value, null-success
+  value, or fabricated AUROC is allowed.
+
+Lesion-size subgroup analysis:
+
+- Subgroups are defined from reference connected-component voxel count or physical volume using
+  explicit thresholds stored in config/artifacts.
+- Planned subgroup names are `empty`, `small`, `medium`, and `large`.
+- Empty-lesion cases are counted separately and are not silently merged into a positive-lesion
+  subgroup.
+- Per-subgroup artifacts must record eligible-case count, empty-lesion count where relevant,
+  skipped-case count, metric availability, and metric values only when computable.
+
+Degradation:
+
+- Absolute degradation is `baseline_metric - corrupted_metric` for metrics where higher is better,
+  such as Dice and IoU.
+- For lower-is-better metrics, the direction must be encoded explicitly before use; the first Phase
+  7 implementation should avoid mixing higher-is-better and lower-is-better metrics in one summary
+  unless direction metadata is present.
+- Relative degradation is `(baseline_metric - corrupted_metric) / abs(baseline_metric)` for
+  higher-is-better metrics when `abs(baseline_metric) >= epsilon`.
+- If the baseline metric is unavailable, non-finite, or `abs(baseline_metric) < epsilon`, relative
+  degradation is unavailable with an explicit reason. It must not be reported as zero or infinity.
+
+## Phase 7 Planned Verification
+
+- Artifact-schema, canonical-serialization, unknown-field rejection, and self-hash validation tests
+  for every Phase 7 artifact family.
+- Geometry tests for image/mask misalignment, invalid affine, spacing/orientation mismatch, shape
+  mismatch, binary-mask preservation, common-grid restoration, and interpolation policy.
+- Transform tests for deterministic severity mapping, finite outputs, exact parameter recording,
+  local RNG behavior, no global seed mutation, binary-mask preservation, and repeated execution with
+  byte-identical logical outputs.
+- Uncertainty tests for entropy formulas, zero-probability handling, probability validation,
+  deterministic TTA manifests, aligned aggregation, variance eligibility, and no label input to
+  prediction APIs.
+- Evaluation tests for calibration binning and ECE, risk-coverage ordering and tie-breaking,
+  uncertainty-error correlation eligibility, AUROC eligibility and ineligibility, lesion subgroup
+  counts, absolute degradation, relative degradation, and degenerate-case behavior.
+- Publication tests proving JSON-first derivation for Markdown, tables, and plots; deterministic
+  JSON/Markdown bytes; explicit external output roots; atomic staged writes; idempotent
+  regeneration; incompatible overwrite rejection; traversal rejection; symlink-escape rejection;
+  and no generated artifacts inside the repository.
+- CLI and smoke tests for bounded CPU synthetic execution covering every required corruption family,
+  uncertainty artifacts, evaluation artifacts, and publication outputs.
+- Leakage tests proving labels and reference masks enter only evaluation paths after predictions are
+  complete, Phase 8 external access is absent, and real 3D-IRCADb-01 is not used.
+- Final Gate 7 commands:
+  - `uv run ruff check .`
+  - `uv run ruff format --check .`
+  - `uv run mypy src`
+  - `uv run pytest -q`
+  - `uv run pre-commit run --all-files`
+  - Phase 7 CLI help
+  - two independent bounded CPU synthetic Phase 7 executions into external temporary roots
+  - deterministic JSON/Markdown artifact comparison across those roots
+  - geometry-safety validation and corruption-manifest reproducibility validation
+
+## Phase 7 Risks and Safeguards
+
+- Risk: robustness transforms can corrupt masks or misalign image/mask geometry.
+  Safeguard: enforce nearest-neighbor mask interpolation, binary-mask validation, geometry-change
+  records, and common-grid restoration before metrics.
+- Risk: severity parameters can become implicit, tuned, or dataset-dependent.
+  Safeguard: persist every severity parameter in manifests and prohibit fitted severity values in
+  Phase 7 unless explicitly represented as synthetic constants for tests.
+- Risk: random noise or TTA can become nondeterministic.
+  Safeguard: use local seeded RNG objects only, record seeds in manifests, and test that global RNG
+  state is unchanged.
+- Risk: uncertainty metrics can be computed on invalid probability maps.
+  Safeguard: require finite probabilities, probability-sum validation, strict shape checks, and
+  explicit unavailable statuses for ineligible inputs.
+- Risk: AUROC or relative degradation can be fabricated in degenerate cases.
+  Safeguard: require eligibility records and unavailable statuses for one-class, insufficient,
+  missing, non-finite, or near-zero-baseline inputs.
+- Risk: labels can influence prediction, TTA, transform selection, or uncertainty construction.
+  Safeguard: keep labels absent from prediction and transform execution APIs and permit reference
+  masks only in post-prediction evaluation functions.
+- Risk: publication can include derived values not traceable to artifacts.
+  Safeguard: generate plots, tables, and Markdown only from validated persisted JSON artifacts.
+- Risk: Phase 7 can drift into Phase 8 external validation or LLM/VLM work.
+  Safeguard: explicitly prohibit 3D-IRCADb-01, external-validation claims, real-data claims,
+  checkpoint selection, model retraining, GPU claims, and LLM/VLM scope.
+
+## Gate 7 Acceptance Criteria
+
+Gate 7 is accepted when:
+
+- every required corruption family exists, records deterministic severity parameters, and is
+  reproducible from a versioned corruption manifest;
+- masks remain binary and spatially aligned with images, and every geometry-changing transform has
+  an explicit geometry-change record plus validated common-grid restoration before metrics;
+- predictive entropy is implemented from validated probabilities;
+- deterministic TTA variance or an approved deterministic ensemble interface is implemented with
+  aligned samples and explicit sample manifests;
+- calibration, risk-coverage, uncertainty-error correlation, failure-detection AUROC eligibility,
+  lesion-size subgroup, absolute-degradation, and relative-degradation artifacts are implemented
+  with explicit degenerate-case handling;
+- AUROC is computed only when statistically eligible and recorded as unavailable otherwise;
+- labels and reference masks enter only post-prediction evaluation paths and never drive
+  corruption selection, TTA, uncertainty construction, prediction, checkpoint selection, or
+  hyperparameter tuning;
+- deterministic publication writes JSON-first artifacts, derived Markdown/tables/plots, and no
+  generated artifacts inside the repository;
+- two independent bounded CPU synthetic Phase 7 executions with identical manifests produce
+  byte-identical deterministic JSON and Markdown artifacts, with PNG existence and JSON-derived
+  plot data validated without requiring cross-platform PNG byte identity;
+- repository-wide lint, format, typing, tests, pre-commit, Phase 7 CLI help, synthetic smoke, and
+  leakage checks pass;
+- no real-data, GPU, external-validation, 3D-IRCADb-01, LLM/VLM, retraining, checkpoint-selection,
+  or Phase 8 claim is made; and
+- Gate 7 close-out documents only verified evidence and does not begin Phase 8.
+
+## Phase 7 Acceptance Matrix
+
+| Capability | Required artifact or evidence | Required validation |
+| --- | --- | --- |
+| Corruption manifests | `robustness_corruption_manifest_v1` | Canonical hash, persisted severities, deterministic repeat |
+| Intensity corruptions | Transform result records | Exact parameter tests and finite-output validation |
+| Noise and blur | Transform result records with seed/sigma | Local RNG tests, repeat determinism, no mask filtering |
+| Resampling and slice thickness | Geometry and transform records | Alignment, nearest-neighbor masks, common-grid restoration |
+| Crop/FOV perturbation | Crop geometry records | Persisted crop parameters, restoration, empty-lesion handling |
+| Predictive entropy | `uncertainty_result_v1` | Exact entropy tests and probability validation |
+| TTA or ensemble variance | TTA or ensemble manifest and uncertainty result | Aligned samples, variance eligibility, deterministic repeat |
+| Calibration | `calibration_result_v1` | Fixed bins, ECE formula, empty-bin behavior |
+| Risk coverage | `risk_coverage_result_v1` | Ordering, tie-breaking, coverage/risk formula |
+| Failure analysis | `failure_detection_result_v1` | Correlation eligibility and AUROC eligibility |
+| Subgroup/degradation | Subgroup and degradation artifacts | Explicit thresholds, absolute/relative degradation rules |
+| Leakage safety | Leakage tests and audit evidence | Labels only after prediction; no Phase 8 access |
+| Publication | JSON, Markdown, tables, plots | JSON-first derivation, atomic writes, path safety |
+| Gate close-out | Gate 7 evidence | Full checks and two deterministic synthetic executions |
 
 ## Implementation Notes and Command Results
 
