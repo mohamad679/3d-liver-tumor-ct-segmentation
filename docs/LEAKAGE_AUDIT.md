@@ -145,3 +145,40 @@ external-validation, robustness, uncertainty, calibration, GPU, or clinical-vali
   execution, or publication: confirmed
 
 Gate 6 leakage recommendation: pass.
+
+## Phase 7 Robustness/Uncertainty Leakage and Scope Verification
+
+Status: PASSED for the focused P7-LEAKAGE-SAFETY verification on 2026-08-02.
+
+This Phase 7 note records robustness/uncertainty leakage-boundary evidence only. It is not
+external-validation, real-data, GPU, clinical-validity, theoretical robustness, or model-performance
+evidence.
+
+- Verification surface:
+  - `uv run ruff format tests/unit/test_phase7_leakage.py`: PASS, `1 file left unchanged`
+  - `uv run ruff check tests/unit/test_phase7_leakage.py`: PASS
+  - `uv run mypy tests/unit/test_phase7_leakage.py`: PASS
+  - `uv run pytest tests/unit/test_phase7_leakage.py`: PASS, `6 passed`
+- Phase 7 config and CLI mode: `configs/phase7_robustness_uncertainty.yaml` is validated as
+  `synthetic_mode_only: true`, and the Phase 7 command surface exposes only
+  `run-phase7-robustness-uncertainty --config --output-root`.
+- External-cohort boundary: focused tests found no Phase 8, 3D-IRCADb-01, LLM/VLM, checkpoint,
+  download, private-data, or identifiable-data pathway in the Phase 7 config or Phase 7
+  robustness/uncertainty/evaluation/publication source surfaces.
+- Label/reference-mask isolation:
+  - corruption and uncertainty prediction APIs expose no query-label, reference-mask, model,
+    checkpoint, download, or dataset-root prediction parameters;
+  - optional transform masks are limited to binary geometry/evaluation companions and are not used
+    to choose corruption parameters or prediction behavior;
+  - calibration, risk-coverage, failure-detection, degradation, and lesion-subgroup functions are
+    post-prediction evaluation surfaces;
+  - Phase 6 optimization and final-inference APIs remain query-label/reference-mask free.
+- Synthetic reference masks in the bounded Phase 7 CLI are generated in memory and used only after
+  prediction/probability construction for evaluation artifacts: calibration, risk coverage,
+  uncertainty-error/failure analysis, degradation, and lesion subgroup reporting.
+- Generated-artifact hygiene: the focused test executes the bounded synthetic Phase 7 CLI into a
+  pytest temporary directory, compares `git status --porcelain --untracked-files=all` before and
+  after the run, and verifies that no Phase 7 publication filename appears at the repository root.
+
+Gate 7 leakage recommendation: pass for the tested Phase 7 leakage/scope surface, pending final
+Gate 7 repository-wide verification.
