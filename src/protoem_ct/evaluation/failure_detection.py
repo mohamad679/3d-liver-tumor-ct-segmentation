@@ -22,6 +22,9 @@ AvailabilityStatus = Literal["available", "unavailable"]
 
 _CORRELATION_METHOD: Final[str] = "spearman_average_rank"
 _AUROC_METHOD: Final[str] = "mann_whitney_pairwise"
+_FAILURE_INDICATOR_DEFINITION: Final[str] = "case_metric_below_fixed_threshold"
+_DEFAULT_FAILURE_METRIC_NAME: Final[str] = "dice"
+_DEFAULT_FAILURE_METRIC_THRESHOLD: Final[float] = 0.5
 _AVAILABILITY_STATUSES: Final[frozenset[str]] = frozenset({"available", "unavailable"})
 _UNAVAILABLE_REASONS: Final[frozenset[str]] = frozenset(
     {
@@ -109,6 +112,9 @@ class Phase7FailureDetectionAUROCResult:
     auroc_result_hash: str
     case_uncertainty_score_content_hash: str
     failure_indicator_content_hash: str
+    failure_metric_name: str
+    failure_metric_threshold: float
+    failure_indicator_definition: str
     case_count: int
     positive_failure_case_count: int
     negative_nonfailure_case_count: int
@@ -135,6 +141,15 @@ class Phase7FailureDetectionAUROCResult:
             self.failure_indicator_content_hash,
             field_name="failure_indicator_content_hash",
         )
+        _require_identifier(self.failure_metric_name, field_name="failure_metric_name")
+        _require_fraction_closed(
+            self.failure_metric_threshold,
+            field_name="failure_metric_threshold",
+        )
+        if self.failure_indicator_definition != _FAILURE_INDICATOR_DEFINITION:
+            raise FailureDetectionInputError(
+                "failure_indicator_definition must be 'case_metric_below_fixed_threshold'."
+            )
         _require_nonnegative_int(self.case_count, field_name="case_count")
         _require_nonnegative_int(
             self.positive_failure_case_count,
@@ -255,14 +270,21 @@ def compute_failure_detection_auroc(
     *,
     case_uncertainty_scores: np.ndarray,
     failure_indicators: np.ndarray,
+    failure_metric_name: str = _DEFAULT_FAILURE_METRIC_NAME,
+    failure_metric_threshold: float = _DEFAULT_FAILURE_METRIC_THRESHOLD,
 ) -> Phase7FailureDetectionAUROCResult:
     """Compute deterministic case-level AUROC for failure detection.
 
     AUROC is the Mann-Whitney pairwise probability that a positive failure case
     receives a higher uncertainty score than a negative non-failure case, with
-    ties receiving weight 0.5.
+    ties receiving weight 0.5. The binary `failure_indicators` are interpreted
+    as the explicitly recorded policy `failure_metric_name` below
+    `failure_metric_threshold`; the metric values themselves are not accepted by
+    this API to avoid query-label or mask leakage into prediction paths.
     """
 
+    _require_identifier(failure_metric_name, field_name="failure_metric_name")
+    _require_fraction_closed(failure_metric_threshold, field_name="failure_metric_threshold")
     scores, failures = _prepare_case_inputs(
         case_uncertainty_scores=case_uncertainty_scores,
         failure_indicators=failure_indicators,
@@ -299,6 +321,8 @@ def compute_failure_detection_auroc(
         auroc_value=auroc_value,
         availability_status=availability_status,
         unavailable_reason=unavailable_reason,
+        failure_metric_name=failure_metric_name,
+        failure_metric_threshold=failure_metric_threshold,
     )
 
 
@@ -358,7 +382,10 @@ def failure_detection_auroc_result_identity_payload(
         "availability_status": result.availability_status,
         "case_count": result.case_count,
         "case_uncertainty_score_content_hash": result.case_uncertainty_score_content_hash,
+        "failure_indicator_definition": result.failure_indicator_definition,
         "failure_indicator_content_hash": result.failure_indicator_content_hash,
+        "failure_metric_name": result.failure_metric_name,
+        "failure_metric_threshold": result.failure_metric_threshold,
         "negative_nonfailure_case_count": result.negative_nonfailure_case_count,
         "positive_failure_case_count": result.positive_failure_case_count,
         "schema_name": result.schema_name,
@@ -445,6 +472,8 @@ def _build_auroc_result(
     auroc_value: float | None,
     availability_status: AvailabilityStatus,
     unavailable_reason: str | None,
+    failure_metric_name: str,
+    failure_metric_threshold: float,
 ) -> Phase7FailureDetectionAUROCResult:
     score_hash = array_content_sha256(np.ascontiguousarray(scores))
     failure_hash = array_content_sha256(np.ascontiguousarray(failures.astype(_BOOL_DTYPE)))
@@ -457,6 +486,8 @@ def _build_auroc_result(
         auroc_value=auroc_value,
         availability_status=availability_status,
         unavailable_reason=unavailable_reason,
+        failure_metric_name=failure_metric_name,
+        failure_metric_threshold=failure_metric_threshold,
     )
     payload = _auroc_identity_payload_from_parts(result_without_hash)
     return Phase7FailureDetectionAUROCResult(
@@ -465,6 +496,9 @@ def _build_auroc_result(
         auroc_result_hash=sha256_json(payload),
         case_uncertainty_score_content_hash=score_hash,
         failure_indicator_content_hash=failure_hash,
+        failure_metric_name=failure_metric_name,
+        failure_metric_threshold=failure_metric_threshold,
+        failure_indicator_definition=_FAILURE_INDICATOR_DEFINITION,
         case_count=case_count,
         positive_failure_case_count=positive_failure_case_count,
         negative_nonfailure_case_count=negative_nonfailure_case_count,
@@ -513,6 +547,8 @@ class _AUROCResultWithoutHash:
     auroc_value: float | None
     availability_status: AvailabilityStatus
     unavailable_reason: str | None
+    failure_metric_name: str
+    failure_metric_threshold: float
 
 
 def _auroc_identity_payload_from_parts(result: _AUROCResultWithoutHash) -> dict[str, JsonValue]:
@@ -522,7 +558,10 @@ def _auroc_identity_payload_from_parts(result: _AUROCResultWithoutHash) -> dict[
         "availability_status": result.availability_status,
         "case_count": result.case_count,
         "case_uncertainty_score_content_hash": result.case_uncertainty_score_content_hash,
+        "failure_indicator_definition": _FAILURE_INDICATOR_DEFINITION,
         "failure_indicator_content_hash": result.failure_indicator_content_hash,
+        "failure_metric_name": result.failure_metric_name,
+        "failure_metric_threshold": result.failure_metric_threshold,
         "negative_nonfailure_case_count": result.negative_nonfailure_case_count,
         "positive_failure_case_count": result.positive_failure_case_count,
         "schema_name": PHASE7_FAILURE_DETECTION_AUROC_SCHEMA_NAME,
@@ -612,9 +651,26 @@ def _require_nonnegative_int(value: int, *, field_name: str) -> None:
         raise FailureDetectionInputError(f"{field_name} must be a nonnegative integer.")
 
 
+def _require_identifier(value: str, *, field_name: str) -> None:
+    if (
+        not value
+        or len(value) > 128
+        or value[0] in {"_", "-", "."}
+        or value[-1] in {"_", "-", "."}
+        or any(character not in "abcdefghijklmnopqrstuvwxyz0123456789_.-" for character in value)
+    ):
+        raise FailureDetectionInputError(f"{field_name} must be a conservative identifier.")
+
+
 def _require_finite_float(value: float, *, field_name: str) -> None:
     if not math.isfinite(value):
         raise FailureDetectionInputError(f"{field_name} must be finite.")
+
+
+def _require_fraction_closed(value: float, *, field_name: str) -> None:
+    _require_finite_float(value, field_name=field_name)
+    if value < 0.0 or value > 1.0:
+        raise FailureDetectionInputError(f"{field_name} must be in [0, 1].")
 
 
 def _require_availability(

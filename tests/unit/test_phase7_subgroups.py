@@ -59,6 +59,27 @@ def test_exact_subgroup_dice_on_known_masks() -> None:
     assert small.mean_metric_value == pytest.approx(0.5)
 
 
+def test_subgroup_uses_largest_connected_component_not_total_burden() -> None:
+    reference = np.zeros((3, 8, 8), dtype=np.uint8)
+    prediction = np.zeros_like(reference)
+    reference[0, 0, 0:8] = 1
+    reference[2, 0, 0:8] = 1
+    prediction[...] = reference
+
+    analysis = build_phase7_lesion_subgroup_result(
+        (LesionSubgroupCase("two_small_lesions", reference, prediction),),
+        metric_name="dice",
+        common_grid_geometry_record_hash=HEX_GRID,
+    )
+
+    small = next(record for record in analysis.result.records if record.subgroup_name == "small")
+    medium = next(record for record in analysis.result.records if record.subgroup_name == "medium")
+    assert analysis.case_metrics[0].reference_foreground_voxels == 8
+    assert analysis.result.subgroup_policy_name == "largest_connected_component_voxel_count_v1"
+    assert small.eligible_case_count == 1
+    assert medium.metric_availability_status == "unavailable"
+
+
 def test_exact_subgroup_iou_on_known_masks() -> None:
     reference = np.zeros((2, 2, 2), dtype=np.uint8)
     prediction = np.zeros((2, 2, 2), dtype=np.uint8)

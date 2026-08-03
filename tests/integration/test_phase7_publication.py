@@ -254,6 +254,44 @@ def test_cross_artifact_hash_mismatch_rejected() -> None:
         build_phase7_publication_artifact_bytes(broken)
 
 
+def test_swapped_transform_geometry_references_rejected_after_hash_recompute() -> None:
+    inputs = _publication_inputs()
+    transform_collection = json.loads(inputs.transform_results_json)
+    transform_items = transform_collection["items"]
+    assert isinstance(transform_items, list)
+    slice_item = transform_items[6]
+    crop_item = transform_items[8]
+    assert isinstance(slice_item, dict)
+    assert isinstance(crop_item, dict)
+    slice_item["geometry_record_hash"], crop_item["geometry_record_hash"] = (
+        crop_item["geometry_record_hash"],
+        slice_item["geometry_record_hash"],
+    )
+    for item in (slice_item, crop_item):
+        identity = dict(item)
+        identity.pop("transform_result_hash")
+        item["transform_result_hash"] = sha256_json(identity)
+    swapped_transform_json = canonical_json_bytes(transform_collection) + b"\n"
+    broken = _replace_transform_results_json(inputs, swapped_transform_json)
+
+    with pytest.raises(Phase7PublicationValidationError, match="transform_name mismatch"):
+        build_phase7_publication_artifact_bytes(broken)
+
+
+def test_evaluation_common_grid_hash_must_be_published_geometry_record() -> None:
+    inputs = _publication_inputs()
+    calibration_mapping = json.loads(inputs.calibration_result_json)
+    calibration_mapping["common_grid_geometry_record_hash"] = HEX_9
+    identity = dict(calibration_mapping)
+    identity.pop("calibration_result_hash")
+    calibration_mapping["calibration_result_hash"] = sha256_json(identity)
+    calibration_json = canonical_json_bytes(calibration_mapping) + b"\n"
+    broken = _replace_calibration_json(inputs, calibration_json)
+
+    with pytest.raises(Phase7PublicationValidationError, match="common-grid geometry hash"):
+        build_phase7_publication_artifact_bytes(broken)
+
+
 def _publication_inputs() -> Phase7PublicationInputs:
     effective_config_mapping = {
         "phase7_robustness_uncertainty": {
@@ -344,6 +382,58 @@ def _publication_inputs() -> Phase7PublicationInputs:
         degradation_result_json=phase7_degradation_result_to_json(degradation),
         lesion_subgroup_result_json=phase7_lesion_subgroup_result_to_json(subgroup),
         phase7_run_summary_json=phase7_run_summary_to_json(summary),
+    )
+
+
+def _replace_transform_results_json(
+    inputs: Phase7PublicationInputs,
+    transform_results_json: bytes,
+) -> Phase7PublicationInputs:
+    summary_mapping = json.loads(inputs.phase7_run_summary_json)
+    transform_results_hash = _json_hash(transform_results_json)
+    summary_mapping["transform_results_hash"] = transform_results_hash
+    summary_mapping["publication_payload_hash"] = _publication_payload_hash(
+        config_hash=summary_mapping["config_hash"],
+        manifest_hash=summary_mapping["corruption_manifest_hash"],
+        transform_results_hash=transform_results_hash,
+        geometry_records_hash=summary_mapping["geometry_records_hash"],
+        uncertainty_hash=summary_mapping["uncertainty_result_hash"],
+        calibration_hash=summary_mapping["calibration_result_hash"],
+        risk_hash=summary_mapping["risk_coverage_result_hash"],
+        failure_detection_hash=summary_mapping["failure_detection_result_hash"],
+        degradation_hash=summary_mapping["degradation_result_hash"],
+        subgroup_hash=summary_mapping["lesion_subgroup_result_hash"],
+    )
+    return replace(
+        inputs,
+        transform_results_json=transform_results_json,
+        phase7_run_summary_json=_run_summary_json_from_mapping(summary_mapping),
+    )
+
+
+def _replace_calibration_json(
+    inputs: Phase7PublicationInputs,
+    calibration_json: bytes,
+) -> Phase7PublicationInputs:
+    summary_mapping = json.loads(inputs.phase7_run_summary_json)
+    calibration_hash = _json_hash(calibration_json)
+    summary_mapping["calibration_result_hash"] = calibration_hash
+    summary_mapping["publication_payload_hash"] = _publication_payload_hash(
+        config_hash=summary_mapping["config_hash"],
+        manifest_hash=summary_mapping["corruption_manifest_hash"],
+        transform_results_hash=summary_mapping["transform_results_hash"],
+        geometry_records_hash=summary_mapping["geometry_records_hash"],
+        uncertainty_hash=summary_mapping["uncertainty_result_hash"],
+        calibration_hash=calibration_hash,
+        risk_hash=summary_mapping["risk_coverage_result_hash"],
+        failure_detection_hash=summary_mapping["failure_detection_result_hash"],
+        degradation_hash=summary_mapping["degradation_result_hash"],
+        subgroup_hash=summary_mapping["lesion_subgroup_result_hash"],
+    )
+    return replace(
+        inputs,
+        calibration_result_json=calibration_json,
+        phase7_run_summary_json=_run_summary_json_from_mapping(summary_mapping),
     )
 
 
@@ -596,7 +686,7 @@ def _lesion_subgroup_result(*, common_grid_hash: str = HEX_4) -> Phase7LesionSub
         "reference_mask_content_hash": HEX_1,
         "schema_name": PHASE7_LESION_SUBGROUP_RESULT_SCHEMA_NAME,
         "schema_version": PHASE7_LESION_SUBGROUP_RESULT_SCHEMA_VERSION,
-        "subgroup_policy_name": "voxel_count_v1",
+        "subgroup_policy_name": "largest_connected_component_voxel_count_v1",
         "thresholds_voxels": [0, 10, 100],
     }
     return phase7_lesion_subgroup_result_from_json(

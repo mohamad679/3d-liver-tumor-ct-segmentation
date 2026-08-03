@@ -362,6 +362,11 @@ class _ValidatedPhase7PublicationInputs:
             manifest=corruption_manifest,
             transform_results=transform_results,
             geometry_records=geometry_records,
+            evaluation_common_grid_hashes=(
+                calibration.common_grid_geometry_record_hash,
+                risk.common_grid_geometry_record_hash,
+                subgroup.common_grid_geometry_record_hash,
+            ),
         )
         _validate_cross_artifact_hashes(
             config_hash=_hash_json_mapping_bytes(effective_config_json),
@@ -437,6 +442,7 @@ def _validate_transform_manifest_geometry_consistency(
     manifest: Phase7CorruptionManifest,
     transform_results: tuple[Phase7TransformResult, ...],
     geometry_records: tuple[Phase7GeometryRecord, ...],
+    evaluation_common_grid_hashes: tuple[str, ...],
 ) -> None:
     specification_names = tuple(item.corruption_name for item in manifest.specifications)
     if set(specification_names) != PHASE7_CORRUPTION_NAMES:
@@ -445,7 +451,10 @@ def _validate_transform_manifest_geometry_consistency(
         raise Phase7PublicationValidationError("corruption manifest contains duplicate names.")
     if len(transform_results) != len(manifest.specifications):
         raise Phase7PublicationValidationError("transform result count must match manifest.")
-    geometry_hashes = {item.geometry_record_hash for item in geometry_records}
+    geometry_by_hash = {item.geometry_record_hash: item for item in geometry_records}
+    if len(geometry_by_hash) != len(geometry_records):
+        raise Phase7PublicationValidationError("geometry records contain duplicate hashes.")
+    geometry_hashes = set(geometry_by_hash)
     referenced_geometry_hashes: set[str] = set()
     for index, (specification, result) in enumerate(
         zip(manifest.specifications, transform_results, strict=True)
@@ -464,15 +473,29 @@ def _validate_transform_manifest_geometry_consistency(
                     f"transform result {index} must restore the common grid."
                 )
         if result.geometry_record_hash is not None:
-            if result.geometry_record_hash not in geometry_hashes:
+            geometry_record = geometry_by_hash.get(result.geometry_record_hash)
+            if geometry_record is None:
                 raise Phase7PublicationValidationError(
                     f"transform result {index} geometry hash is missing."
+                )
+            if geometry_record.transform_name != specification.corruption_name:
+                raise Phase7PublicationValidationError(
+                    f"transform result {index} geometry record transform_name mismatch."
+                )
+            if geometry_record.common_grid_restored != result.common_grid_restored:
+                raise Phase7PublicationValidationError(
+                    f"transform result {index} common-grid restoration mismatch."
                 )
             referenced_geometry_hashes.add(result.geometry_record_hash)
     if referenced_geometry_hashes != geometry_hashes:
         raise Phase7PublicationValidationError(
             "geometry records must match referenced transform result hashes."
         )
+    for common_grid_hash in evaluation_common_grid_hashes:
+        if common_grid_hash not in geometry_hashes:
+            raise Phase7PublicationValidationError(
+                "evaluation common-grid geometry hash is not published."
+            )
 
 
 def _phase7_publication_payload_hash(

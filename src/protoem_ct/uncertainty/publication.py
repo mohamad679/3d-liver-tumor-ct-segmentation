@@ -54,7 +54,10 @@ _AUROC_FIELDS: Final[frozenset[str]] = frozenset(
         "schema_version",
         "auroc_result_hash",
         "case_uncertainty_score_content_hash",
+        "failure_indicator_definition",
         "failure_indicator_content_hash",
+        "failure_metric_name",
+        "failure_metric_threshold",
         "case_count",
         "positive_failure_case_count",
         "negative_nonfailure_case_count",
@@ -325,6 +328,18 @@ def _auroc_result_from_mapping(mapping: Mapping[str, object]) -> Phase7FailureDe
             mapping["failure_indicator_content_hash"],
             field_name="failure_indicator_content_hash",
         ),
+        failure_metric_name=_expect_string(
+            mapping["failure_metric_name"],
+            field_name="failure_metric_name",
+        ),
+        failure_metric_threshold=_expect_float(
+            mapping["failure_metric_threshold"],
+            field_name="failure_metric_threshold",
+        ),
+        failure_indicator_definition=_expect_string(
+            mapping["failure_indicator_definition"],
+            field_name="failure_indicator_definition",
+        ),
         case_count=_expect_int(mapping["case_count"], field_name="case_count"),
         positive_failure_case_count=_expect_int(
             mapping["positive_failure_case_count"],
@@ -408,6 +423,12 @@ def _expect_optional_float(value: object, *, field_name: str) -> float | None:
         return None
     if not isinstance(value, (int, float)) or isinstance(value, bool):
         raise Phase7UncertaintyPublicationError(f"{field_name} must be numeric or null.")
+    return float(value)
+
+
+def _expect_float(value: object, *, field_name: str) -> float:
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        raise Phase7UncertaintyPublicationError(f"{field_name} must be numeric.")
     return float(value)
 
 

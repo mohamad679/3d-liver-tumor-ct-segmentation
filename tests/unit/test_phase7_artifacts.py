@@ -416,7 +416,7 @@ def _lesion_subgroup_result_payload(**overrides: object) -> dict[str, object]:
         "prediction_content_hash": HEX_2,
         "common_grid_geometry_record_hash": HEX_3,
         "metric_name": "dice",
-        "subgroup_policy_name": "voxel_count_v1",
+        "subgroup_policy_name": "largest_connected_component_voxel_count_v1",
         "thresholds_voxels": [0, 10, 100],
         "records": [
             {

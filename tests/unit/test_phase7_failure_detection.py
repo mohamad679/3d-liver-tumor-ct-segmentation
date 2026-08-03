@@ -83,6 +83,9 @@ def test_exact_auroc_known_case() -> None:
 
     assert result.availability_status == "available"
     assert result.auroc_method == "mann_whitney_pairwise"
+    assert result.failure_indicator_definition == "case_metric_below_fixed_threshold"
+    assert result.failure_metric_name == "dice"
+    assert result.failure_metric_threshold == pytest.approx(0.5)
     assert result.case_count == 4
     assert result.positive_failure_case_count == 2
     assert result.negative_nonfailure_case_count == 2
@@ -93,9 +96,13 @@ def test_auroc_tie_handling() -> None:
     result = compute_failure_detection_auroc(
         case_uncertainty_scores=np.array([0.5, 0.5, 0.2, 0.8]),
         failure_indicators=np.array([1, 0, 0, 1]),
+        failure_metric_name="iou",
+        failure_metric_threshold=0.25,
     )
 
     assert result.availability_status == "available"
+    assert result.failure_metric_name == "iou"
+    assert result.failure_metric_threshold == pytest.approx(0.25)
     assert result.auroc_value == pytest.approx(0.875)
 
 
@@ -154,6 +161,28 @@ def test_invalid_auroc_inputs_rejected(scores: np.ndarray, failures: np.ndarray)
         compute_failure_detection_auroc(
             case_uncertainty_scores=scores,
             failure_indicators=failures,
+        )
+
+
+@pytest.mark.parametrize(
+    ("metric_name", "threshold"),
+    [
+        ("Dice", 0.5),
+        ("dice", -0.1),
+        ("dice", 1.1),
+        ("dice", np.nan),
+    ],
+)
+def test_invalid_auroc_failure_definition_rejected(
+    metric_name: str,
+    threshold: float,
+) -> None:
+    with pytest.raises(FailureDetectionInputError):
+        compute_failure_detection_auroc(
+            case_uncertainty_scores=np.array([0.1, 0.9]),
+            failure_indicators=np.array([0, 1]),
+            failure_metric_name=metric_name,
+            failure_metric_threshold=threshold,
         )
 
 

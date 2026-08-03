@@ -27,7 +27,7 @@ from protoem_ct.uncertainty.contracts import array_content_sha256
 MaskMetricName = Literal["dice", "iou"]
 LesionSubgroupName = Literal["empty", "small", "medium", "large"]
 
-LESION_SUBGROUP_POLICY_NAME: Final[str] = "voxel_count_v1"
+LESION_SUBGROUP_POLICY_NAME: Final[str] = "largest_connected_component_voxel_count_v1"
 LESION_SUBGROUP_THRESHOLDS_VOXELS: Final[tuple[int, int, int]] = (0, 10, 100)
 LESION_SUBGROUP_ORDER: Final[tuple[LesionSubgroupName, ...]] = (
     "empty",
@@ -76,7 +76,7 @@ class LesionSubgroupAnalysis:
 
 
 def classify_lesion_size(foreground_voxel_count: int) -> LesionSubgroupName:
-    """Classify a lesion by foreground voxel count.
+    """Classify a lesion by connected-component foreground voxel count.
 
     The policy is explicit and deterministic: empty equals 0 voxels, small is
     1-10 voxels, medium is 11-100 voxels, and large is greater than 100 voxels.
@@ -135,7 +135,7 @@ def build_phase7_lesion_subgroup_result(
         metric_value = (
             dice_from_counts(counts) if metric_name == "dice" else iou_from_counts(counts)
         )
-        foreground_count = counts.ground_truth_foreground_voxels
+        foreground_count = _largest_connected_component_voxel_count(reference)
         case_metrics.append(
             LesionSubgroupCaseMetric(
                 case_id=case.case_id,
@@ -253,3 +253,43 @@ def _require_binary_mask(mask: np.ndarray, *, field_name: str) -> np.ndarray:
     if not np.all((value == 0) | (value == 1)):
         raise Phase7SubgroupInputError(f"{field_name} must be binary with values 0 and 1.")
     return np.ascontiguousarray(value == 1, dtype=np.bool_)
+
+
+def _largest_connected_component_voxel_count(mask: np.ndarray) -> int:
+    """Return the largest 6-connected lesion size for a validated 3D binary mask."""
+
+    foreground = np.ascontiguousarray(mask, dtype=np.bool_)
+    if not np.any(foreground):
+        return 0
+    visited = np.zeros(foreground.shape, dtype=np.bool_)
+    largest = 0
+    shape = foreground.shape
+    for start in np.argwhere(foreground):
+        z, y, x = (int(item) for item in start)
+        if visited[z, y, x]:
+            continue
+        stack = [(z, y, x)]
+        visited[z, y, x] = True
+        component_size = 0
+        while stack:
+            current_z, current_y, current_x = stack.pop()
+            component_size += 1
+            for next_z, next_y, next_x in (
+                (current_z - 1, current_y, current_x),
+                (current_z + 1, current_y, current_x),
+                (current_z, current_y - 1, current_x),
+                (current_z, current_y + 1, current_x),
+                (current_z, current_y, current_x - 1),
+                (current_z, current_y, current_x + 1),
+            ):
+                if (
+                    0 <= next_z < shape[0]
+                    and 0 <= next_y < shape[1]
+                    and 0 <= next_x < shape[2]
+                    and foreground[next_z, next_y, next_x]
+                    and not visited[next_z, next_y, next_x]
+                ):
+                    visited[next_z, next_y, next_x] = True
+                    stack.append((next_z, next_y, next_x))
+        largest = max(largest, component_size)
+    return largest
