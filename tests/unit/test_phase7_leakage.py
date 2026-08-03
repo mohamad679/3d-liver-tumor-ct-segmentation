@@ -5,9 +5,11 @@ from __future__ import annotations
 import inspect
 import re
 import subprocess
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import Any, cast
 
+import typer
 from typer.testing import CliRunner
 
 from protoem_ct.cli.main import (
@@ -159,7 +161,37 @@ def test_phase7_config_and_command_are_synthetic_only_without_external_phase8_su
     for forbidden in _FORBIDDEN_PHASE7_SCOPE_TOKENS:
         assert forbidden not in normalized_help
     assert "synthetic" in normalized_help
-    assert "output-root" in normalized_help
+    _assert_phase7_command_exposes_required_options()
+
+
+def test_phase7_help_rendering_remains_leakage_safe_with_color_and_narrow_width() -> None:
+    for result in (
+        CliRunner().invoke(
+            app,
+            ["run-phase7-robustness-uncertainty", "--help"],
+            color=False,
+            terminal_width=100,
+        ),
+        CliRunner().invoke(
+            app,
+            ["run-phase7-robustness-uncertainty", "--help"],
+            color=True,
+            terminal_width=100,
+        ),
+        CliRunner(env={"COLUMNS": "40"}).invoke(
+            app,
+            ["run-phase7-robustness-uncertainty", "--help"],
+            color=True,
+            terminal_width=40,
+        ),
+    ):
+        assert result.exit_code == 0, repr(result.stdout)
+        normalized_help = result.stdout.lower()
+        assert "synthetic" in normalized_help
+        for forbidden in _FORBIDDEN_PHASE7_SCOPE_TOKENS:
+            assert forbidden not in normalized_help
+
+    _assert_phase7_command_exposes_required_options()
 
 
 def test_phase7_source_surfaces_do_not_expose_phase8_or_download_pathways() -> None:
@@ -269,6 +301,20 @@ def _assert_signature_excludes_forbidden_prediction_fields(
         f"{callable_item.__module__}.{callable_item.__name__} exposes "
         f"{sorted(exposed_fields & forbidden)!r}"
     )
+
+
+def _assert_phase7_command_exposes_required_options() -> None:
+    command = cast(Any, typer.main.get_command(app))
+    commands = cast(dict[str, Any], command.commands)
+    phase7_command = commands.get("run-phase7-robustness-uncertainty")
+    assert phase7_command is not None
+    options_by_name: dict[str, Any] = {}
+    for parameter in cast(Sequence[Any], cast(Any, phase7_command).params):
+        if hasattr(parameter, "opts") and hasattr(parameter, "required"):
+            options_by_name[cast(str, parameter.name)] = parameter
+    assert "--config" in cast(Sequence[str], options_by_name["config_path"].opts)
+    assert "--output-root" in cast(Sequence[str], options_by_name["output_root"].opts)
+    assert options_by_name["output_root"].required is True
 
 
 def _git_status_porcelain() -> tuple[str, ...]:
