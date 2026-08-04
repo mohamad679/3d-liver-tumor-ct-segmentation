@@ -76,6 +76,25 @@ All Wave 4 agents used the real delegated-agent capability and were reviewed by 
 - Wave 4 freeze/preregistration generation is blocked by missing real internal-development
   provenance.
 
+## Completed Wave 4 Blocker-Remediation Planning Agents
+
+All remediation-planning agents used the real delegated-agent capability and were read-only:
+
+- `P8R-DEVELOPMENT-DATA-AUDIT`: complete; approved the Phase 2 v2 manifest, split, QA,
+  lesion-summary, development-summary, final-QA, and leakage-audit artifacts as the current
+  development evidence set for future remediation planning.
+- `P8R-TRAINING-READINESS-AUDIT`: complete; found no existing end-to-end real-development pathway
+  capable of producing a freeze-eligible checkpoint package.
+- `P8R-SELECTION-FREEZE-PLAN`: complete; defined the development-only selection/freeze procedure
+  and confirmed that no current candidate set is freezeable.
+- `P8R-COMPUTE-EXECUTION-PLAN`: complete; found no CUDA and no available MPS in the inspected
+  Phase 3 environment, and identified that tiny real-pixel verification and definitive training
+  require implementation plus user approval.
+
+Planning reconciliation is recorded in `docs/phase8/INTERNAL_EVIDENCE_REMEDIATION_PLAN.md`.
+No remediation was implemented, no model was trained, no checkpoint was created, no readiness rerun
+was executed, and Wave 5 remains blocked.
+
 ## Approved Wave 1 Files
 
 - `src/protoem_ct/external/__init__.py`
@@ -383,8 +402,10 @@ All Wave 4 agents used the real delegated-agent capability and were reviewed by 
 
 ## Exact Next Action
 
-Stop after Wave 4. The exact next action is repository review of the `BLOCKED` readiness result,
-then a Wave 4 commit if approved.
+Stop after Wave 4 blocker-remediation planning. The exact next implementation action for a future
+approved remediation session is to define real-development evidence schemas and readiness-input
+contracts for preprocessing decision, candidate inventory, checkpoint metadata, validation metric
+links, model-selection decision, threshold decision, and support/no-support policy.
 
 Wave 5 remains blocked pending Wave 4 review and commit. Until released, no agent may access
 external labels, predictions, inference, metrics execution, bootstrap execution, montage
