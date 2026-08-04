@@ -95,6 +95,10 @@ from protoem_ct.evaluation.subgroups import (
     LesionSubgroupCase,
     build_phase7_lesion_subgroup_result,
 )
+from protoem_ct.external import (
+    Phase8Wave2PublicationError,
+    run_phase8_wave2_image_inventory,
+)
 from protoem_ct.fewshot import (
     FewshotArtifactValidationError,
     FewshotInitializationReference,
@@ -324,6 +328,16 @@ def _raise_phase7_cli_error(exc: Exception) -> None:
     """Exit with a concise Phase 7 error without path or synthetic artifact leakage."""
     typer.secho(
         f"Phase 7 robustness/uncertainty error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase8_wave2_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 8 Wave 2 error without path or data leakage."""
+    typer.secho(
+        f"Phase 8 Wave 2 image inventory error: {type(exc).__name__}",
         err=True,
         fg=typer.colors.RED,
     )
@@ -1489,6 +1503,60 @@ def run_phase7_robustness_uncertainty_command(
     typer.echo(f"run summary artifact: {result.run_summary_path}")
     typer.echo(f"reused existing output: {str(result.reused_existing_output).lower()}")
     typer.echo(f"output root: {result.output_root}")
+
+
+@app.command("run-phase8-wave2-image-inventory")
+def run_phase8_wave2_image_inventory_command(
+    dataset_root: Annotated[
+        Path,
+        typer.Option(
+            "--dataset-root",
+            help="Explicit absolute extracted 3D-IRCADb-01 3Dircadb1 root.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    dataset_archive: Annotated[
+        Path,
+        typer.Option(
+            "--dataset-archive",
+            help="Explicit absolute outer 3Dircadb1.zip archive path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help="Explicit absolute external Wave 2 output root outside the repository.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    repository_root: Annotated[
+        Path | None,
+        typer.Option(
+            "--repository-root",
+            help="Explicit absolute repository root used only for output-root rejection.",
+        ),
+    ] = None,
+) -> None:
+    """Run Phase 8 Wave 2 image-only 3D-IRCADb discovery, QA, and manifest publication."""
+
+    try:
+        result = run_phase8_wave2_image_inventory(
+            dataset_root=dataset_root,
+            dataset_archive=dataset_archive,
+            output_root=output_root,
+            repository_root=repository_root or Path.cwd(),
+        )
+    except (Phase8Wave2PublicationError, ValueError, OSError) as exc:
+        _raise_phase8_wave2_cli_error(exc)
+
+    typer.echo("Phase 8 Wave 2 image-only inventory complete")
+    typer.echo(f"case_count: {result.case_count}")
+    typer.echo(f"qa_pass_count: {result.qa_pass_count}")
+    typer.echo(f"qa_fail_count: {result.qa_fail_count}")
+    typer.echo(f"manifest_hash: {result.manifest.manifest_hash}")
+    for anonymous_case_id, reason_codes in result.anonymous_case_reason_codes:
+        typer.echo(f"failed_case: {anonymous_case_id} reason_codes={','.join(reason_codes)}")
+    for relative_name, digest in sorted(result.artifact_hashes.items()):
+        typer.echo(f"artifact: {relative_name} sha256={digest}")
 
 
 def run_and_publish_phase7_robustness_uncertainty(
