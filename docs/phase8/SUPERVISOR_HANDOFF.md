@@ -417,6 +417,113 @@ remediation path is separately approved and completed.
 
 Wave 4 remains `BLOCKED`. Wave 5 remains blocked and unreleased.
 
+## Internal Evidence Remediation Substage 4A
+
+Status: completed as contract-and-boundary-only source implementation; not committed, not pushed,
+and not a Wave 4 readiness release. Gate 8 is not claimed. Wave 4 remains `BLOCKED`. Wave 5 remains
+blocked and unreleased. This substage is the first half of Substage 4 ("Definitive development
+training and validation-only selection"): it built every contract, executor boundary, and CLI
+surface needed for a future definitive MONAI SegResNet training run, gated behind an explicit,
+separately-versioned release artifact that does not exist yet and cannot be produced in this
+session. No real dataset, checkpoint, model, or training touch occurred; no NIfTI/DICOM/ZIP/label/
+prediction/checkpoint file was opened; `/Volumes` was not accessed; 3D-IRCADb-01 was not accessed;
+the immutable internal test cohort was not accessed; Wave 4 was not rerun; Wave 5 was not begun.
+
+Real delegated agent used: `P8R-DEFINITIVE-RUNNER` (this agent), implementing
+`src/protoem_ct/external/definitive_training.py`,
+`tests/unit/test_phase8_definitive_training.py`, the two new CLI commands in
+`src/protoem_ct/cli/main.py`, and additive re-exports in `src/protoem_ct/external/__init__.py`.
+
+Approved Substage 4A schema surfaces, both `v1`:
+
+- `phase8_definitive_training_config`
+- `phase8_definitive_execution_release`
+
+New contracts reuse the Substage 1 schemas unchanged (`phase8_preprocessing_decision`,
+`phase8_checkpoint_metadata`, `phase8_validation_evidence_reference`,
+`phase8_model_selection_decision`, `phase8_threshold_decision`, `phase8_support_policy`) rather than
+forking them.
+
+Scientific policy encoded (contract defaults/validators, not a frozen decision record):
+
+- Single preregistered candidate: `monai_segresnet_baseline`; `selection_status` is always
+  `single_candidate_preregistered`.
+- Primary validation metric: tumor Dice.
+- Fixed deterministic tie-break order (this module's own constant, distinct in field order from the
+  general multi-candidate order in `docs/phase8/INTERNAL_EVIDENCE_REMEDIATION_PLAN.md`): lesion F1
+  descending, then HD95 ascending when defined, then false-positive lesions per scan ascending, then
+  trainable-parameter count ascending, then candidate ID lexicographic.
+- Threshold policy: `fixed_constant` at `0.5` (no threshold-search parameter exists anywhere in the
+  public API).
+- Support policy: `no_support` (no support-manifest parameter exists anywhere in the public API).
+- `device_type` fixed to `"cpu"`, `amp_enabled` fixed to `False`, `no_external_data` and
+  `internal_test_excluded` fixed to `True` for every object the public builder can produce.
+
+CLI commands:
+
+- `plan-phase8-definitive-development-training`: plans (never executes) a future definitive
+  training run; publishes a `Phase8DefinitiveTrainingConfig` whose `execution_release_state` is
+  always `"awaiting_explicit_user_approval"` alongside a `Phase8DefinitiveExecutionRelease` whose
+  `release_state` is always `"not_released"`. Never opens an image, label, prediction, or checkpoint
+  file.
+- `run-phase8-definitive-development-training`: the honest "run" command. Loads a config and release
+  from explicit paths, verifies the release binds to that config, and fails closed with
+  `Phase8DefinitiveTrainingNotReleasedError` before opening any manifest, split, or medical file
+  whenever the release is absent, invalid, mismatched, or `not_released` -- which is every real
+  invocation in this environment today, since no function reachable from this codebase's own
+  tooling can produce a `released` release.
+
+Exact execution/publication boundary:
+
+- `Phase8DefinitiveExecutionRelease.release_state` can only be `"not_released"` for every object
+  produced by `build_unreleased_definitive_execution_release(...)`, the only release-builder
+  reachable from the CLI or any public function in this module. A `released` release can only be
+  constructed via direct, out-of-band dataclass construction, exercised solely inside this
+  substage's own tests, to prove the contract's shape without ever emitting a real-release code
+  path.
+- `execute_phase8_definitive_training(...)` and all six `publish_phase8_definitive_*` functions
+  validate the release's `bound_config_hash` against the config's `config_hash` and the release's
+  `release_state` before opening any file path, reading any manifest/split, or importing
+  torch/monai/nibabel. Test-verified with a `builtins.open` spy: zero file-open calls occur before
+  the not-released/mismatch error is raised.
+- `Phase8DefinitiveTrainingExecutor` is a typed `Protocol` only; every method body is
+  `raise NotImplementedError`. No MONAI dataset construction, Torch training loop, or checkpoint I/O
+  exists anywhere in the module.
+- No unconditional `import torch`/`import monai`/`import nibabel` statement exists anywhere in the
+  module (regex- and AST-verified by an automated static-scan unit test); the module never imports
+  or invokes any of them.
+
+Targeted local verification (Supervisor-run):
+
+- `uv run ruff format --check src/protoem_ct/external/definitive_training.py tests/unit/test_phase8_definitive_training.py src/protoem_ct/external/__init__.py src/protoem_ct/cli/main.py`: PASS, `4 files already formatted`
+- `uv run ruff check src/protoem_ct/external/definitive_training.py tests/unit/test_phase8_definitive_training.py src/protoem_ct/external/__init__.py src/protoem_ct/cli/main.py`: PASS, `All checks passed!`
+- `uv run mypy src/protoem_ct/external/definitive_training.py tests/unit/test_phase8_definitive_training.py src/protoem_ct/external/__init__.py src/protoem_ct/cli/main.py`: PASS, `Success: no issues found in 4 source files`
+- `uv run pytest -q tests/unit/test_phase8_definitive_training.py`: PASS, `53 passed`
+- `uv run pytest -q tests/unit/test_phase8_internal_evidence.py tests/unit/test_phase8_real_development_runner.py tests/unit/test_phase8_tiny_real_verification.py`: PASS, `67 passed, 4 skipped` (unmodified regression surface)
+- `uv run protoem-ct plan-phase8-definitive-development-training --help`: PASS
+- `uv run protoem-ct run-phase8-definitive-development-training --help`: PASS
+- Synthetic end-to-end plan-only CLI run into a `mktemp -d` output root: PASS; the immediately
+  following `run-phase8-definitive-development-training` invocation against the published
+  not-released artifacts correctly failed closed with `Phase8DefinitiveTrainingNotReleasedError`
+  (exit code 1).
+- `git diff --check`: PASS, no output.
+
+Boundary confirmation:
+
+- `/Volumes` was not accessed.
+- No development or external dataset was accessed.
+- No NIfTI, DICOM, ZIP, mask, label, prediction, or checkpoint file was opened or modified.
+- No real training, inference, GPU/MPS use, checkpoint creation, or real metric computation
+  occurred.
+- The immutable internal test cohort was not accessed.
+- Wave 4 was not rerun; Wave 5 was not begun.
+- Only synthetic in-memory/`tmp_path`/`mktemp -d` JSON fixtures were used.
+
+Exact next action: Substage 4B (or a combined re-scoped continuation) requires its own separate
+explicit user approval to produce and bind a real `released` execution release before any real
+definitive training compute may begin. Wave 4 and Wave 5 remain `BLOCKED` and must stay blocked
+until a Substage 4B/5/6 remediation path is separately approved and completed.
+
 ## Internal Evidence Remediation Substage 1
 
 Status: completed as contract-only source implementation; not committed, not pushed, and not a

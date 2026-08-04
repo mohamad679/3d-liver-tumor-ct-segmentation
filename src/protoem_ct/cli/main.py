@@ -103,6 +103,15 @@ from protoem_ct.external import (
     run_phase8_wave3_policy_publication,
     run_phase8_wave4_readiness_publication,
 )
+from protoem_ct.external.definitive_training import (
+    Phase8DefinitiveTrainingError,
+    build_phase8_definitive_training_config,
+    build_unreleased_definitive_execution_release,
+    execute_phase8_definitive_training,
+    phase8_definitive_execution_release_from_mapping,
+    phase8_definitive_training_config_from_mapping,
+    publish_phase8_definitive_training_plan,
+)
 from protoem_ct.external.internal_evidence import (
     PHASE8_CHECKPOINT_METADATA_SCHEMA_NAME,
     PHASE8_INTERNAL_EVIDENCE_SCHEMA_VERSION,
@@ -401,6 +410,26 @@ def _raise_phase8_tiny_real_verification_cli_error(exc: Exception) -> None:
     """Exit with a concise Phase 8 tiny real-verification error without data leakage."""
     typer.secho(
         f"Phase 8 tiny real-development verification error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase8_definitive_training_plan_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 8 definitive-training plan error without data leakage."""
+    typer.secho(
+        f"Phase 8 definitive-training plan error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase8_definitive_training_run_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 8 definitive-training run error without data leakage."""
+    typer.secho(
+        f"Phase 8 definitive-training run error: {type(exc).__name__}",
         err=True,
         fg=typer.colors.RED,
     )
@@ -2067,6 +2096,181 @@ def run_phase8_tiny_real_development_verification_command(
     typer.echo(f"summary_hash: {result.summary_hash}")
     for relative_name, digest in sorted(result.artifact_hashes.items()):
         typer.echo(f"artifact: {relative_name} sha256={digest}")
+
+
+@app.command("plan-phase8-definitive-development-training")
+def plan_phase8_definitive_development_training_command(
+    input_binding_hash: Annotated[
+        str,
+        typer.Option(
+            "--input-binding-hash",
+            help=(
+                "SHA-256 of an already-verified Phase8RealDevelopmentInputBinding "
+                "(Substage 2). No manifest or split file is opened by this command."
+            ),
+        ),
+    ] = ...,  # type: ignore[assignment]
+    candidate_inventory_path: Annotated[
+        Path,
+        typer.Option(
+            "--candidate-inventory-path",
+            help="Explicit absolute path to a Phase 8 fixed candidate inventory JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    candidate_id: Annotated[
+        str,
+        typer.Option(
+            "--candidate-id",
+            help="Candidate identifier; must equal 'monai_segresnet_baseline'.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    preprocessing_decision_path: Annotated[
+        Path,
+        typer.Option(
+            "--preprocessing-decision-path",
+            help="Explicit absolute path to a Phase 8 preprocessing decision JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    release_scope_description: Annotated[
+        str,
+        typer.Option(
+            "--release-scope-description",
+            help="Conservative identifier describing what a future release would authorize.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    authorized_max_training_steps: Annotated[
+        int,
+        typer.Option(
+            "--authorized-max-training-steps",
+            help="Explicit bounded training-step count a future release would authorize.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help="Explicit absolute definitive-training plan output root outside the repository.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    repository_root: Annotated[
+        Path | None,
+        typer.Option(
+            "--repository-root",
+            help="Explicit absolute repository root used only for output-root rejection.",
+        ),
+    ] = None,
+) -> None:
+    """Plan (never execute) a future definitive MONAI SegResNet training run.
+
+    This command is planning-only: it never opens an image, label,
+    prediction, or checkpoint file, and it never trains, infers, or computes
+    a real metric. It publishes a ``Phase8DefinitiveTrainingConfig`` whose
+    ``execution_release_state`` is always ``"awaiting_explicit_user_approval"``
+    alongside a ``Phase8DefinitiveExecutionRelease`` whose ``release_state``
+    is always ``"not_released"``. No release is issued by this command, and
+    there is no flag capable of changing either fixed state.
+    """
+
+    try:
+        candidate_inventory = phase8_fixed_candidate_inventory_from_mapping(
+            _read_json_mapping_strict(candidate_inventory_path)
+        )
+        preprocessing_decision = phase8_preprocessing_decision_from_mapping(
+            _read_json_mapping_strict(preprocessing_decision_path)
+        )
+        candidate_by_id = {
+            candidate.candidate_id: candidate for candidate in candidate_inventory.candidates
+        }
+        candidate = candidate_by_id.get(candidate_id)
+        if candidate is None:
+            raise Phase8DefinitiveTrainingError(
+                f"candidate_id {candidate_id!r} is not present in the fixed candidate inventory."
+            )
+        if preprocessing_decision.candidate_id != candidate_id:
+            raise Phase8DefinitiveTrainingError(
+                "preprocessing_decision.candidate_id does not match --candidate-id."
+            )
+        preprocessing_decision_reference = ArtifactReference(
+            schema_name=preprocessing_decision.schema_name,
+            schema_version=preprocessing_decision.schema_version,
+            artifact_hash=preprocessing_decision.preprocessing_decision_hash,
+            artifact_role="preprocessing_decision",
+        )
+        config = build_phase8_definitive_training_config(
+            input_binding_hash=input_binding_hash,
+            fixed_candidate_inventory_hash=candidate_inventory.inventory_hash,
+            preprocessing_decision_reference=preprocessing_decision_reference,
+            training_config_reference=candidate.training_config_reference,
+            fixed_seeds=candidate.fixed_seeds,
+        )
+        release = build_unreleased_definitive_execution_release(
+            bound_config_hash=config.config_hash,
+            release_scope_description=release_scope_description,
+            authorized_max_training_steps=authorized_max_training_steps,
+        )
+        result = publish_phase8_definitive_training_plan(
+            config=config,
+            release=release,
+            output_root=output_root,
+            repository_root=repository_root or Path.cwd(),
+        )
+    except (Phase8DefinitiveTrainingError, ValueError, OSError) as exc:
+        _raise_phase8_definitive_training_plan_cli_error(exc)
+
+    typer.echo("Phase 8 definitive-training plan publication complete")
+    typer.echo("execution_release_state: awaiting_explicit_user_approval")
+    typer.echo("release_state: not_released")
+    typer.echo("training_executed: false")
+    typer.echo("checkpoint_created: false")
+    typer.echo("real_metrics_computed: false")
+    typer.echo(f"config_hash: {result.config_hash}")
+    typer.echo(f"release_hash: {result.release_hash}")
+    for relative_name, digest in sorted(result.artifact_hashes.items()):
+        typer.echo(f"artifact: {relative_name} sha256={digest}")
+
+
+@app.command("run-phase8-definitive-development-training")
+def run_phase8_definitive_development_training_command(
+    config_path: Annotated[
+        Path,
+        typer.Option(
+            "--config-path",
+            help="Explicit absolute path to a Phase8DefinitiveTrainingConfig JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    release_path: Annotated[
+        Path,
+        typer.Option(
+            "--release-path",
+            help="Explicit absolute path to a Phase8DefinitiveExecutionRelease JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+) -> None:
+    """Run (or, in practice, always refuse to run) definitive development training.
+
+    Real execution requires an explicit ``Phase8DefinitiveExecutionRelease``
+    artifact whose ``release_state`` is ``"released"`` and whose
+    ``bound_config_hash`` matches the supplied config's ``config_hash``. No
+    command or function in this codebase's own tooling can produce such a
+    release; it can only be authorized by a separately released process
+    outside this session. This command therefore refuses to proceed --
+    before opening any manifest, split, or medical file -- whenever the
+    release is absent, invalid, mismatched, or ``not_released``, which is
+    every real invocation in this environment today.
+    """
+
+    try:
+        config = phase8_definitive_training_config_from_mapping(
+            _read_json_mapping_strict(config_path)
+        )
+        release = phase8_definitive_execution_release_from_mapping(
+            _read_json_mapping_strict(release_path)
+        )
+        execute_phase8_definitive_training(config, release)
+    except (Phase8DefinitiveTrainingError, ValueError, OSError) as exc:
+        _raise_phase8_definitive_training_run_cli_error(exc)
+
+    typer.echo("Phase 8 definitive-training run complete")
 
 
 def run_and_publish_phase7_robustness_uncertainty(
