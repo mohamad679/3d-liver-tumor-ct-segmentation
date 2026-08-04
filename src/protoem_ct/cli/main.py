@@ -96,10 +96,12 @@ from protoem_ct.evaluation.subgroups import (
     build_phase7_lesion_subgroup_result,
 )
 from protoem_ct.external import (
+    Phase8FreezeError,
     Phase8Wave2PublicationError,
     Phase8Wave3PublicationError,
     run_phase8_wave2_image_inventory,
     run_phase8_wave3_policy_publication,
+    run_phase8_wave4_readiness_publication,
 )
 from protoem_ct.fewshot import (
     FewshotArtifactValidationError,
@@ -350,6 +352,16 @@ def _raise_phase8_wave3_cli_error(exc: Exception) -> None:
     """Exit with a concise Phase 8 Wave 3 error without path or data leakage."""
     typer.secho(
         f"Phase 8 Wave 3 policy publication error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase8_wave4_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 8 Wave 4 error without path or data leakage."""
+    typer.secho(
+        f"Phase 8 Wave 4 readiness error: {type(exc).__name__}",
         err=True,
         fg=typer.colors.RED,
     )
@@ -1617,6 +1629,67 @@ def run_phase8_wave3_policy_command(
     typer.echo(f"domain_shift_record_hash: {result.domain_shift_record.domain_shift_record_hash}")
     typer.echo(f"eligibility_policy_hash: {result.eligibility_policy.policy_hash}")
     typer.echo(f"cohort_accounting_hash: {result.cohort_accounting.accounting_hash}")
+    for relative_name, digest in sorted(result.artifact_hashes.items()):
+        typer.echo(f"artifact: {relative_name} sha256={digest}")
+
+
+@app.command("run-phase8-wave4-readiness")
+def run_phase8_wave4_readiness_command(
+    wave2_artifact_root: Annotated[
+        Path,
+        typer.Option(
+            "--wave2-artifact-root",
+            help="Explicit absolute corrected Wave 2 image-only artifact root.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    wave3_artifact_root: Annotated[
+        Path,
+        typer.Option(
+            "--wave3-artifact-root",
+            help="Explicit absolute approved Wave 3 policy artifact root.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    internal_artifact_parent: Annotated[
+        Path,
+        typer.Option(
+            "--internal-artifact-parent",
+            help="Explicit absolute parent containing approved internal development artifacts.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help="Explicit absolute external Wave 4 output root outside the repository.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    repository_root: Annotated[
+        Path | None,
+        typer.Option(
+            "--repository-root",
+            help="Explicit absolute repository root used only for output-root rejection.",
+        ),
+    ] = None,
+) -> None:
+    """Run Phase 8 Wave 4 guarded internal-evidence readiness publication."""
+
+    try:
+        result = run_phase8_wave4_readiness_publication(
+            wave2_artifact_root=wave2_artifact_root,
+            wave3_artifact_root=wave3_artifact_root,
+            internal_artifact_parent=internal_artifact_parent,
+            output_root=output_root,
+            repository_root=repository_root or Path.cwd(),
+        )
+    except (Phase8FreezeError, ValueError, OSError) as exc:
+        _raise_phase8_wave4_cli_error(exc)
+
+    typer.echo("Phase 8 Wave 4 readiness publication complete")
+    typer.echo(f"readiness_state: {result.wave4_state}")
+    typer.echo(f"freeze_generated: {str(result.freeze_generated).lower()}")
+    typer.echo(f"preregistration_generated: {str(result.preregistration_generated).lower()}")
+    typer.echo(f"readiness_hash: {result.readiness_hash}")
+    typer.echo(f"summary_hash: {result.summary_hash}")
     for relative_name, digest in sorted(result.artifact_hashes.items()):
         typer.echo(f"artifact: {relative_name} sha256={digest}")
 

@@ -3,9 +3,10 @@
 ## Current State
 
 - Branch: `phase/8-external-validation`
-- Wave: `3`
-- Status: Wave 3 review complete for label-mapping policy contracts, aggregate domain-shift
-  documentation, and external-cohort eligibility/accounting. Gate 8 is not claimed.
+- Wave: `4`
+- Status: Wave 4 guarded internal-evidence readiness completed with scientifically valid
+  `BLOCKED` result. No decision freeze, evaluation-ready preregistration, external-validation gate,
+  or Phase 8 completion is claimed.
 - Current HEAD at Wave 2 start: `7809d01`
 - External drive: connected only through explicit user-provided roots.
 - External dataset access: image-only `PATIENT_DICOM.zip` access for 3D-IRCADb-01 Wave 2.
@@ -57,10 +58,23 @@ All Wave 3 agents used the real delegated-agent capability and were reviewed by 
 - `P8-ELIGIBILITY-ACCOUNTING`: complete and approved after integration review.
 - `P8-WAVE3-REVIEW`: independent read-only review passed with no blockers.
 
+## Completed Wave 4 Agents
+
+All Wave 4 agents used the real delegated-agent capability and were reviewed by the Supervisor:
+
+- `P8-INTERNAL-EVIDENCE-AUDIT`: complete, read-only, found Wave 4 freeze readiness blocked.
+- `P8-STATISTICAL-PREREGISTRATION`: complete, read-only, recommended exact metric, bootstrap,
+  comparison, qualitative-output, publication, limitations, and robustness/uncertainty policies.
+- `P8-FREEZE-AND-PREREGISTRATION`: complete, read-only review, approved only the guarded
+  `BLOCKED` readiness path.
+- `P8-WAVE4-INDEPENDENT-REVIEW`: complete, read-only, passed with `BLOCKED` Wave 4 state
+  confirmed and no unresolved review blocker.
+
 ## Blocked Agents
 
-- No Wave 3 implementation agents are blocked.
-- Wave 4 remains blocked pending Wave 3 review acceptance and commit.
+- No Wave 4 subagent failed to run.
+- Wave 4 freeze/preregistration generation is blocked by missing real internal-development
+  provenance.
 
 ## Approved Wave 1 Files
 
@@ -97,6 +111,82 @@ All Wave 3 agents used the real delegated-agent capability and were reviewed by 
 - `tests/unit/test_phase8_domain_shift.py`
 - `tests/unit/test_phase8_eligibility.py`
 - `tests/unit/test_phase8_wave3.py`
+
+## Wave 4 Repository Files Pending Review
+
+- `docs/DECISIONS.md`
+- `docs/phase8/SUPERVISOR_HANDOFF.md`
+- `src/protoem_ct/external/statistical_policy.py`
+- `src/protoem_ct/external/freeze.py`
+- `src/protoem_ct/external/wave4.py`
+- `src/protoem_ct/external/__init__.py`
+- `src/protoem_ct/cli/main.py`
+- `tests/unit/test_phase8_statistical_policy.py`
+- `tests/unit/test_phase8_wave4.py`
+
+## Wave 4 Real Execution Evidence
+
+- Wave 4 output root relative name: `phase8_wave4_freeze_v1`
+- Wave 4 final state: `BLOCKED`
+- Generated artifact relative names and SHA-256 hashes:
+  - `phase8_internal_evidence_readiness.json`:
+    `24a7fd5fd90f347292fce4012a416577dcf8e1e7341aaa298ede7ac8c9269315`
+  - `phase8_wave4_generation_summary.json`:
+    `ffeed2848e5ffa821ce46bd253b127c4da965e6104696e2fbdbb65bedaed2796`
+- `phase8_decision_freeze.json`: not generated.
+- `phase8_external_preregistration.json`: not generated.
+- Deterministic rerun output root:
+  `/private/tmp/protoem-ct-phase8-wave4-rerun-20260804-v2`
+- Deterministic rerun result: both Wave 4 JSON artifacts were byte-identical to the real Wave 4
+  output root.
+- Generated-artifact scans for absolute paths, PHI-like tokens, prohibited archive names,
+  placeholder/zero hashes, and synthetic-checkpoint acceptance language: PASS, no matches.
+- Explicit confirmation: no raw external data, external labels, external predictions, raw
+  development medical images, external inference, external metrics, bootstrap execution, or Wave 5
+  work occurred.
+- Explicit confirmation: Wave 2 and Wave 3 artifacts were not modified.
+
+### Wave 4 Readiness by Category
+
+| Category | Present | Freezeable now | Result |
+| --- | --- | --- | --- |
+| `preprocessing_decision` | Yes, synthetic Phase 6 config only | No | Blocked: real preprocessing decision linked to selected model is missing |
+| `support_policy` | No | No | Blocked: immutable external-label-free support or no-support policy is missing |
+| `threshold_decision` | Yes, synthetic Phase 6 config only | No | Blocked: real fixed threshold decision with development-only provenance is missing |
+| `checkpoint_metadata` | No | No | Blocked: real trained checkpoint metadata and selection provenance are missing |
+| `model_selection_decision` | No | No | Blocked: real development-only model-selection artifact is missing |
+| `label_mapping_policy` | Yes | Yes, policy only | Predeclared Wave 3 policy remains empirically unverified until label ledger |
+| `metric_configuration` | Yes, newly recorded policy | No | Blocked pending complete freeze package |
+| `bootstrap_configuration` | Yes, newly recorded policy | No | Blocked pending complete freeze package |
+| `publication_configuration` | Yes, newly recorded policy | No | Blocked pending complete freeze package |
+
+### Wave 4 Statistical Policy Decisions
+
+- Metrics: tumor Dice, tumor IoU, tumor HD95, tumor normalized surface Dice, lesion-wise recall,
+  lesion-wise precision, lesion F1, false-positive lesions per scan, and tumor volume error, using
+  the accepted Phase 3 binary-tumor metric definitions and empty-mask behavior.
+- Bootstrap: anonymous case/patient unit, seed `1729`, `10000` resamples, `95%` percentile
+  intervals, metric-specific valid-case accounting, undefined values excluded with unavailable CIs
+  reported, and no lesion-level or voxel-level pseudoreplication.
+- Internal-versus-external comparison: independent unpaired descriptive estimates only; point
+  estimates, confidence intervals, and external-minus-internal differences; no superiority,
+  generalization, clinical-validity, deployment, or post-result decision changes.
+- Qualitative output: include all evaluation-eligible anonymous cases when the eligible count is at
+  most `20`, ordered by anonymous ID; if future eligibility exceeds `20`, use a fixed hash-ranked
+  sample with seed `1729`.
+- Robustness/uncertainty: `not_included`.
+- Mandatory limitation: small external sample size.
+
+### Wave 4 Blockers
+
+- Real trained checkpoint metadata with development manifest/config hashes is missing.
+- Selection rule and selected candidate are not recorded.
+- Real development-only model-selection artifact is missing.
+- Immutable external-label-free support or no-support policy is missing.
+- Real fixed threshold decision with development-only provenance is missing.
+- Real preprocessing decision linked to the selected model is missing.
+- Metric, bootstrap, and publication policies are newly recorded in Wave 4 and cannot be frozen
+  without the complete decision package.
 
 ## Wave 3 Real-Data Evidence
 
@@ -293,11 +383,13 @@ All Wave 3 agents used the real delegated-agent capability and were reviewed by 
 
 ## Exact Next Action
 
-Stop after Wave 3. The exact next action is repository review, then a Wave 3 commit if approved.
+Stop after Wave 4. The exact next action is repository review of the `BLOCKED` readiness result,
+then a Wave 4 commit if approved.
 
-Wave 4 remains blocked pending Wave 3 review and commit. Until released, no agent may access
-external labels, predictions, checkpoints, inference, metrics execution, bootstrap execution,
-montage generation, publication execution, or freeze/preregistration Wave 4 work.
+Wave 5 remains blocked pending Wave 4 review and commit. Until released, no agent may access
+external labels, predictions, inference, metrics execution, bootstrap execution, montage
+generation, publication execution, or Wave 5 work. A future freeze/evaluation-ready
+preregistration requires real internal-development provenance for the unresolved Wave 4 blockers.
 
 ## Wave 3 Verification Commands
 

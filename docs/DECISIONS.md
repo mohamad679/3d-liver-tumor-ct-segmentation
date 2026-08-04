@@ -69,6 +69,32 @@
 
 ## Phase 0 Close-Out Decisions
 
+### 2026-08-04: Preregister Phase 8 Statistical and Publication Policies Before Results
+
+- Status: accepted
+- Context: Phase 8 Wave 4 requires metric, bootstrap, internal-versus-external comparison,
+  qualitative-output, robustness/uncertainty, limitations, and publication policies to be fixed
+  before external labels, predictions, metrics, or bootstrap results are opened. Existing Phase 3
+  decisions define binary tumor metric semantics, but Phase 8-specific bootstrap and comparison
+  policies were not previously frozen.
+- Decision: Phase 8 external evaluation inherits the Phase 3 binary-tumor metric definitions and
+  empty-mask behavior. Bootstrap resampling is at the anonymous case/patient unit with seed `1729`,
+  `10000` resamples, `95%` percentile intervals, metric-specific valid-case accounting, and no
+  lesion-level or voxel-level pseudoreplication. Internal-versus-external comparisons are
+  independent and descriptive only, reporting point estimates, confidence intervals, and
+  external-minus-internal differences without superiority, non-inferiority, broad generalization,
+  clinical-validity, deployment, state-of-the-art, or post-result model/threshold/support changes.
+  Qualitative outputs include all evaluation-eligible anonymous cases when the eligible count is at
+  most `20`, ordered by anonymous ID; if future eligibility exceeds `20`, a fixed hash-ranked sample
+  with seed `1729` is used. External robustness/uncertainty reporting is not included unless a
+  compatible frozen Phase 7 policy is approved before evaluation. Small external sample size is a
+  mandatory limitation, and publication remains JSON-first from persisted validated artifacts.
+- Consequences: These policies may be referenced in Wave 4 readiness and later preregistration
+  artifacts, but they do not by themselves make Wave 4 evaluation-ready. A real checkpoint,
+  model-selection decision, support policy, threshold decision, and preprocessing decision still
+  require valid development-only provenance before a freeze or evaluation-ready preregistration can
+  be generated.
+
 ### 2026-07-25: Accept Gate 0 Locally
 
 - Status: accepted
