@@ -95,6 +95,111 @@ Planning reconciliation is recorded in `docs/phase8/INTERNAL_EVIDENCE_REMEDIATIO
 No remediation was implemented, no model was trained, no checkpoint was created, no readiness rerun
 was executed, and Wave 5 remains blocked.
 
+## Internal Evidence Remediation Substage 2
+
+Status: completed as contract-only scaffold/orchestration-planning source implementation; not
+committed, not pushed, and not a Wave 4 readiness release. Gate 8 is not claimed. This substage
+built a metadata-only, manifest/split-driven planning scaffold for a future real MONAI SegResNet
+development run. It did not execute training, did not open any dataset or pixel file, and did not
+create any checkpoint, prediction, or real metric artifact.
+
+Real delegated agents used (exactly two, sequential, no concurrent edits):
+
+- `P8R-RUNNER-SCAFFOLD`: complete; implemented the scaffold and targeted tests in
+  `src/protoem_ct/external/real_development_runner.py` and
+  `tests/unit/test_phase8_real_development_runner.py`, plus the CLI command in
+  `src/protoem_ct/cli/main.py` and re-exports in `src/protoem_ct/external/__init__.py`.
+- `P8R-RUNNER-SCAFFOLD-REVIEW`: complete; independent read-only-plus-remediation review of the
+  complete diff and tests against 12 boundary/behavior checks. Verdict: PASS. No genuine defects
+  were found; no fixes were required.
+
+Approved Substage 2 schema surfaces, all `v1`:
+
+- `phase8_real_development_input_binding`
+- `phase8_real_development_run_plan`
+- `phase8_real_development_case_binding`
+- `phase8_real_development_case_binding_collection`
+- `phase8_real_development_plan_summary`
+
+Approved Substage 2 files:
+
+- `src/protoem_ct/external/real_development_runner.py` (new)
+- `tests/unit/test_phase8_real_development_runner.py` (new)
+- `src/protoem_ct/external/__init__.py` (re-exports added)
+- `src/protoem_ct/cli/main.py` (new `plan-phase8-real-development-run` command)
+
+CLI command: `protoem-ct plan-phase8-real-development-run`. The name contains no "train",
+"run-development", or "execute" language. `--help` and echoed run output explicitly state
+`scaffold_only: true`, `pixel_access_not_started: true`, `training_executed: false`,
+`checkpoint_created: false`, and `real_metrics_computed: false`.
+
+Exact execution boundary:
+
+- `pixel_access_state` is hard-locked to `"not_started"` and `execution_release_state` to
+  `"scaffold_only"` for every object the public API can produce; no builder exposes a parameter to
+  set another value.
+- `execute_phase8_real_development_run(...)` unconditionally raises
+  `Phase8RealDevelopmentExecutionNotReleasedError` regardless of arguments, including when a fake
+  executor double is supplied.
+- `Phase8RealDevelopmentExecutor` is a typed `Protocol` only; every method body is
+  `raise NotImplementedError`. No MONAI dataset construction, Torch training loop, or checkpoint
+  I/O exists anywhere in the module.
+- No code path opens NIfTI/DICOM image or label bytes; only two explicit JSON files (manifest,
+  split) are opened, and image/label relative paths are validated as path-safe strings only
+  (`normalize_safe_relative_posix_path`), never filesystem-checked or opened.
+- Internal-test cases can never enter a training/validation case binding; the run-plan builder
+  cross-checks intended train/validation IDs against the input binding's internal-test set and
+  rejects any overlap.
+- Every schema enforces `no_external_data=True`; no field can reference external (3D-IRCADb) data.
+- Output-root publication reuses `validate_explicit_external_output_root` with the repository root
+  as a forbidden root, rejects symlinks, and requires the output root to be empty or absent
+  (no-overwrite `publish_text_no_overwrite`).
+- No absolute local path, timestamp, hostname, or username can enter any hashed/canonical payload.
+
+Targeted local test results (Supervisor-run, independent of both subagents):
+
+- `uv run ruff format --check src/protoem_ct/external/real_development_runner.py tests/unit/test_phase8_real_development_runner.py src/protoem_ct/external/__init__.py src/protoem_ct/cli/main.py`: PASS, `4 files already formatted`
+- `uv run ruff check src/protoem_ct/external/real_development_runner.py tests/unit/test_phase8_real_development_runner.py src/protoem_ct/external/__init__.py src/protoem_ct/cli/main.py`: PASS, `All checks passed!`
+- `uv run mypy src/protoem_ct/external/real_development_runner.py src/protoem_ct/cli/main.py tests/unit/test_phase8_real_development_runner.py`: PASS, `Success: no issues found in 3 source files`
+- `uv run pytest -q tests/unit/test_phase8_real_development_runner.py`: PASS, `23 passed`
+- `uv run pytest -q tests/unit/test_phase8_internal_evidence.py tests/unit/test_phase8_wave3.py tests/unit/test_phase8_wave4.py`: PASS, `19 passed` (unmodified regression surface)
+- `uv run protoem-ct plan-phase8-real-development-run --help`: PASS
+- Deterministic two-output-root publication byte-identity test: PASS (`test_publication_is_byte_identical_across_two_output_roots`)
+- `git diff --check`: PASS, no output
+- Git hygiene scan: only `src/protoem_ct/cli/main.py`, `src/protoem_ct/external/__init__.py`,
+  `src/protoem_ct/external/real_development_runner.py`, and
+  `tests/unit/test_phase8_real_development_runner.py` appear in `git status`; no generated
+  medical/checkpoint/prediction artifact is present.
+
+Boundary confirmation:
+
+- `/Volumes` was not accessed.
+- No development or external dataset was accessed.
+- No NIfTI, DICOM, ZIP, mask, label, prediction, or checkpoint file was opened or modified.
+- No `torch`, `monai`, `nibabel`, or `SimpleITK` real invocation occurred; the module never imports
+  or invokes them (grep-verified and enforced by an automated static-scan unit test).
+- No training, inference, GPU, MPS, checkpoint creation, real metric computation, candidate
+  selection, threshold selection, or support-set construction occurred.
+- Only synthetic in-memory/`tmp_path` JSON fixtures and test doubles were used in tests.
+
+Unresolved scientific decisions remain unchanged (same as Substage 1):
+
+- No real candidate inventory is frozen.
+- No real checkpoint is selected or freeze eligible.
+- No real threshold policy is selected.
+- No real support/no-support policy is selected.
+- No preprocessing decision is frozen for a selected real workflow.
+
+Exact Substage 3 action:
+
+- Implement the tiny real-development dry/overfit verification using a bounded tiny train/validation
+  subset and a fresh external output root. This is the first point raw development NIfTI pixel
+  arrays are opened. **Substage 3 requires explicit user approval before any raw
+  development-pixel access occurs** — no agent may open NIfTI pixel data under this scaffold's
+  authority. Dry-run artifacts must not be claimed checkpoint-eligible or used for selection.
+
+Wave 4 remains `BLOCKED`. Wave 5 remains blocked and unreleased.
+
 ## Internal Evidence Remediation Substage 1
 
 Status: completed as contract-only source implementation; not committed, not pushed, and not a

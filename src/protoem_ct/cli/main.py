@@ -11,7 +11,7 @@ import numpy as np
 import typer
 from omegaconf import DictConfig, OmegaConf
 
-from protoem_ct.artifacts import Phase2ArtifactError
+from protoem_ct.artifacts import DatasetManifest, Phase2ArtifactError, phase2_artifact_from_json
 from protoem_ct.artifacts.hashing import JsonValue, canonical_json_bytes, sha256_json
 from protoem_ct.baselines import (
     BASELINE_PREDICTION_MANIFEST_VERSION,
@@ -102,6 +102,21 @@ from protoem_ct.external import (
     run_phase8_wave2_image_inventory,
     run_phase8_wave3_policy_publication,
     run_phase8_wave4_readiness_publication,
+)
+from protoem_ct.external.internal_evidence import (
+    PHASE8_CHECKPOINT_METADATA_SCHEMA_NAME,
+    PHASE8_INTERNAL_EVIDENCE_SCHEMA_VERSION,
+    PHASE8_VALIDATION_EVIDENCE_REFERENCE_SCHEMA_NAME,
+    ArtifactReference,
+    phase8_fixed_candidate_inventory_from_mapping,
+    phase8_preprocessing_decision_from_mapping,
+)
+from protoem_ct.external.real_development_runner import (
+    Phase8RealDevelopmentRunnerError,
+    build_phase8_real_development_case_bindings,
+    build_phase8_real_development_input_binding,
+    build_phase8_real_development_run_plan,
+    run_phase8_real_development_plan_publication,
 )
 from protoem_ct.fewshot import (
     FewshotArtifactValidationError,
@@ -362,6 +377,16 @@ def _raise_phase8_wave4_cli_error(exc: Exception) -> None:
     """Exit with a concise Phase 8 Wave 4 error without path or data leakage."""
     typer.secho(
         f"Phase 8 Wave 4 readiness error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase8_real_development_plan_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 8 real-development plan error without data leakage."""
+    typer.secho(
+        f"Phase 8 real-development plan error: {type(exc).__name__}",
         err=True,
         fg=typer.colors.RED,
     )
@@ -1689,6 +1714,176 @@ def run_phase8_wave4_readiness_command(
     typer.echo(f"freeze_generated: {str(result.freeze_generated).lower()}")
     typer.echo(f"preregistration_generated: {str(result.preregistration_generated).lower()}")
     typer.echo(f"readiness_hash: {result.readiness_hash}")
+    typer.echo(f"summary_hash: {result.summary_hash}")
+    for relative_name, digest in sorted(result.artifact_hashes.items()):
+        typer.echo(f"artifact: {relative_name} sha256={digest}")
+
+
+def _read_json_mapping_strict(path: Path) -> dict[str, object]:
+    resolved_path = path.resolve(strict=True)
+    decoded = json.loads(resolved_path.read_text(encoding="utf-8"))
+    if not isinstance(decoded, dict):
+        raise Phase8RealDevelopmentRunnerError("JSON artifact root must be an object.")
+    return cast(dict[str, object], decoded)
+
+
+@app.command("plan-phase8-real-development-run")
+def plan_phase8_real_development_run_command(
+    manifest_path: Annotated[
+        Path,
+        typer.Option(
+            "--manifest-path",
+            help="Explicit absolute path to an approved Phase 2 dataset manifest JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    split_path: Annotated[
+        Path,
+        typer.Option(
+            "--split-path",
+            help="Explicit absolute path to an approved Phase 2 development split JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    expected_manifest_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-manifest-sha256",
+            help="Caller-declared SHA-256 of the manifest file, verified before parsing.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    expected_split_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-split-sha256",
+            help="Caller-declared SHA-256 of the split file, verified before parsing.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    candidate_inventory_path: Annotated[
+        Path,
+        typer.Option(
+            "--candidate-inventory-path",
+            help="Explicit absolute path to a Phase 8 fixed candidate inventory JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    candidate_id: Annotated[
+        str,
+        typer.Option(
+            "--candidate-id",
+            help="Candidate identifier selected from the fixed candidate inventory.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    preprocessing_decision_path: Annotated[
+        Path,
+        typer.Option(
+            "--preprocessing-decision-path",
+            help="Explicit absolute path to a Phase 8 preprocessing decision JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    approved_development_artifact_set_identity: Annotated[
+        str,
+        typer.Option(
+            "--approved-development-artifact-set-identity",
+            help="Conservative identifier for the approved development artifact set.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help="Explicit absolute scaffold-plan output root outside the repository.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    repository_root: Annotated[
+        Path | None,
+        typer.Option(
+            "--repository-root",
+            help="Explicit absolute repository root used only for output-root rejection.",
+        ),
+    ] = None,
+) -> None:
+    """Plan (never execute) a future real-development MONAI SegResNet run.
+
+    This command is metadata-only: it never opens an image, label, prediction,
+    or checkpoint file, and it never trains, infers, or computes a real metric.
+    It reads exactly the manifest, split, candidate-inventory, and
+    preprocessing-decision JSON files named on the command line and publishes a
+    scaffold-only run plan.
+    """
+
+    try:
+        input_binding = build_phase8_real_development_input_binding(
+            manifest_path=manifest_path,
+            split_path=split_path,
+            expected_manifest_sha256=expected_manifest_sha256,
+            expected_split_sha256=expected_split_sha256,
+            approved_development_artifact_set_identity=(approved_development_artifact_set_identity),
+        )
+        candidate_inventory = phase8_fixed_candidate_inventory_from_mapping(
+            _read_json_mapping_strict(candidate_inventory_path)
+        )
+        preprocessing_decision = phase8_preprocessing_decision_from_mapping(
+            _read_json_mapping_strict(preprocessing_decision_path)
+        )
+        candidate_by_id = {
+            candidate.candidate_id: candidate for candidate in candidate_inventory.candidates
+        }
+        candidate = candidate_by_id.get(candidate_id)
+        if candidate is None:
+            raise Phase8RealDevelopmentRunnerError(
+                f"candidate_id {candidate_id!r} is not present in the fixed candidate inventory."
+            )
+        preprocessing_decision_reference = ArtifactReference(
+            schema_name=preprocessing_decision.schema_name,
+            schema_version=preprocessing_decision.schema_version,
+            artifact_hash=preprocessing_decision.preprocessing_decision_hash,
+            artifact_role="preprocessing_decision",
+        )
+        run_plan = build_phase8_real_development_run_plan(
+            input_binding=input_binding,
+            candidate_inventory=candidate_inventory,
+            candidate_id=candidate_id,
+            training_config_reference=candidate.training_config_reference,
+            preprocessing_decision_reference=preprocessing_decision_reference,
+            fixed_seeds=candidate.fixed_seeds,
+            expected_checkpoint_metadata_schema=(
+                PHASE8_CHECKPOINT_METADATA_SCHEMA_NAME,
+                PHASE8_INTERNAL_EVIDENCE_SCHEMA_VERSION,
+            ),
+            expected_validation_evidence_schema=(
+                PHASE8_VALIDATION_EVIDENCE_REFERENCE_SCHEMA_NAME,
+                PHASE8_INTERNAL_EVIDENCE_SCHEMA_VERSION,
+            ),
+            expected_output_artifact_names=(
+                "checkpoint_metadata",
+                "validation_evidence",
+                "preprocessing_evidence",
+            ),
+        )
+        resolved_manifest_path = manifest_path.resolve(strict=True)
+        manifest = phase2_artifact_from_json(
+            resolved_manifest_path.read_text(encoding="utf-8"), DatasetManifest
+        )
+        case_bindings = build_phase8_real_development_case_bindings(
+            run_plan=run_plan, manifest=manifest
+        )
+        result = run_phase8_real_development_plan_publication(
+            input_binding=input_binding,
+            run_plan=run_plan,
+            case_bindings=case_bindings,
+            output_root=output_root,
+            repository_root=repository_root or Path.cwd(),
+        )
+    except (Phase8RealDevelopmentRunnerError, ValueError, OSError) as exc:
+        _raise_phase8_real_development_plan_cli_error(exc)
+
+    typer.echo("Phase 8 real-development plan publication complete")
+    typer.echo("scaffold_only: true")
+    typer.echo("pixel_access_not_started: true")
+    typer.echo("training_executed: false")
+    typer.echo("checkpoint_created: false")
+    typer.echo("real_metrics_computed: false")
+    typer.echo(f"input_binding_hash: {result.input_binding_hash}")
+    typer.echo(f"run_plan_hash: {result.run_plan_hash}")
+    typer.echo(f"case_binding_collection_hash: {result.case_binding_collection_hash}")
     typer.echo(f"summary_hash: {result.summary_hash}")
     for relative_name, digest in sorted(result.artifact_hashes.items()):
         typer.echo(f"artifact: {relative_name} sha256={digest}")
