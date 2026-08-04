@@ -95,6 +95,83 @@ Planning reconciliation is recorded in `docs/phase8/INTERNAL_EVIDENCE_REMEDIATIO
 No remediation was implemented, no model was trained, no checkpoint was created, no readiness rerun
 was executed, and Wave 5 remains blocked.
 
+## Internal Evidence Remediation Substage 1
+
+Status: completed as contract-only source implementation; not committed, not pushed, and not a
+Wave 4 readiness release. Gate 8 is not claimed.
+
+Real delegated agents used:
+
+- `P8R-EVIDENCE-CONTRACTS`: complete; implemented the bounded schema/test work in
+  `src/protoem_ct/external/internal_evidence.py` and
+  `tests/unit/test_phase8_internal_evidence.py`.
+- `P8R-EVIDENCE-CONTRACT-REVIEW`: complete; independent read-only review initially returned
+  `BLOCKED` because aggregate validation did not bind selected multi-candidate workflow fields
+  tightly enough. The Supervisor remediated those findings by requiring selected/checkpoint
+  candidate consistency for preprocessing hash, training config hash, model family, adaptation
+  mode, fixed seed membership, and primary validation metric name. No third subagent was spawned
+  because the task was capped at two real subagents.
+
+Approved Substage 1 schema surfaces, all `v1`:
+
+- `phase8_preprocessing_decision`
+- `phase8_fixed_candidate_inventory`
+- `phase8_checkpoint_metadata`
+- `phase8_validation_evidence_reference`
+- `phase8_model_selection_decision`
+- `phase8_threshold_decision`
+- `phase8_support_policy`
+- `phase8_internal_evidence_package`
+
+Approved Substage 1 files:
+
+- `src/protoem_ct/external/internal_evidence.py`
+- `src/protoem_ct/external/__init__.py`
+- `tests/unit/test_phase8_internal_evidence.py`
+- `docs/phase8/SUPERVISOR_HANDOFF.md`
+
+Targeted local test results:
+
+- `uv run ruff format --check src/protoem_ct/external/internal_evidence.py src/protoem_ct/external/__init__.py tests/unit/test_phase8_internal_evidence.py`: PASS, `3 files already formatted`
+- `uv run ruff check src/protoem_ct/external/internal_evidence.py src/protoem_ct/external/__init__.py tests/unit/test_phase8_internal_evidence.py`: PASS, `All checks passed!`
+- `uv run mypy src/protoem_ct/external/internal_evidence.py src/protoem_ct/external/__init__.py tests/unit/test_phase8_internal_evidence.py`: PASS, `Success: no issues found in 3 source files`
+- `uv run pytest -q tests/unit/test_phase8_internal_evidence.py`: PASS, `13 passed in 1.22s`
+- `git diff --check`: PASS, no output
+
+Boundary confirmation:
+
+- `/Volumes` was not accessed.
+- No development or external dataset was accessed.
+- No NIfTI, DICOM, ZIP, mask, label, prediction, checkpoint, model weight, or generated run artifact
+  was opened or modified.
+- No training, inference, GPU, MPS, long CPU execution, real checkpoint creation, model selection,
+  threshold selection, or support-set construction occurred.
+- Synthetic values were used only as in-memory unit-test mappings.
+
+Readiness states and blocker reason codes now represented by the contracts:
+
+- Evidence/package readiness states: `READY`, `BLOCKED`, `freeze_ready`, `resolved`,
+  `unresolved`, `completed`, `failed`, and `synthetic_smoke` where component-specific.
+- Aggregate blocker reason codes are computed from cross-contract invariants, including candidate,
+  checkpoint, preprocessing, manifest, split, metric, threshold, support, external-evidence,
+  internal-test, synthetic-only, failed, incompatible, and unresolved states.
+
+Unresolved scientific decisions remain unchanged:
+
+- No real candidate inventory is frozen.
+- No real checkpoint is selected or freeze eligible.
+- No real threshold policy is selected.
+- No real support/no-support policy is selected.
+- No preprocessing decision is frozen for a selected real workflow.
+
+Exact Substage 2 action:
+
+- Implement the real MONAI SegResNet development-runner scaffold only after explicit authorization
+  for Substage 2 scope, while preserving the data/compute approval boundary for any raw
+  development-pixel access.
+
+Wave 4 remains `BLOCKED`. Wave 5 remains blocked and unreleased.
+
 ## Approved Wave 1 Files
 
 - `src/protoem_ct/external/__init__.py`
