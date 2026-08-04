@@ -97,7 +97,9 @@ from protoem_ct.evaluation.subgroups import (
 )
 from protoem_ct.external import (
     Phase8Wave2PublicationError,
+    Phase8Wave3PublicationError,
     run_phase8_wave2_image_inventory,
+    run_phase8_wave3_policy_publication,
 )
 from protoem_ct.fewshot import (
     FewshotArtifactValidationError,
@@ -338,6 +340,16 @@ def _raise_phase8_wave2_cli_error(exc: Exception) -> None:
     """Exit with a concise Phase 8 Wave 2 error without path or data leakage."""
     typer.secho(
         f"Phase 8 Wave 2 image inventory error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase8_wave3_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 8 Wave 3 error without path or data leakage."""
+    typer.secho(
+        f"Phase 8 Wave 3 policy publication error: {type(exc).__name__}",
         err=True,
         fg=typer.colors.RED,
     )
@@ -1555,6 +1567,56 @@ def run_phase8_wave2_image_inventory_command(
     typer.echo(f"manifest_hash: {result.manifest.manifest_hash}")
     for anonymous_case_id, reason_codes in result.anonymous_case_reason_codes:
         typer.echo(f"failed_case: {anonymous_case_id} reason_codes={','.join(reason_codes)}")
+    for relative_name, digest in sorted(result.artifact_hashes.items()):
+        typer.echo(f"artifact: {relative_name} sha256={digest}")
+
+
+@app.command("run-phase8-wave3-policy")
+def run_phase8_wave3_policy_command(
+    wave2_artifact_root: Annotated[
+        Path,
+        typer.Option(
+            "--wave2-artifact-root",
+            help="Explicit absolute corrected Wave 2 image-only artifact root.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help="Explicit absolute external Wave 3 output root outside the repository.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    repository_root: Annotated[
+        Path | None,
+        typer.Option(
+            "--repository-root",
+            help="Explicit absolute repository root used only for output-root rejection.",
+        ),
+    ] = None,
+) -> None:
+    """Run Phase 8 Wave 3 policy, domain-shift, and eligibility publication."""
+
+    try:
+        result = run_phase8_wave3_policy_publication(
+            wave2_artifact_root=wave2_artifact_root,
+            output_root=output_root,
+            repository_root=repository_root or Path.cwd(),
+        )
+    except (Phase8Wave3PublicationError, ValueError, OSError) as exc:
+        _raise_phase8_wave3_cli_error(exc)
+
+    typer.echo("Phase 8 Wave 3 policy publication complete")
+    typer.echo(f"case_count: {result.case_count}")
+    typer.echo(f"image_qa_eligible_count: {result.image_qa_eligible_count}")
+    typer.echo(f"inference_eligible_count: {result.inference_eligible_count}")
+    typer.echo(f"label_compatibility_pending_count: {result.label_compatibility_pending_count}")
+    typer.echo(f"evaluation_eligible_count: {result.evaluation_eligible_count}")
+    typer.echo(f"deferred_count: {result.deferred_count}")
+    typer.echo(f"label_mapping_policy_hash: {result.label_mapping_policy.policy_hash}")
+    typer.echo(f"domain_shift_record_hash: {result.domain_shift_record.domain_shift_record_hash}")
+    typer.echo(f"eligibility_policy_hash: {result.eligibility_policy.policy_hash}")
+    typer.echo(f"cohort_accounting_hash: {result.cohort_accounting.accounting_hash}")
     for relative_name, digest in sorted(result.artifact_hashes.items()):
         typer.echo(f"artifact: {relative_name} sha256={digest}")
 

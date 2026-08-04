@@ -3,12 +3,13 @@
 ## Current State
 
 - Branch: `phase/8-external-validation`
-- Wave: `2`
-- Status: Wave 2 review complete for real external-drive discovery, anonymous image manifest, and
-  image-only QA. Gate 8 is not claimed.
+- Wave: `3`
+- Status: Wave 3 review complete for label-mapping policy contracts, aggregate domain-shift
+  documentation, and external-cohort eligibility/accounting. Gate 8 is not claimed.
 - Current HEAD at Wave 2 start: `7809d01`
 - External drive: connected only through explicit user-provided roots.
 - External dataset access: image-only `PATIENT_DICOM.zip` access for 3D-IRCADb-01 Wave 2.
+  Wave 3 consumed only corrected Wave 2 JSON artifacts and did not access the raw dataset root.
 - External label access: none.
 - Phase scope: Phase 8 external validation on `3D-IRCADb-01` only.
 - Phase 9 and Phase 10: not started.
@@ -47,10 +48,19 @@ All Wave 2 agents used the real delegated-agent capability and were reviewed by 
 - `P8-WAVE2-LEAKAGE-REVIEW`: initial review found and blocked a UID-derived
   `image_series_identity`; follow-up review passed after correction.
 
+## Completed Wave 3 Agents
+
+All Wave 3 agents used the real delegated-agent capability and were reviewed by the Supervisor:
+
+- `P8-LABEL-MAPPING-POLICY`: complete and approved after integration review.
+- `P8-DOMAIN-SHIFT`: complete and approved after integration review.
+- `P8-ELIGIBILITY-ACCOUNTING`: complete and approved after integration review.
+- `P8-WAVE3-REVIEW`: independent read-only review passed with no blockers.
+
 ## Blocked Agents
 
-- No Wave 2 implementation agents are blocked.
-- Wave 3 remains blocked pending repository review and a Wave 2 commit.
+- No Wave 3 implementation agents are blocked.
+- Wave 4 remains blocked pending Wave 3 review acceptance and commit.
 
 ## Approved Wave 1 Files
 
@@ -74,6 +84,120 @@ All Wave 2 agents used the real delegated-agent capability and were reviewed by 
 - `tests/unit/test_phase8_external_manifest.py`
 - `tests/unit/test_phase8_image_qa.py`
 - `tests/unit/test_phase8_wave2.py`
+
+## Approved Wave 3 Files
+
+- `src/protoem_ct/external/label_mapping.py`
+- `src/protoem_ct/external/domain_shift.py`
+- `src/protoem_ct/external/eligibility.py`
+- `src/protoem_ct/external/wave3.py`
+- `src/protoem_ct/external/__init__.py`
+- `src/protoem_ct/cli/main.py`
+- `tests/unit/test_phase8_label_mapping.py`
+- `tests/unit/test_phase8_domain_shift.py`
+- `tests/unit/test_phase8_eligibility.py`
+- `tests/unit/test_phase8_wave3.py`
+
+## Wave 3 Real-Data Evidence
+
+- Corrected Wave 2 artifact root consumed:
+  `phase8_wave2_inventory_v1_uidfree`
+- Wave 3 external output root relative name:
+  `phase8_wave3_policy_v1`
+- External image manifest identity:
+  `23a0fa16247b515a966be29b272c9803f12dd4ef7eeebdaa0096cc7c04972c97`
+- Label-mapping policy hash:
+  `078bd5e84fcbfe18efea2a44275ed9ce91047a4a2890220e2a61fa61e3562304`
+- Domain-shift record hash:
+  `04665b449d8b3d7838a28e3045cdd57b67c9fccf6e1f091b7f5f1abd5963da0b`
+- Eligibility policy hash:
+  `54de20228c8baa25cd27e3d647d7c1b7b534fa5c65005bf000e2044a6b03d7ee`
+- Cohort-accounting hash:
+  `5f35e6851d039dda0ae5be1591e79877249a0fd150d28e733e0d33bc72410156`
+- Generated artifact relative names and SHA-256 hashes:
+  - `phase8_external_label_mapping_policy.json`:
+    `2781c3d7eadfafc1b384d34dab0e077528816e0c47ebeda3016c028f5ed00ced`
+  - `phase8_external_domain_shift_record.json`:
+    `d31242dfee473be16d9eba23a7cbb63b28e1a8f1505cac6ff5bf6edbb177914d`
+  - `phase8_external_eligibility_policy.json`:
+    `686b2b8b3d86be905a0d458545b866973ef8307cda6fa956d61684f3e0bb4665`
+  - `phase8_external_cohort_accounting.json`:
+    `321bc3a8e46d99989eccc4ebbacc33afeaf7ecb60c9f37256f2e641c6c5ea553`
+  - `phase8_wave3_generation_summary.json`:
+    `8b734a3d721387ab5fda0cedddbb389bd294800dab61f1e4e1b04d670bf76374`
+- Deterministic rerun output root:
+  `/private/tmp/protoem-ct-phase8-wave3-rerun-20260804`
+- Deterministic rerun result: all five Wave 3 JSON artifacts were byte-identical to the real
+  Wave 3 output root.
+
+### Wave 3 Label-Mapping Verification State
+
+- Schema: `phase8_label_mapping_policy` / `v1`
+- Verification state: `expected_documented_not_empirically_verified`
+- Explicitly unverified until authorized label-ledger QA:
+  - actual external label archive member names;
+  - actual mask file layout;
+  - actual source label values;
+  - actual source-label availability;
+  - actual source-label geometry compatibility.
+- Expected/documented policy only:
+  - target task is binary liver-tumor segmentation;
+  - target classes are `background` and `tumor_foreground`;
+  - permitted abstract roles are `liver_context_mask` and `tumor_lesion_mask`;
+  - tumor lesion nonzero voxels map to tumor foreground;
+  - liver/context masks are excluded from target foreground;
+  - all permitted tumor lesion sources are aggregated by union;
+  - labels require same grid shape, affine, spacing, and orientation;
+  - label interpolation policy is nearest neighbor if later resampling is authorized elsewhere.
+- No external case is excluded based on unseen label content.
+
+### Wave 3 Domain-Shift Status
+
+- Schema: `phase8_domain_shift_record` / `v1`
+- Supported aggregate image-only dimensions:
+  `source_identity`, `acquisition_representation`, `image_matrix`, `slice_counts`,
+  `voxel_spacing`, `anisotropy`, `orientation`, `hu_readiness`, `modality`, and
+  `image_qa_compatibility`.
+- Unavailable dimensions:
+  - `differences_vs_frozen_internal_preprocessing_contract`:
+    `approved_internal_aggregate_reference_absent`
+- Scanner/vendor/site values were not fabricated or recorded.
+- No raw internal MSD/LiTS images were read or reconstructed for comparison.
+
+### Wave 3 Eligibility and Accounting Totals
+
+- Schema names:
+  - `phase8_eligibility_policy` / `v1`
+  - `phase8_eligibility_case` / `v1`
+  - `phase8_eligibility_accounting` / `v1`
+- Discovered cohort: `20`
+- Image-readable cohort: `20`
+- Image-QA eligible cohort: `20`
+- Inference-eligible cohort: `20`
+- Label-compatibility-pending cohort: `20`
+- Evaluation-eligible cohort: `0`
+- Excluded cases: `0`
+- Deferred cases: `20`
+- Deferred anonymous IDs: `ext-ircadb-001` through `ext-ircadb-020`
+- Deferred reason codes:
+  - eligibility reason: `label_compatibility_pending`
+  - label-compatibility reason: `pending_label_access`
+- Final evaluation eligibility remains pending label compatibility after authorized label access.
+
+### Wave 3 Boundary Confirmation
+
+- Real subagents were used.
+- Wave 3 consumed only the corrected Wave 2 manifest, QA collection, layout artifact, and generation
+  summary.
+- Wave 3 did not access the raw external dataset root.
+- `MASKS_DICOM.zip`, `LABELLED_DICOM.zip`, `MESHES_VTK.zip`, and JPG files were not opened, listed
+  internally, extracted, read, or hashed.
+- External labels were not accessed.
+- No label-derived class observations were made.
+- No inference, tuning, support selection, checkpoint selection, threshold selection, segmentation
+  metrics, bootstrap, montage, post-result analysis, or Wave 4 work occurred.
+- Raw dataset and Wave 2 artifacts were not modified by the Wave 3 code path.
+- Generated Wave 3 artifacts remain outside Git.
 
 ## Wave 2 Real-Data Evidence
 
@@ -169,11 +293,30 @@ All Wave 2 agents used the real delegated-agent capability and were reviewed by 
 
 ## Exact Next Action
 
-Stop after Wave 2. The exact next action is repository review, then a Wave 2 commit if approved.
+Stop after Wave 3. The exact next action is repository review, then a Wave 3 commit if approved.
 
-Wave 3 remains blocked pending review and commit. Until released, no agent may access external
-labels, predictions, checkpoints, inference, metrics execution, bootstrap execution, montage
-generation, publication execution, or label-mapping implementation.
+Wave 4 remains blocked pending Wave 3 review and commit. Until released, no agent may access
+external labels, predictions, checkpoints, inference, metrics execution, bootstrap execution,
+montage generation, publication execution, or freeze/preregistration Wave 4 work.
+
+## Wave 3 Verification Commands
+
+- `uv run ruff format src/protoem_ct/external/label_mapping.py src/protoem_ct/external/domain_shift.py src/protoem_ct/external/eligibility.py src/protoem_ct/external/wave3.py src/protoem_ct/external/__init__.py src/protoem_ct/cli/main.py tests/unit/test_phase8_label_mapping.py tests/unit/test_phase8_domain_shift.py tests/unit/test_phase8_eligibility.py tests/unit/test_phase8_wave3.py`: PASS, `3 files reformatted` during integration and later files left unchanged.
+- `uv run ruff format --check src/protoem_ct/external/label_mapping.py src/protoem_ct/external/domain_shift.py src/protoem_ct/external/eligibility.py src/protoem_ct/external/wave3.py src/protoem_ct/external/__init__.py src/protoem_ct/cli/main.py tests/unit/test_phase8_label_mapping.py tests/unit/test_phase8_domain_shift.py tests/unit/test_phase8_eligibility.py tests/unit/test_phase8_wave3.py`: PASS, `10 files already formatted`.
+- `uv run ruff check src/protoem_ct/external/label_mapping.py src/protoem_ct/external/domain_shift.py src/protoem_ct/external/eligibility.py src/protoem_ct/external/wave3.py src/protoem_ct/external/__init__.py src/protoem_ct/cli/main.py tests/unit/test_phase8_label_mapping.py tests/unit/test_phase8_domain_shift.py tests/unit/test_phase8_eligibility.py tests/unit/test_phase8_wave3.py`: PASS, `All checks passed!`
+- `uv run mypy src/protoem_ct/external/label_mapping.py src/protoem_ct/external/domain_shift.py src/protoem_ct/external/eligibility.py src/protoem_ct/external/wave3.py src/protoem_ct/external/__init__.py src/protoem_ct/cli/main.py tests/unit/test_phase8_label_mapping.py tests/unit/test_phase8_domain_shift.py tests/unit/test_phase8_eligibility.py tests/unit/test_phase8_wave3.py`: PASS.
+- `uv run pytest -q tests/unit/test_phase8_label_mapping.py tests/unit/test_phase8_domain_shift.py tests/unit/test_phase8_eligibility.py tests/unit/test_phase8_wave3.py`: PASS, `24 passed`.
+- `uv run pytest -q tests/unit/test_phase8_artifacts.py tests/unit/test_phase8_preregistration.py tests/unit/test_phase8_leakage.py tests/unit/test_phase8_ircadb.py tests/unit/test_phase8_external_manifest.py tests/unit/test_phase8_image_qa.py tests/unit/test_phase8_wave2.py tests/unit/test_phase8_label_mapping.py tests/unit/test_phase8_domain_shift.py tests/unit/test_phase8_eligibility.py tests/unit/test_phase8_wave3.py`: PASS, `85 passed`.
+- `uv run pytest -q tests/unit/test_phase2_paths.py tests/unit/test_phase2_publication.py tests/unit/test_adapter_protocol.py tests/unit/test_ircadb_adapter.py tests/unit/test_manifest_builder.py tests/unit/test_manifest_validation.py`: PASS, `103 passed`.
+- `uv run protoem-ct run-phase8-wave3-policy --help`: PASS.
+- `uv run protoem-ct run-phase8-wave3-policy --wave2-artifact-root <corrected Wave 2 root> --output-root <Wave 3 external output root> --repository-root <repository root>`: PASS.
+- Deterministic rerun into `/private/tmp/protoem-ct-phase8-wave3-rerun-20260804`: PASS.
+- Byte comparison for five Wave 3 JSON artifacts between real and rerun roots: PASS.
+- Generated-artifact scan for absolute paths, PHI tokens, raw UID-like values, prohibited archive
+  member names, and JPG references: PASS, no matches.
+- Supervisor source scan for Wave 3 ZIP-opening and prohibited archive access patterns: PASS, no
+  Wave 3 source path opens or lists prohibited archives.
+- Independent `P8-WAVE3-REVIEW`: PASS, no blockers.
 
 ## Wave 2 Verification Commands
 
