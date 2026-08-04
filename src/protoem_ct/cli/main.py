@@ -118,6 +118,10 @@ from protoem_ct.external.real_development_runner import (
     build_phase8_real_development_run_plan,
     run_phase8_real_development_plan_publication,
 )
+from protoem_ct.external.tiny_real_verification import (
+    Phase8TinyRealVerificationError,
+    run_phase8_tiny_real_development_verification,
+)
 from protoem_ct.fewshot import (
     FewshotArtifactValidationError,
     FewshotInitializationReference,
@@ -387,6 +391,16 @@ def _raise_phase8_real_development_plan_cli_error(exc: Exception) -> None:
     """Exit with a concise Phase 8 real-development plan error without data leakage."""
     typer.secho(
         f"Phase 8 real-development plan error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase8_tiny_real_verification_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 8 tiny real-verification error without data leakage."""
+    typer.secho(
+        f"Phase 8 tiny real-development verification error: {type(exc).__name__}",
         err=True,
         fg=typer.colors.RED,
     )
@@ -1884,6 +1898,172 @@ def plan_phase8_real_development_run_command(
     typer.echo(f"input_binding_hash: {result.input_binding_hash}")
     typer.echo(f"run_plan_hash: {result.run_plan_hash}")
     typer.echo(f"case_binding_collection_hash: {result.case_binding_collection_hash}")
+    typer.echo(f"summary_hash: {result.summary_hash}")
+    for relative_name, digest in sorted(result.artifact_hashes.items()):
+        typer.echo(f"artifact: {relative_name} sha256={digest}")
+
+
+def _parse_tiny_real_package_versions(payload: str) -> dict[str, str]:
+    try:
+        decoded = json.loads(payload)
+    except json.JSONDecodeError as exc:
+        raise Phase8TinyRealVerificationError(
+            "--package-versions-json must be valid JSON."
+        ) from exc
+    if not isinstance(decoded, dict) or not all(
+        isinstance(key, str) and isinstance(value, str) for key, value in decoded.items()
+    ):
+        raise Phase8TinyRealVerificationError(
+            "--package-versions-json must decode to a JSON object of string to string."
+        )
+    return cast(dict[str, str], decoded)
+
+
+@app.command("run-phase8-tiny-real-development-verification")
+def run_phase8_tiny_real_development_verification_command(
+    approve_tiny_real_verification: Annotated[
+        bool,
+        typer.Option(
+            "--approve-tiny-real-verification",
+            help=(
+                "Required explicit approval. Without this flag the command refuses "
+                "before opening any file."
+            ),
+        ),
+    ] = False,
+    manifest_path: Annotated[
+        Path,
+        typer.Option(
+            "--manifest-path",
+            help="Explicit absolute path to an approved Phase 2 dataset manifest JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    split_path: Annotated[
+        Path,
+        typer.Option(
+            "--split-path",
+            help="Explicit absolute path to an approved Phase 2 development split JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    expected_manifest_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-manifest-sha256",
+            help="Caller-declared SHA-256 of the manifest file, verified before parsing.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    expected_split_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-split-sha256",
+            help="Caller-declared SHA-256 of the split file, verified before parsing.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    dataset_root: Annotated[
+        Path,
+        typer.Option(
+            "--dataset-root",
+            help="Explicit absolute, read-only, approved raw dataset root.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help=(
+                "Explicit absolute, nonexistent, non-symlinked output root outside the repository."
+            ),
+        ),
+    ] = ...,  # type: ignore[assignment]
+    approved_development_artifact_set_identity: Annotated[
+        str,
+        typer.Option(
+            "--approved-development-artifact-set-identity",
+            help="Conservative identifier for the approved development artifact set.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    git_commit: Annotated[
+        str,
+        typer.Option(
+            "--git-commit",
+            help="Originating Git commit hash (7-64 lowercase hex characters).",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    package_versions_json: Annotated[
+        str,
+        typer.Option(
+            "--package-versions-json",
+            help='JSON object of package name to version, e.g. {"torch": "2.2.0"}.',
+        ),
+    ] = ...,  # type: ignore[assignment]
+    max_steps: Annotated[
+        int,
+        typer.Option(
+            "--max-steps",
+            help="Bounded optimizer step count; must satisfy 1 <= max_steps <= 2.",
+        ),
+    ] = 2,
+    seed: Annotated[
+        int,
+        typer.Option("--seed", help="Deterministic seed for the bounded verification run."),
+    ] = 1729,
+    repository_root: Annotated[
+        Path | None,
+        typer.Option(
+            "--repository-root",
+            help="Explicit absolute repository root used only for output-root rejection.",
+        ),
+    ] = None,
+) -> None:
+    """Run a bounded, verification-only Phase 8 tiny real-development check.
+
+    This command is a deliberately narrow engineering dry/overfit
+    verification, not a real training run. It opens exactly one real train
+    and one real validation NIfTI image/label pair, is CPU-only with AMP
+    disabled, runs at most two optimizer steps over a single bounded spatial
+    patch, and computes no Dice/IoU/HD95 or other scientific metric. Every
+    published checkpoint is hard-coded not freeze eligible, not selection
+    eligible, and not definitive training. Requires explicit
+    ``--approve-tiny-real-verification``; without it, the command refuses
+    before opening any file.
+    """
+
+    if not approve_tiny_real_verification:
+        typer.secho(
+            "Phase 8 tiny real-development verification requires --approve-tiny-real-verification.",
+            err=True,
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        package_versions = _parse_tiny_real_package_versions(package_versions_json)
+        result = run_phase8_tiny_real_development_verification(
+            manifest_path=manifest_path,
+            split_path=split_path,
+            expected_manifest_sha256=expected_manifest_sha256,
+            expected_split_sha256=expected_split_sha256,
+            dataset_root=dataset_root,
+            output_root=output_root,
+            repository_root=repository_root or Path.cwd(),
+            approved_development_artifact_set_identity=(approved_development_artifact_set_identity),
+            git_commit=git_commit,
+            package_versions=package_versions,
+            max_steps=max_steps,
+            seed=seed,
+        )
+    except (Phase8TinyRealVerificationError, ValueError, OSError) as exc:
+        _raise_phase8_tiny_real_verification_cli_error(exc)
+
+    typer.echo("Phase 8 tiny real-development verification complete")
+    typer.echo("verification_only: true")
+    typer.echo("scientific_metrics_computed: false")
+    typer.echo("freeze_eligible: false")
+    typer.echo("selection_eligible: false")
+    typer.echo("definitive_training: false")
+    typer.echo(f"config_hash: {result.config_hash}")
+    typer.echo(f"access_ledger_hash: {result.access_ledger_hash}")
+    typer.echo(f"checkpoint_metadata_hash: {result.checkpoint_metadata_hash}")
     typer.echo(f"summary_hash: {result.summary_hash}")
     for relative_name, digest in sorted(result.artifact_hashes.items()):
         typer.echo(f"artifact: {relative_name} sha256={digest}")

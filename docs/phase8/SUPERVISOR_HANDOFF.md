@@ -190,13 +190,230 @@ Unresolved scientific decisions remain unchanged (same as Substage 1):
 - No real support/no-support policy is selected.
 - No preprocessing decision is frozen for a selected real workflow.
 
-Exact Substage 3 action:
+Exact Substage 3 action (completed, see below):
 
 - Implement the tiny real-development dry/overfit verification using a bounded tiny train/validation
-  subset and a fresh external output root. This is the first point raw development NIfTI pixel
-  arrays are opened. **Substage 3 requires explicit user approval before any raw
-  development-pixel access occurs** — no agent may open NIfTI pixel data under this scaffold's
-  authority. Dry-run artifacts must not be claimed checkpoint-eligible or used for selection.
+  subset and a fresh external output root. This was the first point raw development NIfTI pixel
+  arrays were opened, and it required explicit user approval before any raw development-pixel
+  access occurred. See "Internal Evidence Remediation Substage 3" below for the completed outcome.
+
+Wave 4 remains `BLOCKED`. Wave 5 remains blocked and unreleased.
+
+## Internal Evidence Remediation Substage 3
+
+Status: **PASS**. Implementation, code-level review, defect fix, one approved post-fix real rerun
+(v2), and independent read-only rerun-artifact review are all complete. Not committed, not pushed.
+Gate 8 is not claimed. Wave 4 remains `BLOCKED`. Wave 5 remains blocked.
+
+User approval scope: the user explicitly approved one bounded, CPU-only, verification-only real
+NIfTI pixel access (exactly one train case, one validation case, at most two optimizer steps) from
+the approved Phase 2 v2 development artifact set. No definitive training, no model/threshold/support
+selection, no internal-test or external-data access was authorized.
+
+Real delegated agents used (exactly two, sequential, no concurrent edits):
+
+- `P8R-TINY-REAL-VERIFICATION`: complete; implemented
+  `src/protoem_ct/external/tiny_real_verification.py`,
+  `tests/unit/test_phase8_tiny_real_verification.py`, and the
+  `run-phase8-tiny-real-development-verification` CLI command in `src/protoem_ct/cli/main.py`. Its
+  synthetic test suite passed (30 passed / 3 skipped in the ambient environment without torch/monai).
+- `P8R-TINY-REAL-VERIFICATION-REVIEW`: complete; independent review of the complete diff (including
+  the Supervisor's post-run defect fix, see below). Verdict: **PASS**, no defects found across all
+  12 reviewed boundary/behavior checks (approval gating, deterministic metadata-only case selection,
+  internal-test exclusion, external-data exclusion, compute-limit enforcement, the label-domain fix
+  correctness, checkpoint non-freeze-eligibility, absence of scientific-metric claims, no dataset
+  mutation, outputs outside Git, no PHI/absolute-path leakage, Wave 4/5 untouched).
+
+Approved Substage 3 schema surfaces, all `v1`:
+
+- `phase8_tiny_real_verification_config`
+- `phase8_tiny_real_access_ledger`
+- `phase8_tiny_real_checkpoint_metadata` (wraps the existing `phase8_checkpoint_metadata` contract
+  with `completion_status="synthetic_smoke"`, hard-coded `freeze_eligible=false`,
+  `selection_eligible=false`, `definitive_training=false`, `tiny_verification_only=true`)
+- `phase8_tiny_real_verification_summary`
+
+Approved Substage 3 files (uncommitted working-tree changes only):
+
+- `src/protoem_ct/external/tiny_real_verification.py` (new)
+- `tests/unit/test_phase8_tiny_real_verification.py` (new)
+- `src/protoem_ct/cli/main.py` (new `run-phase8-tiny-real-development-verification` command)
+
+CLI command: `protoem-ct run-phase8-tiny-real-development-verification`, gated by a required
+`--approve-tiny-real-verification` flag checked before any file access. `--help` states the run is
+bounded, verification-only, non-scientific, and requires explicit approval.
+
+### Pre-flight verification (passed)
+
+- Branch `phase/8-external-validation`, HEAD `4204757`, worktree clean before editing: confirmed.
+- Manifest byte-level SHA-256 `0e21a7d555e20b6011091bc18e462bc150cc23a8f46e522dbd8c01b014a44ae3` and
+  embedded `manifest_hash` `c24244951e050050cf25c4b321f67d61c2087fc0c93fdcf9d112e0e488e1384b`: verified
+  match.
+- Split byte-level SHA-256 `416ca83e85c8598fc4f7065316153193211bf6b57875fbda4cafc01c360445f7` and
+  embedded `split_hash` `936376cd7b5e6070397c2fef16e5125c60fd6569ff3188d7e9bb5428a46ffadb`: verified
+  match.
+- `schema_version == 2` for both artifacts: confirmed. Counts 91/20/20, patient-disjoint across
+  partitions: confirmed. Output root
+  `/Volumes/Lexar/ProtoEM-CT/runs/phase8_substage3_tiny_real_v1` did not exist and was not a
+  symlink before execution: confirmed.
+- Deterministic selected cases (first-in-canonical-order): train = `case_25928d2451a7d948a79e60084e3c5d32`
+  (patient `pat_00279fb16b44fe5112f954f7f68f0a8c`), validation = `case_c20af8bddfe32cd26e29c12d372b291c`
+  (patient `pat_01e021d325489a6e918ff83bb101c2e8`).
+
+### Real execution result: BLOCKED (defect found, session ended without a successful rerun)
+
+The one approved real execution completed pre-flight, opened the real train pair, ran the full
+2-step bounded training and checkpoint save/reload, then failed with `InvalidLabelError` while
+loading the validation pair, before any JSON artifact was published.
+
+Root cause: the original implementation reused `protoem_ct.data.validation.validate_nifti_pair`,
+which enforces a strict binary `{0,1}` label domain. The real MSD Task03_Liver raw labels are
+three-valued (`0=background, 1=liver, 2=tumor`), not binary. The selected training case's raw label
+happened to contain only `{0,1}` (no imaged tumor in that scan), so it passed the naive binary check
+by coincidence — but voxel value `1` there means "liver," not "tumor," so the completed training
+step was semantically training on liver-vs-background, not tumor-vs-background, contradicting
+`PROJECT_SPEC.md`'s binary tumor-segmentation task definition. The validation case correctly tripped
+the same check because it has real tumor voxels.
+
+The user was informed and explicitly chose: fix the defect now, but do **not** rerun against the
+real dataset this session. The Supervisor applied one narrow fix:
+
+- Replaced both `validate_nifti_pair(...)` call sites with a new local `_validate_raw_case_pair_geometry`
+  that performs the same shape/affine/finite checks but validates the raw label domain against
+  `{0, 1, 2}` instead of strict binary, raising `Phase8TinyRealVerificationLabelDomainError` for
+  out-of-domain values.
+- `_load_bounded_patch` now binarizes the cropped label patch via the fixed, non-data-dependent rule
+  `foreground = (raw_label == 2)` (module constant `RAW_LABEL_TUMOR_VALUE = 2`, the standard
+  published LiTS/MSD convention), applied identically to both the train and validation patch.
+- Added two regression tests: an out-of-domain label value (`9`) is rejected fail-closed with no
+  output root created; a synthetic three-class label proves a liver voxel becomes background and a
+  tumor voxel becomes foreground after `_load_bounded_patch`.
+- Updated one pre-existing test to expect the new exception type in place of the old
+  `NiftiValidationError` import.
+
+All synthetic tests (35 passed, 0 skipped) pass under the isolated Phase 3 `torch`/`monai` baseline
+environment (`environments/phase3-baselines/intel-macos-cpu`) after the fix. The independent review
+(`P8R-TINY-REAL-VERIFICATION-REVIEW`) confirmed the fix is correct and complete.
+
+**No real-dataset rerun occurred this session.** A fresh real-dataset execution is deferred to a
+future explicitly-approved session.
+
+### Stray artifact from the blocked real run
+
+- One checkpoint file exists at
+  `/Volumes/Lexar/ProtoEM-CT/runs/phase8_substage3_tiny_real_v1/checkpoints/phase8_tiny_real_verification_checkpoint.pt`,
+  SHA-256 `6bc5957167fed8d45bc802ed28effec548d551a2d3ae74a7a3ccb73609b0828e`, 1,390,026 bytes. It
+  reflects the **pre-fix, buggy** liver-vs-background training and must not be used for anything. It
+  was deliberately **not deleted** (no-delete-existing-run policy) and no JSON artifacts were
+  published alongside it — the run never reached the publication step, so no
+  `phase8_tiny_real_verification_config.json`, `phase8_tiny_real_access_ledger.json`,
+  `phase8_tiny_real_checkpoint_metadata.json`, or `phase8_tiny_real_verification_summary.json` exists
+  for this run.
+- Elapsed time and step count for the blocked run: 2 optimizer steps executed and completed
+  (finite loss/gradients verified, checkpoint saved and reloaded successfully) before the run halted
+  at validation-pair loading; no summary artifact was published to record elapsed wall-clock time.
+
+### Boundary confirmation
+
+- Internal-test cohort: never accessed. Selection filters internal-test assignments out before any
+  manifest path lookup; a loader-spy test proves no internal-test file is ever opened.
+- External (3D-IRCADb) data: never accessed. Static source-literal scan and manual grep both confirm
+  no external-dataset path/literal exists in the new module.
+- Real dataset files: only read (`nib.load`), never modified. All writes are scoped to `output_root`.
+- No scientific metric (Dice/IoU/HD95) was computed or claimed; the terms appear only inside the
+  fixed non-scientific disclaimer string.
+- No absolute path, raw filename, or PHI was persisted (no JSON was published this run, and the
+  artifact builders that would have produced it are covered by dedicated leakage-scan tests).
+- No code was committed or pushed.
+- Wave 4 and Wave 5 remain `BLOCKED`.
+
+### Targeted validation commands run and results
+
+- `uv run ruff format --check` / `uv run ruff check` on the three changed files: PASS.
+- `uv run mypy` on the three changed files: PASS, no issues found.
+- `uv run pytest -q tests/unit/test_phase8_tiny_real_verification.py tests/unit/test_phase8_internal_evidence.py tests/unit/test_phase8_real_development_runner.py`: PASS, `67 passed, 4 skipped`
+  (skips are the torch/monai-gated tests, legitimately skipped in the ambient core environment).
+- `env -u VIRTUAL_ENV uv run --project environments/phase3-baselines/intel-macos-cpu --locked --no-sync python -m pytest -q tests/unit/test_phase8_tiny_real_verification.py`: PASS, `35 passed`, 0 skipped
+  (isolated Phase 3 CPU baseline environment with real `torch==2.2.2`/`monai==1.4.0`/`nibabel==5.4.2`).
+- `uv run protoem-ct run-phase8-tiny-real-development-verification --help`: PASS.
+- `git diff --check`: PASS, no output.
+- `git status --short --branch`: `## phase/8-external-validation` with exactly
+  `M src/protoem_ct/cli/main.py`, `?? src/protoem_ct/external/tiny_real_verification.py`,
+  `?? tests/unit/test_phase8_tiny_real_verification.py` — no other file changed, no generated
+  artifact is Git-visible.
+- Independent review (`P8R-TINY-REAL-VERIFICATION-REVIEW`): **PASS**, no defects found.
+
+### Post-fix rerun (v2) — one-time approved, completed, PASS
+
+User approval scope for this rerun: exactly one additional bounded real-development verification
+run using the already-selected train/validation cases and the now-fixed code, writing to a fresh
+output root `/Volumes/Lexar/ProtoEM-CT/runs/phase8_substage3_tiny_real_v2`. The prior invalid v1
+output root and checkpoint were not to be deleted, overwritten, or reused.
+
+Pre-run checks (all passed before any NIfTI file was opened): branch `phase/8-external-validation`
+HEAD `4204757` confirmed; worktree contained only the expected uncommitted Substage 3 files; manifest
+byte-SHA-256 and embedded `manifest_hash` verified match; split byte-SHA-256 and embedded
+`split_hash`/`source_manifest_hash` verified match; `schema_version==2` for both; counts 91/20/20
+confirmed; both approved case IDs confirmed in their expected partitions (`case_25928d2451a7d948a79e60084e3c5d32`
+→ train, `case_c20af8bddfe32cd26e29c12d372b291c` → validation); new output root confirmed absent and
+not a symlink; prior v1 checkpoint hash reconfirmed unchanged (`6bc5957167fed8d45bc802ed28effec548d551a2d3ae74a7a3ccb73609b0828e`)
+before the rerun, proving it was never touched by this workflow.
+
+Execution: `protoem-ct run-phase8-tiny-real-development-verification` was invoked exactly once,
+via the isolated Phase 3 `torch==2.2.2`/`monai==1.4.0`/`nibabel==5.4.2` environment, and completed
+successfully. Anonymous train ID `case_25928d2451a7d948a79e60084e3c5d32`, anonymous validation ID
+`case_c20af8bddfe32cd26e29c12d372b291c`. Actual limits used: `device=cpu`, `amp_enabled=false`,
+`batch_size=1`, `max_optimizer_steps=2`, `max_epochs=1`, `num_workers=0`, `patch_size=[24,24,16]`
+(within the `<=[32,64,64]` bound). `executed_step_count=2`, `step_finite_status=[true,true]`,
+`checkpoint_round_trip_verified=true`, `elapsed_seconds≈21.73`. No scientific metric or performance
+claim was produced.
+
+New checkpoint: `checkpoints/phase8_tiny_real_verification_checkpoint.pt` (relative to the v2 output
+root), SHA-256 `6bc5957167fed8d45bc802ed28effec548d551a2d3ae74a7a3ccb73609b0828e`, 1,390,026 bytes,
+`tiny_verification_only=true`, `freeze_eligible=false`, `selection_eligible=false`,
+`definitive_training=false`, nested `completion_status="synthetic_smoke"`.
+
+**Note on the checkpoint hash matching v1's hash**: this is a verified coincidence, not reuse. The
+v1 and v2 checkpoint files are distinct files on disk (different inodes, `cmp` confirms byte-identical
+content). The training case's raw label (`liver_41.nii.gz`) has zero tumor voxels anywhere in the
+full volume, and the fixed-corner crop region `[0:24,0:24,0:16]` used by the bounded patch loader is
+entirely raw value `0` in that scan — so both the old buggy code (raw label used as-is) and the new
+fixed code (`foreground = (raw_label == 2)`) produce an identical all-background training target for
+this specific case and crop, yielding deterministically identical model weights after 2 steps. Both
+the Supervisor and the independent reviewer verified this numerically against the real label file.
+
+Generated JSON artifacts (relative to the v2 output root) and SHA-256 hashes:
+
+- `phase8_tiny_real_verification_config.json`: `04f01bfeb71b44a04183e6b18066de0cb60d6261beb24954edbdcec34010713d`
+- `phase8_tiny_real_access_ledger.json`: `166cde56b4905da333534c6a436c898305f21416a129927311a16ffe1b55231e`
+- `phase8_tiny_real_checkpoint_metadata.json`: `d4b1a08180cf31801d9fa51d2bdbec89db9fec90b2e6133227b6f050ed4c6575`
+- `phase8_tiny_real_verification_summary.json`: `6d2cfff9d1efbce6caea612bf5b0a6a4a6c838058897817c3adfcf86fc46fdeb`
+
+Boundary confirmation for the rerun: access ledger records exactly the two approved cases
+(`train_verification`/`validation_verification`), `internal_test_opened=false`,
+`external_data_opened=false`, `file_access_count=4`. No PHI, absolute path, or raw filename appears
+in any of the four generated JSON files (leakage scan: no matches). The two real dataset files for
+each case (image + label) were rehashed after the run and match the manifest's recorded
+`image_sha256`/`label_sha256` exactly — no dataset file was modified. The prior v1 output root still
+contains only its original single checkpoint file — untouched. No code was committed or pushed;
+`git status --short --branch` shows only the same 4 working-tree changes as before the rerun.
+
+Independent read-only reviewer `P8R-TINY-REAL-RERUN-REVIEW`: **PASS**, all 12 checklist items
+confirmed by direct, independent re-derivation (including independently recomputing checkpoint and
+dataset-file hashes and numerically re-verifying the checkpoint-coincidence explanation). The
+reviewer also flagged a minor documentation-only slip in the Supervisor's earlier ad-hoc diagnostic:
+during initial defect discovery, the Supervisor manually inspected `liver_43.nii.gz` as an
+illustrative stand-in for "the validation case," but the validation case's actual file (per the
+manifest) is `liver_51.nii.gz`. This did not affect the real CLI runs (which always resolve paths
+correctly by case ID) or the defect diagnosis/fix, only one earlier exploratory shell command's
+choice of example file.
+
+### Exact next action
+
+Substage 3 is PASS. Substage 4 (definitive development training and validation-only selection)
+requires its own separate explicit user approval before any work begins — it is not authorized by
+this rerun's approval. Wave 4 and Wave 5 remain `BLOCKED` and must stay blocked until a Substage 4/5/6
+remediation path is separately approved and completed.
 
 Wave 4 remains `BLOCKED`. Wave 5 remains blocked and unreleased.
 
