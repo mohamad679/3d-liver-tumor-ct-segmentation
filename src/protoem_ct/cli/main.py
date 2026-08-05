@@ -112,6 +112,11 @@ from protoem_ct.external.definitive_training import (
     phase8_definitive_training_config_from_mapping,
     publish_phase8_definitive_training_plan,
 )
+from protoem_ct.external.definitive_training_pilot import (
+    DEFAULT_WALL_CLOCK_LIMIT_SECONDS,
+    Phase8BoundedPilotError,
+    run_phase8_bounded_pilot_with_watchdog,
+)
 from protoem_ct.external.internal_evidence import (
     PHASE8_CHECKPOINT_METADATA_SCHEMA_NAME,
     PHASE8_INTERNAL_EVIDENCE_SCHEMA_VERSION,
@@ -410,6 +415,16 @@ def _raise_phase8_tiny_real_verification_cli_error(exc: Exception) -> None:
     """Exit with a concise Phase 8 tiny real-verification error without data leakage."""
     typer.secho(
         f"Phase 8 tiny real-development verification error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase8_bounded_pilot_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 8 bounded pilot error without data leakage."""
+    typer.secho(
+        f"Phase 8 bounded pilot error: {type(exc).__name__}",
         err=True,
         fg=typer.colors.RED,
     )
@@ -2086,6 +2101,226 @@ def run_phase8_tiny_real_development_verification_command(
 
     typer.echo("Phase 8 tiny real-development verification complete")
     typer.echo("verification_only: true")
+    typer.echo("scientific_metrics_computed: false")
+    typer.echo("freeze_eligible: false")
+    typer.echo("selection_eligible: false")
+    typer.echo("definitive_training: false")
+    typer.echo(f"config_hash: {result.config_hash}")
+    typer.echo(f"access_ledger_hash: {result.access_ledger_hash}")
+    typer.echo(f"checkpoint_metadata_hash: {result.checkpoint_metadata_hash}")
+    typer.echo(f"summary_hash: {result.summary_hash}")
+    for relative_name, digest in sorted(result.artifact_hashes.items()):
+        typer.echo(f"artifact: {relative_name} sha256={digest}")
+
+
+def _parse_bounded_pilot_package_versions(payload: str) -> dict[str, str]:
+    try:
+        decoded = json.loads(payload)
+    except json.JSONDecodeError as exc:
+        raise Phase8BoundedPilotError("--package-versions-json must be valid JSON.") from exc
+    if not isinstance(decoded, dict) or not all(
+        isinstance(key, str) and isinstance(value, str) for key, value in decoded.items()
+    ):
+        raise Phase8BoundedPilotError(
+            "--package-versions-json must decode to a JSON object of string to string."
+        )
+    return cast(dict[str, str], decoded)
+
+
+@app.command("run-phase8-bounded-real-development-pilot")
+def run_phase8_bounded_real_development_pilot_command(
+    approve_bounded_pilot: Annotated[
+        bool,
+        typer.Option(
+            "--approve-bounded-pilot",
+            help=(
+                "Required explicit approval. Without this flag the command refuses "
+                "before opening any file."
+            ),
+        ),
+    ] = False,
+    manifest_path: Annotated[
+        Path,
+        typer.Option(
+            "--manifest-path", help="Explicit absolute path to an approved Phase 2 manifest JSON."
+        ),
+    ] = ...,  # type: ignore[assignment]
+    split_path: Annotated[
+        Path,
+        typer.Option(
+            "--split-path",
+            help="Explicit absolute path to an approved Phase 2 development split JSON.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    lesion_components_path: Annotated[
+        Path,
+        typer.Option(
+            "--lesion-components-path",
+            help="Explicit absolute path to the approved Phase 2 lesion-components JSON.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    expected_manifest_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-manifest-sha256",
+            help="Caller-declared SHA-256 of the manifest file, verified before parsing.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    expected_split_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-split-sha256",
+            help="Caller-declared SHA-256 of the split file, verified before parsing.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    expected_lesion_components_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-lesion-components-sha256",
+            help="Caller-declared SHA-256 of the lesion-components file, verified before parsing.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    input_binding_path: Annotated[
+        Path,
+        typer.Option(
+            "--input-binding-path",
+            help="Explicit absolute path to the Substage 4B real-development input binding JSON.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    candidate_inventory_path: Annotated[
+        Path,
+        typer.Option(
+            "--candidate-inventory-path",
+            help="Explicit absolute path to the Substage 4B fixed candidate inventory JSON.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    preprocessing_decision_path: Annotated[
+        Path,
+        typer.Option(
+            "--preprocessing-decision-path",
+            help="Explicit absolute path to the Substage 4B preprocessing decision JSON.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    expected_input_binding_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-input-binding-sha256",
+            help="Caller-declared SHA-256 of the input binding file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    expected_candidate_inventory_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-candidate-inventory-sha256",
+            help="Caller-declared SHA-256 of the candidate inventory file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    expected_preprocessing_decision_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-preprocessing-decision-sha256",
+            help="Caller-declared SHA-256 of the preprocessing decision file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    dataset_root: Annotated[
+        Path,
+        typer.Option(
+            "--dataset-root", help="Explicit absolute, read-only, approved raw dataset root."
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help=(
+                "Explicit absolute, nonexistent, non-symlinked output root outside the repository."
+            ),
+        ),
+    ] = ...,  # type: ignore[assignment]
+    git_commit: Annotated[
+        str,
+        typer.Option(
+            "--git-commit", help="Originating Git commit hash (7-64 lowercase hex characters)."
+        ),
+    ] = ...,  # type: ignore[assignment]
+    package_versions_json: Annotated[
+        str,
+        typer.Option(
+            "--package-versions-json",
+            help='JSON object of package name to version, e.g. {"torch": "2.2.0"}.',
+        ),
+    ] = ...,  # type: ignore[assignment]
+    seed: Annotated[
+        int,
+        typer.Option("--seed", help="Deterministic seed for the bounded pilot run."),
+    ] = 1729,
+    wall_clock_limit_seconds: Annotated[
+        float,
+        typer.Option(
+            "--wall-clock-limit-seconds",
+            help="Hard wall-clock watchdog limit in seconds (default 2700.0 = 45 minutes).",
+        ),
+    ] = DEFAULT_WALL_CLOCK_LIMIT_SECONDS,
+    repository_root: Annotated[
+        Path | None,
+        typer.Option(
+            "--repository-root",
+            help="Explicit absolute repository root used only for output-root rejection.",
+        ),
+    ] = None,
+) -> None:
+    """Run a bounded, verification-scale Phase 8 real-data training pilot.
+
+    This is a deliberately bounded, explicitly user-approved, CPU-only,
+    verification-scale real-data training pilot -- not definitive training.
+    It opens exactly two real train NIfTI pairs (one tumor-positive, one
+    empty-target) and one real validation NIfTI pair, runs an exact 10:10
+    foreground-aware patch sampling schedule over 20 optimizer steps, and
+    performs one full-volume sliding-window validation forward pass. It
+    computes no Dice/IoU/HD95/NSD or other scientific metric anywhere. Every
+    published checkpoint is hard-coded not freeze eligible, not selection
+    eligible, not definitive training, and not scientific-metric eligible.
+    A hard 45-minute wall-clock watchdog aborts the run with no partial-
+    success publication. Requires explicit ``--approve-bounded-pilot``;
+    without it, the command refuses before opening any file.
+    """
+
+    if not approve_bounded_pilot:
+        typer.secho(
+            "Phase 8 bounded pilot requires --approve-bounded-pilot.",
+            err=True,
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        package_versions = _parse_bounded_pilot_package_versions(package_versions_json)
+        result = run_phase8_bounded_pilot_with_watchdog(
+            manifest_path=manifest_path,
+            split_path=split_path,
+            lesion_components_path=lesion_components_path,
+            expected_manifest_sha256=expected_manifest_sha256,
+            expected_split_sha256=expected_split_sha256,
+            expected_lesion_components_sha256=expected_lesion_components_sha256,
+            input_binding_path=input_binding_path,
+            candidate_inventory_path=candidate_inventory_path,
+            preprocessing_decision_path=preprocessing_decision_path,
+            expected_input_binding_sha256=expected_input_binding_sha256,
+            expected_candidate_inventory_sha256=expected_candidate_inventory_sha256,
+            expected_preprocessing_decision_sha256=expected_preprocessing_decision_sha256,
+            dataset_root=dataset_root,
+            output_root=output_root,
+            repository_root=repository_root or Path.cwd(),
+            git_commit=git_commit,
+            package_versions=package_versions,
+            seed=seed,
+            wall_clock_limit_seconds=wall_clock_limit_seconds,
+        )
+    except (Phase8BoundedPilotError, ValueError, OSError) as exc:
+        _raise_phase8_bounded_pilot_cli_error(exc)
+
+    typer.echo("Phase 8 bounded real-development pilot complete")
+    typer.echo("pilot_only: true")
     typer.echo("scientific_metrics_computed: false")
     typer.echo("freeze_eligible: false")
     typer.echo("selection_eligible: false")

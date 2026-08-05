@@ -417,6 +417,166 @@ remediation path is separately approved and completed.
 
 Wave 4 remains `BLOCKED`. Wave 5 remains blocked and unreleased.
 
+## Internal Evidence Remediation Substage 4B (Bounded Real-Data Pilot)
+
+Status: **PILOT_PASS**. Implementation, Supervisor code review with one defect fix, the single
+approved real execution, and independent read-only review are all complete. Not committed, not
+pushed. Gate 8 is not claimed. This is a bounded, non-scientific, verification-scale pilot — it is
+**not** definitive training, not freeze eligible, not selection eligible, and does not release
+Substage 4A's `Phase8DefinitiveExecutionRelease` gate. Wave 4 remains `BLOCKED`. Wave 5 remains
+blocked and unreleased.
+
+### User approval boundary
+
+The user explicitly approved exactly one bounded, CPU-only, verification-scale real pilot
+execution with a fixed boundary: read-only dataset root
+`/Volumes/Lexar/ProtoEM-CT/datasets/msd/Task03_Liver`; approved metadata root
+`/Volumes/Lexar/ProtoEM-CT/runs/phase2_real_lits_v2` (manifest hash
+`c24244951e050050cf25c4b321f67d61c2087fc0c93fdcf9d112e0e488e1384b`, split hash
+`936376cd7b5e6070397c2fef16e5125c60fd6569ff3188d7e9bb5428a46ffadb`); approved prerequisites root
+`/Volumes/Lexar/ProtoEM-CT/runs/phase8_substage4b_prerequisites_v1`; fresh, previously-nonexistent
+output root `/Volumes/Lexar/ProtoEM-CT/runs/phase8_substage4b_bounded_pilot_v1`; exactly 2 train
+cases + 1 validation case (6 real medical files total); deterministic metadata-only case selection;
+fixed 20-optimizer-step MONAI SegResNet baseline training with an exact 10:10 foreground-aware
+patch sampling schedule; one full-volume sliding-window validation forward pass with no scientific
+metric computation; a 45-minute wall-clock watchdog; and no Wave 4/5 work. No definitive training,
+no model/threshold/support selection, and no internal-test or external-data access was authorized.
+
+### Real subagents used (exactly two, sequential, no concurrent edits)
+
+- `P8R-BOUNDED-PILOT`: complete; implemented `src/protoem_ct/external/definitive_training_pilot.py`
+  (2436 lines), `tests/unit/test_phase8_definitive_training_pilot.py`, and the
+  `run-phase8-bounded-real-development-pilot` CLI command in `src/protoem_ct/cli/main.py`. Ran all
+  synthetic tests only (no real-data access) and reported 24 passed/4 skipped (ambient) and 28
+  passed (isolated Phase 3 CPU baseline environment).
+- Supervisor code review (not a subagent): read the full implementation and found one real gap —
+  no RAS-orientation check existed anywhere, despite the approved spec requiring
+  `orientation: assert RAS only` and listing `non-RAS orientation` as a fail-closed condition. Added
+  `Phase8BoundedPilotOrientationError`, a `REQUIRED_ORIENTATION_AXCODES = ("R","A","S")` check via
+  `nib.aff2axcodes(...)` inside `_validate_raw_case_pair_geometry` (used for all three real pairs:
+  train-positive, train-empty, and validation), and two regression tests
+  (`test_geometry_validation_accepts_ras_oriented_pair`,
+  `test_geometry_validation_rejects_non_ras_orientation`). Reran the full targeted test surface
+  after the fix: 26 passed/4 skipped (ambient), 30 passed (isolated Phase 3 CPU baseline
+  environment).
+- `P8R-BOUNDED-PILOT-REVIEW`: complete; independent read-only review after the one real execution.
+  Independently re-derived case selection from the real metadata, independently recomputed all 6
+  dataset-file hashes and the checkpoint hash, independently re-read the source for every boundary
+  claim (case selection, 10:10 schedule enforcement, watchdog placement, no-prior-checkpoint-load,
+  checkpoint ineligibility flags and their structural enforcement in `internal_evidence.py`, no
+  scientific-metric/prediction output, orientation-fix wiring). Verdict: **PASS**. Flagged one
+  non-blocking residual observation: no watchdog check exists *during* the single sliding-window
+  validation forward pass itself (only immediately before and after it) — assessed as low severity
+  because it is one bounded, fixed-parameter inference call, not an unbounded loop, and the total
+  run stayed at ~340s against a 2700s limit.
+
+### Real execution result: PASS
+
+Reverified before real execution: branch `phase/8-external-validation`, HEAD
+`939ab4f356d84e590abdc7dcd79a1c2334334afa`, worktree contained only the three expected pilot
+files (`M src/protoem_ct/cli/main.py`, `?? src/protoem_ct/external/definitive_training_pilot.py`,
+`?? tests/unit/test_phase8_definitive_training_pilot.py`). Manifest/split/lesion-components file
+byte-SHA-256 and prerequisite-artifact byte-SHA-256 were verified before use. Output root confirmed
+absent and not a symlink. The 6 real medical files were hashed before the run.
+
+Selected anonymous case IDs (deterministic, metadata-only, independently re-derived by the
+reviewer): train-positive `case_19cd5c484db56de3a85635b4728f910c` (patient
+`pat_1900b8a02daa2d54840b917175ddbe95`-lineage, relative path `imagesTr/liver_43.nii.gz` —
+relative path never persisted in any artifact); train-empty
+`case_25928d2451a7d948a79e60084e3c5d32` (`imagesTr/liver_41.nii.gz`); validation
+`case_c20af8bddfe32cd26e29c12d372b291c` (`imagesTr/liver_51.nii.gz`).
+
+The CLI command `run-phase8-bounded-real-development-pilot` was invoked exactly once, via the
+isolated Phase 3 `torch==2.2.2`/`monai==1.4.0`/`nibabel==5.4.2` environment, and completed
+successfully (exit code 0). No retry occurred and none is planned.
+
+Actual configuration (all hard-coded, not caller-tunable — verified field-by-field against the
+published `phase8_definitive_training_pilot_config.json`): `device=cpu`, `amp_enabled=false`,
+`seed=1729`, `train_case_count=2`, `validation_case_count=1`, `patch_size=[64,64,32]`,
+`batch_size=1`, `gradient_accumulation_steps=1`, `optimizer=adamw`, `learning_rate=1e-4`,
+`weight_decay=1e-5`, `loss=dice_ce`, `class_weighting=none`, `max_optimizer_steps=20`,
+`max_epochs=1`, `num_workers=0`, `resume_disabled=true`, `hyperparameter_search_prohibited=true`,
+`candidate_comparison_prohibited=true`, `augmentation_disabled=true`,
+`sliding_window_roi_size=[96,96,64]`, `sliding_window_overlap=0.25`,
+`sliding_window_batch_size=1`, `hu_window=[-1000.0,1000.0]`, `fit_scope=no_data_dependent_fit`,
+`wall_clock_limit_seconds=2700.0`.
+
+Actual step/sampling counts: `executed_step_count=20`, all 20 `step_finite_status=true`,
+`positive_patch_count=10`, `negative_patch_count=10` (exact approved 10:10 ratio),
+`train_forward_shape=[1,2,64,64,32]`.
+
+Elapsed time: `340.38` seconds (~5.7 minutes), well under the 2700-second (45-minute) watchdog
+limit. Peak memory was not measured (not claimed as available).
+
+Sliding-window validation result: `sliding_window_count=245`, `validation_output_shape=
+[1,2,512,512,227]`, `validation_finite_status=true`, ROI `[96,96,64]`, overlap `0.25`, batch size
+`1`, device `cpu`, AMP `false`. No Dice/IoU/HD95/NSD/lesion-recall/precision/F1/false-positive-
+lesions-per-scan/volume-error/threshold-comparison/prediction file was computed or published;
+confirmed by both the Supervisor's and the independent reviewer's grep scans of all four published
+JSON files (the only hits were inside the fixed `non_scientific_disclaimer` sentence explaining
+what was *not* computed).
+
+Checkpoint: relative filename `checkpoints/phase8_definitive_training_pilot_checkpoint.pt`,
+SHA-256 `c22dd78aa9c9317a4021a9d4533e95a07747321ebf2914fa9a7addba6df6dfc2` (recomputed
+independently by both the Supervisor and the reviewer, matches the published metadata exactly),
+byte size `1381530`, `checkpoint_round_trip_verified=true`. Flags: `pilot_only=true`,
+`tiny_verification_only=false`, `freeze_eligible=false`, `selection_eligible=false`,
+`definitive_training=false`, `scientific_metric_eligible=false`, nested
+`checkpoint_metadata.completion_status="synthetic_smoke"`. The existing
+`Phase8CheckpointMetadata.__post_init__` validator in `internal_evidence.py` structurally rejects
+`freeze_eligible=True` whenever `completion_status != "completed"` (lines 346-349), which
+mechanically forbids this checkpoint from ever being marked freeze eligible.
+
+Generated JSON artifacts (relative to the pilot output root) and SHA-256 hashes:
+
+- `phase8_definitive_training_pilot_config.json`:
+  `130fb83a8dea8d70c50cbe1db8ad7d5a1a80103760b5581bfe7577a19fcc7275`
+- `phase8_definitive_training_pilot_access_ledger.json`:
+  `672f1ff8dafa70172cb79fd41625d1dea335fdd64f79ca309f8886b9aeff905f`
+- `phase8_definitive_training_pilot_checkpoint_metadata.json`:
+  `ca221222cdf39be3fe7ea76e4189e74fe8e0dd82932f5ff54d27aaa15dc42cec`
+- `phase8_definitive_training_pilot_summary.json`:
+  `557a6be2c68158a4ef3f66d4d7d7ecd22880c4033a61e5ecb6b3ed5e12588198`
+
+Access ledger: exactly the three approved anonymous case IDs, `file_access_count=6`,
+`internal_test_opened=false`, `external_data_opened=false`, `prior_checkpoint_loaded=false`. No
+absolute path, raw filename (e.g. `liver_43.nii.gz`), PHI, NIfTI header, voxel array, or prediction
+appears in any of the four generated JSON files — confirmed by grep scans from both the Supervisor
+and the independent reviewer.
+
+Raw-data modification result: all 6 real dataset files were rehashed after the run by both the
+Supervisor and the independent reviewer; every hash matched the pre-run hash exactly. No dataset
+file was modified.
+
+Independent review (`P8R-BOUNDED-PILOT-REVIEW`): **PASS**, all 14 checklist items plus the
+orientation-fix verification confirmed via independent re-derivation (not by trusting the
+Supervisor's claims). One non-blocking residual observation recorded above (no watchdog check
+during the single sliding-window pass itself).
+
+### Boundary confirmation
+
+- Only the three approved anonymous cases were opened; internal-test and external (3D-IRCADb) data
+  were never accessed (`internal_test_opened=false`, `external_data_opened=false`, confirmed by
+  source-level review of the case-selection filter).
+- No prior checkpoint was loaded as initialization (`prior_checkpoint_loaded=false`; the only
+  `torch.load` call in the module deserializes the checkpoint bytes just written in the same run,
+  as a save/reload self-verification, not a disk read of a pre-existing file).
+- No definitive-training release, model selection, threshold tuning, Wave 4, or Wave 5 work
+  occurred; `docs/phase8/SUPERVISOR_HANDOFF.md` was not modified until this post-review update, and
+  the pilot source module contains no reference to `Phase8DefinitiveExecutionRelease`,
+  `release_state="released"`, model-selection, or threshold-selection logic.
+- Generated outputs remained entirely outside Git; `git status --short --branch` before and after
+  the run showed only the three expected pilot source/test files.
+
+### Exact next action
+
+Substage 4B is `PILOT_PASS` and stops here per its approval scope. Substage 4A's definitive-training
+release gate remains unreleased (`release_state="not_released"` is still the only reachable state).
+Any future definitive-training execution, model/threshold/support selection, or Wave 4 rerun
+requires its own separate explicit user approval; this pilot's approval does not extend to it.
+
+Wave 4 remains `BLOCKED`. Wave 5 remains blocked and unreleased.
+
 ## Internal Evidence Remediation Substage 4A
 
 Status: completed as contract-and-boundary-only source implementation; not committed, not pushed,
@@ -992,3 +1152,321 @@ Required after Wave 0 docs edits:
 - `git diff --check`
 - `git diff --stat`
 - `git status --short --branch`
+
+## Post-Pilot Watchdog Remediation
+
+Status: completed, source-and-test-only, not committed, not pushed.
+
+The single approved real bounded pilot execution described above already completed successfully
+before this remediation began. This remediation did **not** repeat that execution, did not access
+`/Volumes` or any dataset, did not open the existing pilot output root, and did not change any
+generated pilot artifact (config, access ledger, checkpoint metadata, summary, or checkpoint file).
+The repaired code did not generate the existing run; the existing run's hashes recorded above are
+unaffected by this remediation.
+
+An independent reviewer had identified one residual gap in the previously-approved watchdog:
+`_check_watchdog` in `definitive_training_pilot.py` only checks elapsed time between stages, so it
+could not interrupt the single blocking `sliding_window_inference` call (or the training loop or
+checkpoint I/O) while it was actively running.
+
+Fix: a new parent-process supervisor, `run_phase8_bounded_pilot_with_watchdog`, runs the entire
+existing `run_phase8_bounded_pilot` pipeline (medical data loading through artifact publication) in
+an isolated `multiprocessing` child process (`spawn` context, macOS/CPU-valid), joined against the
+same single 45-minute (`DEFAULT_WALL_CLOCK_LIMIT_SECONDS`) deadline, minus time already spent
+starting the child. If the child does not finish in time, it is terminated (SIGTERM, escalating to
+`.kill()`) and joined, a new `Phase8BoundedPilotProcessWatchdogTimeoutError` is raised (distinct
+from the existing in-process timeout), no summary is published, and there is no automatic retry.
+Cleanup runs in a `finally` on every path (success, error, timeout), so no orphan child process can
+remain. The CLI command `run-phase8-bounded-real-development-pilot` now calls this supervised entry
+point instead of the raw one; the existing `--approve-bounded-pilot` gate still runs first and still
+blocks any file access without it. No scientific config (patch size, ROI, overlap, hyperparameters,
+model, seed, step count, case selection) was changed.
+
+Synthetic timeout test result (`test_supervised_pilot_kills_blocking_child_before_it_returns`): a
+deliberately blocking synthetic target (`time.sleep(5.0)`) under a 0.2-second test deadline is
+actively killed before it returns; `multiprocessing.active_children()` is empty afterward (real
+process death, not a cooperative check); the output root is never created (no partial-success
+publication); and the blocking target's call counter is exactly `1` (no retry). A companion test
+(`test_supervised_pilot_deadline_covers_publication_not_just_earlier_stages`) proves the same single
+deadline also covers artifact publication, not just the earlier stages.
+
+Independent review (`P8R-PILOT-WATCHDOG-REVIEW`): **APPROVED**. All requirements (deadline coverage
+of the full pipeline including publication, real process-level termination, dedicated error type, no
+partial success, no retry, macOS/CPU-valid spawn mechanism, cleanup with no orphans, approval gate
+still precedes the supervised call, no scientific config changed, single source of truth for the
+45-minute default) were independently verified by reading the diff and rerunning the checks below.
+One non-blocking style nit was found and fixed (the CLI's `--wall-clock-limit-seconds` default now
+imports `DEFAULT_WALL_CLOCK_LIMIT_SECONDS` instead of duplicating the literal `2700.0`).
+
+**Incident disclosure:** while implementing this fix, the P8R-PILOT-WATCHDOG-FIX subagent
+accidentally overwrote the pre-existing, untracked, never-committed test file
+`tests/unit/test_phase8_definitive_training_pilot.py` and could not recover the original content (no
+git blob, no editor local history, no Time Machine backup existed for an untracked file). It was
+reconstructed from scratch against the current source module. The independent reviewer found the
+reconstruction's coverage solid but noted one concrete gap versus what this handoff's own prior
+entries describe: `test_geometry_validation_rejects_non_ras_orientation` was missing. That test was
+re-added directly by the Supervisor after review (LPS-affine input asserted to raise
+`Phase8BoundedPilotOrientationError`) and now passes.
+
+Verification commands run (pilot files only, not the full suite):
+
+- `ruff format --check src/protoem_ct/external/definitive_training_pilot.py src/protoem_ct/cli/main.py tests/unit/test_phase8_definitive_training_pilot.py`: PASS, `3 files already formatted`
+- `ruff check` (same files): PASS, `All checks passed!`
+- `mypy src/protoem_ct/external/definitive_training_pilot.py src/protoem_ct/cli/main.py`: PASS, `Success: no issues found in 2 source files`
+- `pytest tests/unit/test_phase8_definitive_training_pilot.py -q`: PASS, `30 passed, 6 skipped` (skips are the pre-existing torch/monai ambient-environment gate)
+- `pytest tests/unit/test_phase8_internal_evidence.py tests/unit/test_phase8_real_development_runner.py -q`: PASS, `36 passed`
+- `protoem-ct --help`: PASS, lists `run-phase8-bounded-real-development-pilot`
+- `git diff --check`: PASS, clean
+- `git diff --stat`: `docs/phase8/SUPERVISOR_HANDOFF.md` and `src/protoem_ct/cli/main.py` only (395 insertions, 0 deletions); untracked `src/protoem_ct/external/definitive_training_pilot.py` and `tests/unit/test_phase8_definitive_training_pilot.py` confirmed via `git status --porcelain`
+- `git status --short --branch`: only the four expected files, nothing else touched
+
+Wave 4 remains `BLOCKED`. Wave 5 remains blocked and unreleased.
+
+## Post-Incident Test-Recovery Audit
+
+Status: **BLOCKED**. A defect was found in the pilot source module while strengthening the
+reconstructed test file. Per the audit's own constraint, the Supervisor did not fix it. Not
+committed, not pushed. Gate 8 is not claimed. Wave 4 remains `BLOCKED`. Wave 5 remains blocked.
+
+### Purpose
+
+Prove whether the reconstructed `tests/unit/test_phase8_definitive_training_pilot.py` (see
+"Incident disclosure" above) covers the complete approved Substage 4B pilot contract, not merely
+the current implementation's behavior.
+
+### Real subagents used (two, sequential)
+
+- `P8R-PILOT-TEST-RECOVERY-AUDIT`: complete, read-only. Independently derived a 93-requirement
+  coverage matrix (sections A-I of the approved pilot contract) against the reconstructed test file,
+  `internal_evidence.py`, `definitive_training.py`, `definitive_training_pilot.py`, `cli/main.py`,
+  and this handoff. Result before remediation: **41 COVERED, 16 WEAK, 36 MISSING** of 93. Flagged one
+  vacuous assertion (`forbidden == ["anon-p0002"] or forbidden == []`, tautologically true) and one
+  critical absent case (no test for `Phase8BoundedPilotLabelDomainError`, the exact defect class from
+  the Substage 3 incident).
+- `P8R-PILOT-TEST-RECOVERY-REVIEW`: **not started**. Per its own precondition ("start only after any
+  missing tests are added and all validation passes"), the independent review is deferred because
+  remediation validation did not fully pass (see Defect below).
+
+### Supervisor remediation applied
+
+Added or strengthened tests only in `tests/unit/test_phase8_definitive_training_pilot.py`:
+
+- Fixed the vacuous access-ledger assertion; replaced with a real forbidden-raw-filename/path scan.
+- Added `test_geometry_validation_rejects_out_of_domain_label_value` (raw label `9`), a
+  nonfinite-image-value rejection test, and an affine-only (same-shape) mismatch rejection test.
+- Added a direct `_normalize_hu` unit test (HU clip `[-1000,1000]` then linear rescale to
+  `[-1,1]` at known sample points) and an `_extract_padded_patch` boundary test (shape and fill
+  value at a volume edge).
+- Added a sampling-schedule test proving positive centers index actual tumor voxels and negative
+  centers do not (previously only counts were checked).
+- Added a parametrized test exercising the config's `replace()`-reject path for every remaining
+  hard-coded field (previously 3 of ~20 fields; now all ~20, plus `patch_size` and
+  `sliding_window_roi_size`).
+- Added three prerequisite cross-hash-mismatch rejection tests (`preprocessing_evidence_hash`,
+  `model_family`, `uses_external_artifacts`), all confirmed to fail before any NIfTI access.
+- Added self-hash tamper-rejection tests for `Phase8BoundedPilotConfig`,
+  `Phase8BoundedPilotAccessLedger`, and the checkpoint-metadata wrapper.
+- Added a static source-scan test proving the pilot module never imports the Substage 4A
+  `definitive_training` release contract, so a `released` `Phase8DefinitiveExecutionRelease` can
+  never substitute for `--approve-bounded-pilot`.
+- Added torch/monai-gated tests (skipped in the ambient environment, run in the isolated Phase 3 CPU
+  environment): label-binarization correctness on `_load_pilot_training_patch`, nonfinite-loss and
+  nonfinite-gradient fail-closed paths in `_run_bounded_training_steps` (via a custom
+  `torch.autograd.Function` injecting a NaN gradient), a sliding-window-inference call-parameter spy
+  proving exactly one call with the required ROI/overlap/batch-size and nonfinite-logits fail-closed
+  behavior, an optimizer/loss identity check on the real pipeline (`torch.optim.AdamW` with
+  `lr=1e-4`/`weight_decay=1e-5`, exactly one `torch.load` call proving no prior checkpoint is ever
+  read), and a checkpoint-reload-on-corrupted-bytes test.
+- Extended the full-pipeline leakage scan to include lesion-recall/precision/F1,
+  false-positive-lesions-per-scan, volume-error key names, raw dataset filenames, and the
+  repository-root path string; changed two "file present" smoke assertions to exact
+  published-file-set equality.
+- Net: 34 tests before -> 66 non-skipped ambient tests / 78 tests total after (24 new test
+  functions, one of them parametrized into 21 cases).
+
+### Defect found (source unchanged, reported per audit boundary)
+
+`_reload_and_verify_checkpoint_from_bytes` in `src/protoem_ct/external/definitive_training_pilot.py`
+(lines 1967-1979) catches only `(MemoryError, RuntimeError, KeyError, OSError)` around
+`torch.load(...)`. Malformed/corrupted checkpoint bytes raise `_pickle.UnpicklingError`, which is a
+subclass of `pickle.PickleError` / `Exception`, not of any caught type, so it propagates as a raw,
+undocumented exception instead of the module's own typed fail-closed contract
+`Phase8BoundedPilotRuntimeError("checkpoint_reload_failed")` that every other failure path in this
+module (nonfinite loss, nonfinite gradient, nonfinite validation logits/probabilities, prerequisite
+mismatches) consistently uses. This was caught only in the isolated Phase 3 CPU environment (real
+`torch`), not in the ambient environment, by the new
+`test_checkpoint_reload_fails_closed_on_corrupted_bytes` test. In the current production flow this
+path only ever reloads bytes the same run just wrote (never a pre-existing file), so it has not
+caused a real incident; it is a latent fail-closed-contract gap, not a data-safety breach. Per the
+task's explicit boundary, the Supervisor did **not** modify `definitive_training_pilot.py` to widen
+the `except` clause. The new test remains in the file, failing in the isolated environment, as
+accurate evidence of the gap rather than being removed, weakened, or marked `xfail`.
+
+### Validation run
+
+- `uv run ruff format --check tests/unit/test_phase8_definitive_training_pilot.py`: PASS, `1 file
+  already formatted`.
+- `uv run ruff check tests/unit/test_phase8_definitive_training_pilot.py`: PASS, `All checks
+  passed!`.
+- `uv run mypy tests/unit/test_phase8_definitive_training_pilot.py`: PASS, `Success: no issues found
+  in 1 source file`.
+- `uv run pytest -q tests/unit/test_phase8_definitive_training_pilot.py` (ambient, no torch/monai):
+  PASS, `66 passed, 12 skipped`.
+- `env -u VIRTUAL_ENV uv run --project environments/phase3-baselines/intel-macos-cpu --locked
+  --no-sync python -m pytest -q tests/unit/test_phase8_definitive_training_pilot.py` (isolated Phase
+  3 CPU environment, real `torch`/`monai`): **1 failed, 77 passed** — the corrupted-checkpoint-bytes
+  defect above; every other new and pre-existing test passed.
+- `git diff --check`: PASS, no output.
+- `git diff --stat`: `docs/phase8/SUPERVISOR_HANDOFF.md` and `src/protoem_ct/cli/main.py` only
+  (unchanged by this audit until this section); untracked
+  `src/protoem_ct/external/definitive_training_pilot.py` (unchanged) and
+  `tests/unit/test_phase8_definitive_training_pilot.py` (test-only diff).
+- `git status --short --branch`: only the same four expected files.
+- Relevant internal-evidence/definitive-training regression tests and the CLI `--help` path were not
+  re-run in this audit turn beyond what is already recorded above in "Internal Evidence Remediation
+  Substage 4B"; no source file they cover changed.
+
+### Final verdict: BLOCKED
+
+Missing/weak coverage was substantially remediated (36 MISSING and 16 WEAK reduced to a small
+residual, see limitations below), but full validation does not pass: one new, non-vacuous test
+correctly demonstrates a real fail-closed-contract gap in `_reload_and_verify_checkpoint_from_bytes`
+that the audit is not authorized to fix. `P8R-PILOT-TEST-RECOVERY-REVIEW` was not started because its
+own precondition (all validation passing) was not met.
+
+### Remaining limitations
+
+- The corrupted-checkpoint-bytes defect above requires a source-code fix (widen the `except` clause
+  to also catch `pickle.UnpicklingError`, or catch a broader `Exception` subset consistent with the
+  module's fail-closed philosophy) in a future, separately authorized change.
+- A handful of lower-priority WEAK items from the original 93-requirement matrix were not
+  individually re-tested this turn (e.g., a dedicated exception-propagation test for a
+  `sliding_window_inference` call that itself raises rather than returning NaN, and construction-time
+  self-hash tamper tests for `Phase8BoundedPilotSummary` specifically) — these remain lower-severity
+  residual gaps, not blockers, and should be closed alongside the defect fix.
+- `P8R-PILOT-TEST-RECOVERY-REVIEW` (independent read-only re-inspection of the final test file and
+  requirement matrix) has not yet run and must run after the defect fix and a full green validation
+  pass, per its stated precondition.
+
+Wave 4 remains `BLOCKED`. Wave 5 remains blocked and unreleased.
+
+## Checkpoint-Reload Defect Fix and Recovery-Audit Completion
+
+Status: **TEST_RECOVERY_AUDIT_PASS**. This section closes out the "Post-Incident Test-Recovery
+Audit" above: the previously-disclosed checkpoint-reload defect is fixed under a separately
+authorized, narrowly bounded scope, all validation now passes in both environments, and the
+deferred independent review has run and passed.
+
+### Recap of what this closes
+
+- The original overwrite incident (accidental loss of the untracked
+  `tests/unit/test_phase8_definitive_training_pilot.py`, reconstruction from scratch, and the
+  independent audit's 93-requirement coverage matrix) is documented above under "Incident
+  disclosure" and "Post-Incident Test-Recovery Audit" and is unchanged by this entry.
+- The recovery audit found: pre-remediation **41 COVERED / 16 WEAK / 36 MISSING** of 93; after
+  Supervisor remediation, "36 MISSING and 16 WEAK reduced to a small residual" (see that section
+  for the itemized list of tests added).
+- The recovery audit also found the checkpoint-reload defect (below) and left it unfixed and the
+  new red test in place, per its own boundary.
+
+### Checkpoint-reload defect fix
+
+`_reload_and_verify_checkpoint_from_bytes` in `src/protoem_ct/external/definitive_training_pilot.py`
+caught only `(MemoryError, RuntimeError, KeyError, OSError)` around `torch.load(...)`, so corrupted
+checkpoint bytes raised a raw, undocumented `_pickle.UnpicklingError` instead of the module's own
+fail-closed contract. Exact source change (only lines touched in this file):
+
+1. Added `import pickle` to the top-level imports (alongside the existing `hashlib`, `io`, `json`,
+   `multiprocessing`, `re`, `time` imports).
+2. In `_reload_and_verify_checkpoint_from_bytes`, widened the except tuple from
+   `(MemoryError, RuntimeError, KeyError, OSError)` to
+   `(MemoryError, RuntimeError, KeyError, OSError, pickle.UnpicklingError)`, still raising
+   `Phase8BoundedPilotRuntimeError("checkpoint_reload_failed") from exc`.
+
+No other line in `definitive_training_pilot.py` changed: no broadened checkpoint formats, no change
+to hash/size/state-dict/metadata/reload-compatibility checks, no `except Exception`, and
+`KeyboardInterrupt`/`SystemExit`/unrelated programming defects are still not caught.
+
+Proof the raw exception is now normalized with cause preserved (isolated Phase 3 CPU environment,
+real `torch`):
+
+```
+type: Phase8BoundedPilotRuntimeError
+msg: checkpoint_reload_failed
+cause type: UnpicklingError
+```
+
+### Validation run
+
+- `uv run ruff format --check src/protoem_ct/external/definitive_training_pilot.py tests/unit/test_phase8_definitive_training_pilot.py`: PASS, `2 files already formatted`.
+- `uv run ruff check` (same files): PASS, `All checks passed!`.
+- `uv run mypy` (same files): PASS, `Success: no issues found in 2 source files`.
+- `uv run pytest -q tests/unit/test_phase8_definitive_training_pilot.py` (ambient, no torch/monai):
+  PASS, `66 passed, 12 skipped`.
+- `env -u VIRTUAL_ENV uv run --project environments/phase3-baselines/intel-macos-cpu --locked
+  --no-sync python -m pytest -q tests/unit/test_phase8_definitive_training_pilot.py` (isolated Phase
+  3 CPU environment, real `torch==2.2.2`/`monai==1.4.0`): **PASS, 78 passed**, 0 failed, 0 skipped
+  (previously 77 passed / 1 failed; the previously-failing
+  `test_checkpoint_reload_fails_closed_on_corrupted_bytes` now passes).
+- Regression: `uv run pytest -q tests/unit/test_phase8_internal_evidence.py tests/unit/test_phase8_definitive_training.py tests/unit/test_phase8_real_development_runner.py tests/unit/test_phase8_tiny_real_verification.py`:
+  PASS, `120 passed, 4 skipped`.
+- `git diff --check`: PASS, no output.
+- `git diff --stat` (including untracked): `docs/phase8/SUPERVISOR_HANDOFF.md` (this entry) and
+  `src/protoem_ct/cli/main.py` (byte-for-byte unchanged during this step — diffed and hashed before
+  and after the fix, identical); untracked `src/protoem_ct/external/definitive_training_pilot.py`
+  (the two-line fix above) and `tests/unit/test_phase8_definitive_training_pilot.py` (unchanged in
+  this step; already contained the corrupted-bytes test from the prior audit turn).
+- `git status --short --branch`: only the same four expected files.
+
+### Independent review: `P8R-PILOT-TEST-RECOVERY-REVIEW`
+
+Real, read-only subagent, run after all validation above passed (its stated precondition).
+Verdict: **PASS**. Findings:
+
+- The narrow fix is exactly the two changes described above; no other line in the file changed; no
+  `except Exception`; `KeyboardInterrupt`/`SystemExit` not swallowed; `from exc` chaining intact so
+  `__cause__` is the original `pickle.UnpicklingError`; no hash/size/state-dict/metadata/reload check
+  weakened; `cli/main.py` confirmed to have received no new edits during this step.
+- Coverage: deferred to the prior audit's baseline (41/16/36) plus the handoff's remediation list;
+  spot-checked broadly (checkpoint reload, orientation/geometry, label-domain, hash-mismatch,
+  self-hash tamper, forbidden-metric scan, sliding-window spy) and confirmed all claimed additions
+  are present and passing.
+- Two residual WEAK items remain, both independently assessed as **non-critical**:
+  1. No dedicated test for `sliding_window_inference` raising an exception (vs. returning NaN) —
+     the call site has no surrounding try/except, so any raised exception already propagates
+     uncaught by default; no fail-closed contract is at risk.
+  2. No construction-time self-hash tamper test specifically for `Phase8BoundedPilotSummary` — the
+     same self-hash-verification pattern is already covered for `Phase8BoundedPilotConfig`,
+     `Phase8BoundedPilotAccessLedger`, and the checkpoint-metadata wrapper; low incremental risk.
+- Every CRITICAL requirement (fail-closed checkpoint reload, orientation rejection, label-domain
+  rejection, hash-mismatch rejection, nonfinite-loss/gradient/logits rejection, no-Dice/IoU-leakage
+  source scan, no-retry structure) has non-vacuous behavioral/structural test coverage: **YES**.
+- Incident-disclosure accuracy re-confirmed: `test_geometry_validation_rejects_non_ras_orientation`
+  exists, constructs an LPS affine, and asserts `Phase8BoundedPilotOrientationError`, matching the
+  handoff's account exactly.
+- Independently re-ran the ambient suite and observed the same `66 passed, 12 skipped`.
+
+### Final 93-requirement coverage counts
+
+- Before this recovery work (original audit, pre-remediation): **41 COVERED / 16 WEAK / 36
+  MISSING**.
+- After the recovery audit's test remediation and this turn's source fix: small residual of **2
+  WEAK, non-critical** items (listed above); **0 MISSING critical items**; all other items COVERED.
+  (Exact per-item re-derivation of all 93 was not repeated this turn; the independent reviewer
+  spot-checked broadly across sections A-I rather than re-deriving line-by-line, consistent with the
+  prior audit's own itemization.)
+
+### No real execution or dataset access
+
+Confirmed: no `/Volumes` path was accessed at any point in this step; no dataset, checkpoint file,
+generated pilot artifact, or completed real pilot output was read, written, or modified; the real
+pilot was not rerun; no real training or inference was executed; only the existing unit-test suite
+(ambient and isolated-environment `pytest`) and static-analysis tools (`ruff`, `mypy`) ran.
+
+### Final verdict: `TEST_RECOVERY_AUDIT_PASS`
+
+The checkpoint-reload source defect is fixed under the strict narrow boundary, the isolated
+environment has zero failures (78 passed, 0 failed), no critical requirement remains WEAK or
+MISSING, and independent review passed.
+
+Wave 4 remains `BLOCKED`. Wave 5 remains blocked and unreleased.
