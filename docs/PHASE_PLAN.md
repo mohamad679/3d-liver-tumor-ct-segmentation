@@ -2354,6 +2354,22 @@ optimizer, loss, device, AMP, seed, step budget, checkpoint candidates, or selec
 changed. No real data was accessed, no real patches were materialized, no definitive training was
 executed, and no checkpoint selection or freeze occurred under this decision.
 
+### Phase 8 Definitive Sampling RNG Closure Implementation Note
+
+Status: implementation and synthetic-test completed locally on 2026-08-08 under
+`P8-DEFINITIVE-SAMPLING-RNG-POLICY-V1` (see `docs/DECISIONS.md`). This is a minimal corrective
+closure of the patch-materialization substage above, not a new substage: it makes the already-used
+decoupled case-selection RNG (`np.random.default_rng(config.seed)`, one draw per step) and
+patch-sampling RNG (`np.random.default_rng([config.seed, step_index, role])`) an explicit,
+hash-bound policy on the schedule (`rng_policy_identifier`/`rng_policy_version`), and documents
+explicitly that this decoupled realization is not claimed to be bit-for-bit identical to the
+earlier shared-stream implementation used before patch materialization existed. The approved
+sampling distribution (seed 1729, 1:1 ratio, positive-case rotation, deterministic-uniform negative
+draws over the approved case-reference sequence, patch size `[64, 64, 32]`) is unchanged, and no
+model/preprocessing/training hyperparameter, step budget, checkpoint step, validation policy, or
+selection metric changed. No real data was accessed and no definitive training was executed under
+this decision.
+
 ## Implementation Notes and Command Results
 
 Phase 0 implemented only the environment contract, repository structure, quality gates, temporary synthetic fixture strategy, validation helper, and `protoem-ct validate-pair` CLI smoke path.

@@ -635,3 +635,43 @@
   train from those patches without ever repeating full-volume preprocessing inside the optimizer
   loop. This decision does not select a checkpoint, freeze preprocessing, or release Wave 4/5, and
   does not by itself authorize real definitive training execution.
+
+### 2026-08-08: Lock Definitive Sampling RNG Streams (Implementation Only)
+
+- Status: accepted
+- Context: `P8-DEFINITIVE-SAMPLING-RNG-POLICY-V1`. The patch-request schedule necessarily separates
+  case-selection RNG from within-case voxel/patch-sampling RNG (case selection must be resolvable
+  before any medical volume loads), whereas the earlier in-memory training paths
+  (`run_definitive_training_from_references`, `run_definitive_continuous_training_with_snapshots`)
+  used one shared RNG stream for both. This is a decoupling of RNG streams, not a change to the
+  approved sampling distribution, but it needed an explicit, hash-bound reproducibility contract
+  instead of an implicit one, and the documentation needed to explicitly disclaim any false
+  bit-for-bit equivalence to the old shared-stream realization.
+- Decision: The RNG-stream policy is now explicit and hash-bound. `base_seed = config.seed`
+  (1729). `case_selection_rng`: one `np.random.default_rng(base_seed)` stream used only for
+  negative-case-reference selection, one `integers(0, len(case_references))` draw per optimizer
+  step, over the approved ordered `case_references` sequence. `positive_case_selection`: no RNG --
+  `positive_refs[step_index % len(positive_refs)]`, unchanged. `patch_sampling_rng`: one
+  `np.random.default_rng([base_seed, step_index, 0 if role == "positive" else 1])` stream per patch
+  request, used only for that request's voxel/patch sampling; retries for an all-background
+  negative patch consume only that request's own stream and cannot alter any other request's
+  stream or any case selection, because each request constructs a fresh, independent generator.
+  `Phase8DefinitivePatchSchedule` now carries `rng_policy_identifier` /
+  `rng_policy_version` (`PHASE8_DEFINITIVE_SAMPLING_RNG_POLICY_IDENTIFIER` /
+  `_VERSION`, both `"P8-DEFINITIVE-SAMPLING-RNG-POLICY-V1"` / `"v1"`), fail-closed validated in
+  `__post_init__` and included in the schedule's self-hash payload, so a schedule built under a
+  different RNG-policy identifier/version has a different identity or fails validation. The module
+  docstring and the `build_definitive_patch_request_schedule` docstring now explicitly state that
+  the old shared-stream behavior was used only before definitive patch materialization existed,
+  remains exactly as implemented there, and is not claimed to be bit-for-bit reproduced by the new
+  decoupled streams -- only the approved sampling distribution (seed 1729, 1:1 ratio, positive
+  rotation, deterministic-uniform negative draws over the approved case-reference sequence, patch
+  size `[64, 64, 32]`, foreground/background semantics) is preserved. No model, preprocessing, or
+  training hyperparameter changed; 500 steps, checkpoints 250/500, 20-case full validation, mean
+  tumor Dice selection, and the 0.5 threshold are all unchanged. No real definitive training had
+  occurred before this policy was fixed, so no scientific result is changed or invalidated. No real
+  data was accessed and no definitive training was executed under this decision.
+- Consequences: Future real definitive-training execution has an unambiguous, hash-verifiable RNG
+  contract for the decoupled schedule/materialization design, and any future attempt to change the
+  RNG derivation rules must introduce a new, separately approved RNG-policy identifier/version
+  rather than silently reinterpreting the existing one.

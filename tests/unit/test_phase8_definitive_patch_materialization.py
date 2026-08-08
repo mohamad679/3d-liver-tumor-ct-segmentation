@@ -36,6 +36,7 @@ from protoem_ct.external.definitive_pipeline import (
     build_definitive_patch_request_schedule,
     build_definitive_training_execution_policy_v1,
     materialize_definitive_training_patches,
+    sample_foreground_aware_patches,
 )
 
 requires_baseline_environment = pytest.mark.skipif(
@@ -235,6 +236,253 @@ def test_schedule_rejects_unknown_positive_case_id() -> None:
         build_definitive_patch_request_schedule(
             case_references, positive_case_ids={"case_missing"}, config=config, policy=policy
         )
+
+
+# ---------------------------------------------------------------------------
+# N (RNG closure). Decoupled case-selection / patch-sampling RNG policy
+# (P8-DEFINITIVE-SAMPLING-RNG-POLICY-V1)
+# ---------------------------------------------------------------------------
+
+
+def test_schedule_has_expected_rng_policy_identifier_and_version() -> None:
+    config = build_definitive_config_v1()
+    policy = build_definitive_training_execution_policy_v1()
+    case_references = [Phase8DefinitiveTrainCaseReference(case_id=f"case_{i}") for i in range(3)]
+
+    schedule = build_definitive_patch_request_schedule(
+        case_references, positive_case_ids={"case_0"}, config=config, policy=policy
+    )
+
+    assert (
+        schedule.rng_policy_identifier
+        == definitive_pipeline.PHASE8_DEFINITIVE_SAMPLING_RNG_POLICY_IDENTIFIER
+    )
+    assert (
+        schedule.rng_policy_version
+        == definitive_pipeline.PHASE8_DEFINITIVE_SAMPLING_RNG_POLICY_VERSION
+    )
+
+
+def test_negative_case_selection_independent_of_patch_sampling_stream_activity() -> None:
+    """Case selection uses its own fresh stream, never one shared with patch sampling.
+
+    Consuming an unrelated ``patch_sampling_rng``-shaped stream between two
+    otherwise-identical schedule builds must not perturb the resulting
+    negative-case-selection sequence, because
+    ``_build_definitive_patch_request_schedule_core`` constructs a brand-new
+    ``case_selection_rng`` from ``seed`` on every call and never reads or
+    advances any external generator.
+    """
+
+    config = build_definitive_config_v1()
+    policy = build_definitive_training_execution_policy_v1()
+    case_references = [Phase8DefinitiveTrainCaseReference(case_id=f"case_{i}") for i in range(4)]
+
+    schedule_before = build_definitive_patch_request_schedule(
+        case_references, positive_case_ids={"case_0"}, config=config, policy=policy
+    )
+
+    # Simulate arbitrary, heavy patch-sampling-stream activity (as if many
+    # negative-patch retries had occurred during materialization) in between
+    # the two schedule builds.
+    unrelated_patch_rng = np.random.default_rng([config.seed, 0, 1])
+    for _ in range(97):
+        unrelated_patch_rng.integers(0, 10**6)
+
+    schedule_after = build_definitive_patch_request_schedule(
+        case_references, positive_case_ids={"case_0"}, config=config, policy=policy
+    )
+
+    assert schedule_before.entries == schedule_after.entries
+    assert schedule_before.schedule_hash == schedule_after.schedule_hash
+
+
+@pytest.mark.parametrize("shift", [0, 1])
+def test_negative_case_selection_independent_of_patch_content(tmp_path: Path, shift: int) -> None:
+    """Different case image/label content cannot change future case selections.
+
+    Schedule generation never inspects ``case.image``/``case.label_binary``
+    (it operates on ``Phase8DefinitiveTrainCaseReference``, which holds only
+    ``case_id``), so materializing patches from two entirely different
+    synthetic datasets under the same schedule must not change which cases
+    later steps request.
+    """
+
+    config = build_definitive_config_v1()
+    policy = build_definitive_training_execution_policy_v1()
+    case_references = [
+        Phase8DefinitiveTrainCaseReference(case_id=c) for c in ("case_pos", "case_neg")
+    ]
+    schedule = _small_schedule(
+        case_references, positive_case_ids={"case_pos"}, config=config, policy=policy, total_steps=4
+    )
+
+    class _ShiftedLoader:
+        def __init__(self, *, offset: int) -> None:
+            self._offset = offset
+            self.calls: list[str] = []
+
+        def __call__(self, case_id: str) -> Phase8DefinitiveTrainCase:
+            self.calls.append(case_id)
+            rng = np.random.default_rng(abs(hash((case_id, self._offset))) % (2**32))
+            image = rng.uniform(-1.0, 1.0, size=_SHAPE).astype(np.float32)
+            label = np.zeros(_SHAPE, dtype=bool)
+            if case_id == "case_pos":
+                # Different foreground location depending on `offset`, so the
+                # underlying volume content genuinely differs between runs.
+                start = 100 + self._offset * 10
+                label[start : start + 4, start : start + 4, 40:44] = True
+            return Phase8DefinitiveTrainCase(case_id=case_id, image=image, label_binary=label)
+
+    patch_root = tmp_path / f"patches_{shift}"
+    patch_root.mkdir()
+    loader = _ShiftedLoader(offset=shift)
+
+    materialize_definitive_training_patches(
+        schedule,
+        case_references=case_references,
+        positive_case_ids={"case_pos"},
+        loader=loader,
+        patch_root=patch_root,
+        config=config,
+    )
+
+    # Regardless of how the underlying volume content differed, the fixed
+    # schedule (built independently of any case content) still drove the
+    # exact same, unchanged sequence of case loads.
+    assert loader.calls == list(schedule.case_reference_ids)
+
+
+def test_positive_case_rotation_unchanged_by_rng_policy_closure() -> None:
+    config = build_definitive_config_v1()
+    policy = build_definitive_training_execution_policy_v1()
+    case_references = [
+        Phase8DefinitiveTrainCaseReference(case_id=c)
+        for c in ("case_0", "case_1", "case_2", "case_3")
+    ]
+    positive_ids = {"case_1", "case_3"}
+
+    schedule = build_definitive_patch_request_schedule(
+        case_references, positive_case_ids=positive_ids, config=config, policy=policy
+    )
+
+    positive_refs = [
+        reference.case_id for reference in case_references if reference.case_id in positive_ids
+    ]
+    expected = [positive_refs[i % len(positive_refs)] for i in range(500)]
+    actual = [entry.positive_case_id for entry in schedule.entries]
+    assert actual == expected
+
+
+def test_patch_subseed_differs_by_role_and_step_and_matches_documented_formula(
+    tmp_path: Path,
+) -> None:
+    config = build_definitive_config_v1()
+    policy = build_definitive_training_execution_policy_v1()
+    case_references = [
+        Phase8DefinitiveTrainCaseReference(case_id=c) for c in ("case_pos", "case_neg")
+    ]
+    schedule = _small_schedule(
+        case_references, positive_case_ids={"case_pos"}, config=config, policy=policy, total_steps=4
+    )
+    patch_root = tmp_path / "patches"
+    patch_root.mkdir()
+
+    result = materialize_definitive_training_patches(
+        schedule,
+        case_references=case_references,
+        positive_case_ids={"case_pos"},
+        loader=_LazyCaseLoader(positive_ids={"case_pos"}),
+        patch_root=patch_root,
+        config=config,
+    )
+
+    # The documented derivation entropy tuple -- [seed, step_index, 0 if
+    # positive else 1] -- is pairwise distinct across every (step, role)
+    # request, so every request draws from its own independent subseed
+    # rather than a shared/reused stream. (Sampled *content* is not asserted
+    # unique here: with a small synthetic foreground region, two distinct
+    # subseeds can legitimately land on the same foreground voxel by chance
+    # -- that is a property of this tiny fixture, not of subseed identity.)
+    entropy_tuples = [
+        (config.seed, record.step_index, 0 if record.role == "positive" else 1)
+        for record in result.published_patches
+    ]
+    assert len(entropy_tuples) == len(set(entropy_tuples))
+
+    # The documented derivation -- np.random.default_rng([seed, step_index,
+    # 0 if positive else 1]) -- reproduces the published step-0 positive
+    # patch exactly.
+    reference_case = _make_synthetic_train_case("case_pos", positive=True)
+    expected_rng = np.random.default_rng([config.seed, 0, 0])
+    expected_patch = sample_foreground_aware_patches(
+        reference_case.image,
+        reference_case.label_binary,
+        config=config,
+        positive_count=1,
+        negative_count=0,
+        rng=expected_rng,
+    )[0]
+    with np.load(patch_root / "step_0000_positive.npz") as archive:
+        actual_image = np.asarray(archive["image"])
+    np.testing.assert_array_equal(actual_image, expected_patch.image_patch.astype(np.float32))
+
+
+def test_schedule_hash_binds_rng_policy_identifier_and_version() -> None:
+    config = build_definitive_config_v1()
+    policy = build_definitive_training_execution_policy_v1()
+    case_references = [Phase8DefinitiveTrainCaseReference(case_id=f"case_{i}") for i in range(3)]
+    schedule = build_definitive_patch_request_schedule(
+        case_references, positive_case_ids={"case_0"}, config=config, policy=policy
+    )
+
+    payload_a = definitive_pipeline._patch_schedule_payload(
+        schedule_identifier=schedule.schedule_identifier,
+        config_hash=schedule.config_hash,
+        policy_hash=schedule.policy_hash,
+        seed=schedule.seed,
+        total_optimizer_steps=schedule.total_optimizer_steps,
+        case_reference_ids=schedule.case_reference_ids,
+        positive_case_ids=schedule.positive_case_ids,
+        entries=schedule.entries,
+        rng_policy_identifier=schedule.rng_policy_identifier,
+        rng_policy_version=schedule.rng_policy_version,
+    )
+    payload_b = dict(payload_a)
+    payload_b["rng_policy_version"] = "v2-different"
+
+    from protoem_ct.artifacts.hashing import sha256_json
+
+    assert sha256_json(payload_a) != sha256_json(payload_b)
+    assert sha256_json(payload_a) == schedule.schedule_hash
+
+
+def test_schedule_rejects_tampered_rng_policy_identifier() -> None:
+    config = build_definitive_config_v1()
+    policy = build_definitive_training_execution_policy_v1()
+    case_references = [Phase8DefinitiveTrainCaseReference(case_id=f"case_{i}") for i in range(3)]
+    schedule = build_definitive_patch_request_schedule(
+        case_references, positive_case_ids={"case_0"}, config=config, policy=policy
+    )
+
+    payload = {f.name: getattr(schedule, f.name) for f in dataclasses.fields(schedule)}
+    payload["rng_policy_identifier"] = "WRONG-RNG-POLICY-ID"
+    with pytest.raises(Phase8DefinitivePatchScheduleError):
+        Phase8DefinitivePatchSchedule(**payload)
+
+
+def test_schedule_rejects_tampered_rng_policy_version() -> None:
+    config = build_definitive_config_v1()
+    policy = build_definitive_training_execution_policy_v1()
+    case_references = [Phase8DefinitiveTrainCaseReference(case_id=f"case_{i}") for i in range(3)]
+    schedule = build_definitive_patch_request_schedule(
+        case_references, positive_case_ids={"case_0"}, config=config, policy=policy
+    )
+
+    payload = {f.name: getattr(schedule, f.name) for f in dataclasses.fields(schedule)}
+    payload["rng_policy_version"] = "v999"
+    with pytest.raises(Phase8DefinitivePatchScheduleError):
+        Phase8DefinitivePatchSchedule(**payload)
 
 
 # ---------------------------------------------------------------------------

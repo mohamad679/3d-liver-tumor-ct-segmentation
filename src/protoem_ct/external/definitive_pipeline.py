@@ -98,6 +98,10 @@ PHASE8_DEFINITIVE_CONFIG_DESIGN_IDENTIFIER: Final[str] = "PHASE8-DEFINITIVE-CONF
 PHASE8_DEFINITIVE_PATCH_MATERIALIZATION_DESIGN_IDENTIFIER: Final[str] = (
     "P8-DEFINITIVE-PATCH-MATERIALIZATION-V1"
 )
+PHASE8_DEFINITIVE_SAMPLING_RNG_POLICY_IDENTIFIER: Final[str] = (
+    "P8-DEFINITIVE-SAMPLING-RNG-POLICY-V1"
+)
+PHASE8_DEFINITIVE_SAMPLING_RNG_POLICY_VERSION: Final[str] = "v1"
 
 # Locked preprocessing values.
 REQUIRED_ORIENTATION_POLICY: Final[str] = "ras"
@@ -2618,16 +2622,44 @@ def run_definitive_continuous_training_with_snapshots_and_watchdog(
 # This section fixes, before any medical volume is loaded, exactly which
 # positive/negative case each of the 500 optimizer steps will need.
 #
-# The negative-case-selection RNG here is a dedicated stream
-# (``np.random.default_rng(seed)``, one ``integers(0, len(case_references))``
-# draw per step) used *only* for case selection. It is intentionally
-# decoupled from the separate patch-voxel-position RNG used later during
-# materialization (Section O): case selection must be resolvable purely from
-# case IDs, before any real image/label array exists, so it cannot share a
-# stream with sampling draws whose count depends on real volume content
-# (e.g. negative-patch retry attempts). Positive-case rotation
-# (``positive_refs[step_index % len(positive_refs)]``) is identical to the
-# existing loader-based continuous-training path and needs no RNG at all.
+# ``P8-DEFINITIVE-SAMPLING-RNG-POLICY-V1`` (hash-bound into every schedule via
+# ``rng_policy_identifier``/``rng_policy_version`` below) fixes exactly three
+# independent, deterministic RNG rules, all rooted in the single locked
+# ``base_seed = config.seed`` (1729):
+#
+#   * ``case_selection_rng``: one ``np.random.default_rng(base_seed)`` stream
+#     used *only* for negative-case-reference selection, drawing exactly one
+#     ``integers(0, len(case_references))`` per optimizer step, over the
+#     approved ordered ``case_references`` sequence (already hash-bound by
+#     the schedule itself).
+#   * ``positive_case_selection``: no RNG at all --
+#     ``positive_refs[step_index % len(positive_refs)]``, unchanged from the
+#     existing loader-based continuous-training path.
+#   * ``patch_sampling_rng``: one ``np.random.default_rng([base_seed,
+#     step_index, 0 if role == "positive" else 1])`` stream per patch
+#     request, used *only* for that request's voxel/patch sampling (Section
+#     O). Retries for an all-background negative patch consume only that
+#     request's own stream and can never affect ``case_selection_rng`` or any
+#     other request's stream, because each request constructs a brand-new,
+#     independent generator rather than sharing one running stream.
+#
+# This is a decoupling of RNG *streams*, not a change to the approved
+# sampling *distribution*: seed 1729, the 1:1 positive:negative ratio,
+# positive-case rotation, deterministic-uniform negative-case draws over the
+# approved ordered train-reference sequence, patch size [64, 64, 32], and
+# foreground/background patch semantics are all unchanged. The prior
+# in-memory/loader-based training paths
+# (:func:`run_definitive_training_from_references`,
+# :func:`run_definitive_continuous_training_with_snapshots`) used one shared
+# RNG stream for both negative-case selection and patch-voxel/retry
+# sampling; that shared-stream behavior was used only before definitive
+# patch materialization existed and remains exactly as implemented there.
+# The decoupled streams here therefore produce a different exact random
+# realization than that shared-stream path would have produced for the same
+# seed -- this module does not claim, and must never be read to claim,
+# bit-for-bit equivalence to that earlier shared-stream realization. No real
+# definitive training had occurred before this RNG policy was fixed, so no
+# scientific result is being changed or invalidated by this distinction.
 
 
 def _patch_schedule_payload(
@@ -2640,6 +2672,8 @@ def _patch_schedule_payload(
     case_reference_ids: Sequence[str],
     positive_case_ids: Sequence[str],
     entries: Sequence[Phase8DefinitivePatchScheduleEntry],
+    rng_policy_identifier: str,
+    rng_policy_version: str,
 ) -> dict[str, JsonValue]:
     return {
         "case_reference_ids": list(case_reference_ids),
@@ -2654,6 +2688,8 @@ def _patch_schedule_payload(
         ],
         "policy_hash": policy_hash,
         "positive_case_ids": list(positive_case_ids),
+        "rng_policy_identifier": rng_policy_identifier,
+        "rng_policy_version": rng_policy_version,
         "schedule_identifier": schedule_identifier,
         "seed": seed,
         "total_optimizer_steps": total_optimizer_steps,
@@ -2686,6 +2722,8 @@ class Phase8DefinitivePatchSchedule:
     case_reference_ids: tuple[str, ...]
     positive_case_ids: tuple[str, ...]
     entries: tuple[Phase8DefinitivePatchScheduleEntry, ...]
+    rng_policy_identifier: str
+    rng_policy_version: str
     schedule_hash: str
 
     def __post_init__(self) -> None:
@@ -2693,6 +2731,15 @@ class Phase8DefinitivePatchSchedule:
             raise Phase8DefinitivePatchScheduleError(
                 "schedule_identifier must equal "
                 f"{PHASE8_DEFINITIVE_PATCH_MATERIALIZATION_DESIGN_IDENTIFIER!r}."
+            )
+        if self.rng_policy_identifier != PHASE8_DEFINITIVE_SAMPLING_RNG_POLICY_IDENTIFIER:
+            raise Phase8DefinitivePatchScheduleError(
+                f"rng_policy_identifier must equal "
+                f"{PHASE8_DEFINITIVE_SAMPLING_RNG_POLICY_IDENTIFIER!r}."
+            )
+        if self.rng_policy_version != PHASE8_DEFINITIVE_SAMPLING_RNG_POLICY_VERSION:
+            raise Phase8DefinitivePatchScheduleError(
+                f"rng_policy_version must equal {PHASE8_DEFINITIVE_SAMPLING_RNG_POLICY_VERSION!r}."
             )
         object.__setattr__(self, "case_reference_ids", tuple(self.case_reference_ids))
         object.__setattr__(self, "positive_case_ids", tuple(self.positive_case_ids))
@@ -2721,6 +2768,8 @@ class Phase8DefinitivePatchSchedule:
                 case_reference_ids=self.case_reference_ids,
                 positive_case_ids=self.positive_case_ids,
                 entries=self.entries,
+                rng_policy_identifier=self.rng_policy_identifier,
+                rng_policy_version=self.rng_policy_version,
             ),
         )
 
@@ -2791,6 +2840,8 @@ def _build_definitive_patch_request_schedule_core(
         case_reference_ids=case_reference_ids,
         positive_case_ids=sorted_positive_case_ids,
         entries=entries,
+        rng_policy_identifier=PHASE8_DEFINITIVE_SAMPLING_RNG_POLICY_IDENTIFIER,
+        rng_policy_version=PHASE8_DEFINITIVE_SAMPLING_RNG_POLICY_VERSION,
     )
     return Phase8DefinitivePatchSchedule(
         schedule_identifier=PHASE8_DEFINITIVE_PATCH_MATERIALIZATION_DESIGN_IDENTIFIER,
@@ -2801,6 +2852,8 @@ def _build_definitive_patch_request_schedule_core(
         case_reference_ids=case_reference_ids,
         positive_case_ids=sorted_positive_case_ids,
         entries=tuple(entries),
+        rng_policy_identifier=PHASE8_DEFINITIVE_SAMPLING_RNG_POLICY_IDENTIFIER,
+        rng_policy_version=PHASE8_DEFINITIVE_SAMPLING_RNG_POLICY_VERSION,
         schedule_hash=sha256_json(payload),
     )
 
@@ -2817,15 +2870,17 @@ def build_definitive_patch_request_schedule(
 
     Every entry fixes one positive and one negative case ID for one
     optimizer step, in exact step order, using the same positive-case
-    rotation and negative-case-selection algorithm as the existing
-    loader-based continuous-training case-selection logic (see the module
-    note above this section for why the negative-case RNG stream is
-    decoupled from patch-position sampling). This function performs no
-    dataset discovery, no filesystem access, and no medical-volume loading;
-    it is a pure function of ``case_references`` order, ``positive_case_ids``,
-    and ``config.seed``. ``case_references`` order is preserved exactly as
-    supplied -- there is no internal sorting or renumbering, matching
-    :func:`run_definitive_training_from_references`.
+    rotation formula and negative-case-selection algorithm as the existing
+    loader-based continuous-training case-selection logic, now made
+    explicit and hash-bound as ``P8-DEFINITIVE-SAMPLING-RNG-POLICY-V1`` (see
+    the module note above this section for the exact rule and for why this
+    is a decoupled-stream reproducibility contract, not a claim of
+    bit-for-bit equivalence to the earlier shared-stream implementation).
+    This function performs no dataset discovery, no filesystem access, and
+    no medical-volume loading; it is a pure function of ``case_references``
+    order, ``positive_case_ids``, and ``config.seed``. ``case_references``
+    order is preserved exactly as supplied -- there is no internal sorting
+    or renumbering, matching :func:`run_definitive_training_from_references`.
     """
 
     if policy.total_optimizer_steps != _POLICY_TOTAL_OPTIMIZER_STEPS:
