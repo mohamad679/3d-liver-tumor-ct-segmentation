@@ -299,6 +299,12 @@ method is piloted.
    in physical units is undefined and cross-case comparability of learned
    features is compromised.
 
+   *Forward reference:* this open question was subsequently resolved and
+   approved under `PHASE8-DEFINITIVE-TRAIN-SPACING-V1` (see
+   `docs/DECISIONS.md`); this audit section is preserved as-written and
+   describes the state at the time of this historical audit, not the
+   current approved policy.
+
 3. **Orientation-handling policy.** Options: (a) reorient all volumes to a
    canonical orientation before training; (b) assume/verify native
    orientation consistency and skip reorientation. Nothing currently

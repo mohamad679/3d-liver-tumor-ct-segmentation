@@ -675,3 +675,42 @@
   contract for the decoupled schedule/materialization design, and any future attempt to change the
   RNG derivation rules must introduce a new, separately approved RNG-policy identifier/version
   rather than silently reinterpreting the existing one.
+
+### 2026-08-08: Record Definitive Train Spacing Provenance (PHASE8-DEFINITIVE-TRAIN-SPACING-V1)
+
+- Status: accepted
+- Context: `Phase8DefinitiveConfig` deliberately carries no spacing field -- the locked design leaves
+  target spacing as a runtime derivation (`compute_median_train_spacing`) rather than a hard-coded
+  constant, and `docs/phase8/DEFINITIVE_CONFIG_AUDIT.md` recorded voxel-spacing/resampling policy as
+  an open, unapproved question at the time of that audit. The real derivation was subsequently
+  performed by the Package B engineering-verification run
+  (`/Volumes/Lexar/ProtoEM-CT/runs/phase8_package_b_engineering_verification_v1/`, already referenced
+  in the `Materialize Definitive Training Patches Sequentially` decision above via its measured
+  preprocessing/training timings) and explicitly approved by the user under
+  `APPROVAL: PHASE8-REAL-DEFINITIVE-DEVELOPMENT-TRAINING-V1` with `train_target_spacing:
+  [0.767578125, 0.767578125, 1.0]`. This entry records that already-approved provenance so it is
+  discoverable from `docs/DECISIONS.md`; it does not perform, repeat, or authorize any new spacing
+  computation.
+- Decision: The approved definitive-training target spacing is `[0.767578125, 0.767578125, 1.0]`
+  mm, componentwise median voxel spacing over all 91 DEVELOPMENT TRAIN cases only, computed after
+  RAS reorientation. Source provenance: development manifest hash
+  `c24244951e050050cf25c4b321f67d61c2087fc0c93fdcf9d112e0e488e1384b`
+  (`/Volumes/Lexar/ProtoEM-CT/runs/phase2_real_lits_v2/manifest.json`) and development split hash
+  `936376cd7b5e6070397c2fef16e5125c60fd6569ff3188d7e9bb5428a46ffadb`
+  (`/Volumes/Lexar/ProtoEM-CT/runs/phase2_real_lits_v2/split.json`), both verified against the
+  Package B engineering report
+  (`phase8_package_b_engineering_verification_v1/phase8_package_b_engineering_report.json`), whose
+  `derived_median_spacing` field records exactly `[0.767578125, 0.767578125, 1.0]` and whose
+  `train_case_count_for_spacing` field records exactly `91`. The Package-B preprocessing/config
+  identity containing the derived spacing is
+  `286b4a200c147718cfe885850e670254a52e8e1ec5d9683d78fd36af4f293d37` (that report's
+  `preprocessing_config_hash` field). Provenance boundary: TRAIN cases only; no development-
+  validation spacing was used in the derivation; no internal-test volume was opened
+  (`internal_test_case_count_present_but_excluded: 20` in the same report); no external data or
+  external labels were used. Status: approved for definitive development preprocessing.
+- Consequences: A real Package C definitive-training execution may use this target spacing without
+  re-deriving it, citing this decision and the underlying Package B engineering report as
+  provenance. This decision does not itself authorize training execution, does not change
+  `Phase8DefinitiveConfig` (spacing remains a runtime-supplied value, not a config field), and does
+  not modify any prior decision's content -- including the historical open-question language
+  preserved as-written in `docs/phase8/DEFINITIVE_CONFIG_AUDIT.md`.
