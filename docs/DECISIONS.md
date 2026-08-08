@@ -538,3 +538,49 @@
   simultaneously. Any future change to the locked architecture values requires a new, separately
   approved design identifier. This decision does not select a checkpoint, freeze preprocessing, or
   release Wave 4/5.
+
+### 2026-08-08: Approve Definitive Training Orchestration Policy (Implementation Only)
+
+- Status: accepted
+- Context: `PHASE8-DEFINITIVE-TRAINING-POLICY-V1`. Package A (`definitive_pipeline.py`) implemented
+  locked preprocessing, patch sampling, a single training-step helper, and single-case validation,
+  but had no policy for how many optimizer steps a real definitive run uses, which checkpoints are
+  compared, how full-cohort validation is enforced, or how a checkpoint is selected. This substage
+  implements and synthetically tests that orchestration without executing any real definitive
+  training.
+- Decision: `Phase8DefinitiveTrainingExecutionPolicy` is a new immutable, hash-bound, LOCKED
+  dataclass (single constructor `build_definitive_training_execution_policy_v1()`) fixing:
+  `total_optimizer_steps=500`; `candidate_checkpoint_steps=(250, 500)`; `early_stopping=False`;
+  `resume_policy="none"`; `maximum_wall_clock_seconds=36000.0`; `validation_expected_case_count=20`;
+  `full_validation_required_for_every_candidate=True`;
+  `subset_validation_for_checkpoint_selection=False`; `checkpoint_selection_metric="mean_tumor_dice"`;
+  `tie_break_policy="earliest_checkpoint_step"`; `internal_test_used_for_selection=False`;
+  `external_data_used_for_selection=False`; `external_labels_used_for_selection=False`. Any
+  deviation fails closed in `__post_init__`.
+  `run_definitive_continuous_training_with_snapshots_and_watchdog` trains the model and optimizer
+  as one continuous 500-step trajectory (single seed/construction call, no reinitialization at step
+  250), taking a deep-copied `state_dict` snapshot only after steps 250 and 500 complete, and is
+  wrapped in a `multiprocessing` spawn/Pipe process-level watchdog (mirroring
+  `definitive_training_pilot.py`'s `run_phase8_bounded_pilot_with_watchdog`) that fails closed with
+  `Phase8DefinitiveTrainingWatchdogTimeoutError` on timeout with no partial checkpoint selection and
+  no automatic resume. `run_definitive_full_validation` requires exactly 20 unique validation case
+  IDs (fails closed on 19, 21, or any duplicate), loads and evaluates cases one at a time via a
+  caller-supplied loader with no persistent full-volume cache, and computes `mean_tumor_dice` only
+  from finite per-case tumor Dice values. `select_definitive_checkpoint` requires both candidates to
+  share the identical 20-case set, rejects any non-finite Dice or step outside `{250, 500}`, selects
+  the higher `mean_tumor_dice`, and on an exact tie selects step 250; its signature has no loss or
+  IoU input, so neither can influence selection. `build_definitive_checkpoint_selection_evidence`
+  produces a self-hashed `Phase8DefinitiveCheckpointSelectionEvidence` recording both candidates'
+  checkpoint hashes, both mean-Dice values, the selected step/hash, the selection metric, the
+  tie-break policy, and hard-locked `internal_test_used=False` / `external_data_used=False` /
+  `external_labels_used=False` flags -- this is selection evidence, not a Phase 8 freeze artifact.
+  Checkpoint publication reuses the existing `Phase8CheckpointMetadata` schema unchanged (via the
+  existing `build_definitive_checkpoint_metadata`, still hard-locked to `freeze_eligible=False`) and
+  rejects overwrite. No real dataset, `/Volumes` path, or prior real checkpoint hash appears in the
+  new code; a static-scan unit test enforces this. No definitive training was executed and no real
+  checkpoint was selected under this decision.
+- Consequences: A future approved real definitive-training session can call this orchestration
+  end-to-end against the real 91-case development TRAIN partition and the 20-case development
+  VALIDATION partition to produce genuine selection evidence, but this decision by itself does not
+  authorize that execution, does not freeze preprocessing/support/threshold/checkpoint decisions,
+  and does not release Wave 4 or Wave 5.

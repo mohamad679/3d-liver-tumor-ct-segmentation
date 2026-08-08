@@ -49,14 +49,25 @@ reuse its hard-locked, pilot-only, non-definitive dataclasses.
 
 from __future__ import annotations
 
+import copy
+import hashlib
+import io
 import math
-from collections.abc import Callable, Sequence
+import multiprocessing
+import os
+import re
+import time
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from multiprocessing.connection import Connection
+from multiprocessing.context import BaseContext
+from pathlib import Path
 from typing import Any, Final, Protocol, cast
 
 import numpy as np
 
 from protoem_ct.artifacts.hashing import JsonValue, sha256_json
+from protoem_ct.data.phase2_paths import validate_explicit_external_output_root
 from protoem_ct.external.internal_evidence import (
     PHASE8_CHECKPOINT_METADATA_SCHEMA_NAME,
     PHASE8_INTERNAL_EVIDENCE_SCHEMA_VERSION,
@@ -64,6 +75,8 @@ from protoem_ct.external.internal_evidence import (
     Phase8CheckpointMetadata,
     hash_phase8_checkpoint_metadata,
 )
+
+_SHA256_HEX_RE: Final[re.Pattern[str]] = re.compile(r"^[0-9a-f]{64}$")
 
 # ---------------------------------------------------------------------------
 # Design identity
@@ -142,6 +155,27 @@ class Phase8DefinitivePipelineRuntimeError(Phase8DefinitivePipelineError):
 
 class Phase8DefinitivePipelineCheckpointError(Phase8DefinitivePipelineError):
     """Raised when checkpoint metadata construction violates a hard invariant."""
+
+
+class Phase8DefinitiveCheckpointPublicationError(Phase8DefinitivePipelineError):
+    """Raised when publishing a checkpoint snapshot violates a hard invariant."""
+
+
+class Phase8DefinitivePipelineValidationError(Phase8DefinitivePipelineError):
+    """Raised when full development-validation orchestration violates a hard invariant."""
+
+
+class Phase8DefinitivePipelineSelectionError(Phase8DefinitivePipelineError):
+    """Raised when checkpoint selection violates a hard invariant; fails closed."""
+
+
+class Phase8DefinitiveTrainingWatchdogTimeoutError(Phase8DefinitivePipelineRuntimeError):
+    """Raised when the process-level training watchdog kills a blocked child process.
+
+    No partial success is ever surfaced through this error: the caller must
+    make a fresh call to retry, and no checkpoint selection is ever performed
+    for the call that timed out.
+    """
 
 
 # ---------------------------------------------------------------------------
@@ -1381,3 +1415,1130 @@ def build_definitive_checkpoint_metadata(
         freeze_eligible=False,
         checkpoint_metadata_hash=checkpoint_metadata_hash,
     )
+
+
+# ---------------------------------------------------------------------------
+# G. Training execution policy (locked, hash-bound)
+# ---------------------------------------------------------------------------
+#
+# This policy governs the *engineering* orchestration of a real definitive
+# training run -- how many optimizer steps, which steps are candidate
+# checkpoints, and how a checkpoint is selected -- as distinct from the
+# *scientific* config above (preprocessing, architecture, optimizer
+# hyperparameters). Like ``Phase8DefinitiveConfig``, every field is
+# hard-locked: this dataclass is not caller-tunable and fails closed on any
+# deviation from the single approved ``PHASE8-DEFINITIVE-TRAINING-POLICY-V1``
+# design.
+
+PHASE8_DEFINITIVE_TRAINING_POLICY_IDENTIFIER: Final[str] = "PHASE8-DEFINITIVE-TRAINING-POLICY-V1"
+
+_POLICY_TOTAL_OPTIMIZER_STEPS: Final[int] = 500
+_POLICY_CANDIDATE_CHECKPOINT_STEPS: Final[tuple[int, int]] = (250, 500)
+_POLICY_EARLY_STOPPING: Final[bool] = False
+_POLICY_RESUME_POLICY: Final[str] = "none"
+_POLICY_MAXIMUM_WALL_CLOCK_SECONDS: Final[float] = 36000.0
+_POLICY_VALIDATION_EXPECTED_CASE_COUNT: Final[int] = 20
+_POLICY_FULL_VALIDATION_REQUIRED_FOR_EVERY_CANDIDATE: Final[bool] = True
+_POLICY_SUBSET_VALIDATION_FOR_CHECKPOINT_SELECTION: Final[bool] = False
+_POLICY_CHECKPOINT_SELECTION_METRIC: Final[str] = "mean_tumor_dice"
+_POLICY_TIE_BREAK_POLICY: Final[str] = "earliest_checkpoint_step"
+_POLICY_INTERNAL_TEST_USED_FOR_SELECTION: Final[bool] = False
+_POLICY_EXTERNAL_DATA_USED_FOR_SELECTION: Final[bool] = False
+_POLICY_EXTERNAL_LABELS_USED_FOR_SELECTION: Final[bool] = False
+
+
+def _training_policy_payload(
+    *,
+    policy_identifier: str,
+    total_optimizer_steps: int,
+    candidate_checkpoint_steps: Sequence[int],
+    early_stopping: bool,
+    resume_policy: str,
+    maximum_wall_clock_seconds: float,
+    validation_expected_case_count: int,
+    full_validation_required_for_every_candidate: bool,
+    subset_validation_for_checkpoint_selection: bool,
+    checkpoint_selection_metric: str,
+    tie_break_policy: str,
+    internal_test_used_for_selection: bool,
+    external_data_used_for_selection: bool,
+    external_labels_used_for_selection: bool,
+) -> dict[str, JsonValue]:
+    return {
+        "candidate_checkpoint_steps": list(candidate_checkpoint_steps),
+        "checkpoint_selection_metric": checkpoint_selection_metric,
+        "early_stopping": early_stopping,
+        "external_data_used_for_selection": external_data_used_for_selection,
+        "external_labels_used_for_selection": external_labels_used_for_selection,
+        "full_validation_required_for_every_candidate": (
+            full_validation_required_for_every_candidate
+        ),
+        "internal_test_used_for_selection": internal_test_used_for_selection,
+        "maximum_wall_clock_seconds": maximum_wall_clock_seconds,
+        "policy_identifier": policy_identifier,
+        "resume_policy": resume_policy,
+        "subset_validation_for_checkpoint_selection": (subset_validation_for_checkpoint_selection),
+        "tie_break_policy": tie_break_policy,
+        "total_optimizer_steps": total_optimizer_steps,
+        "validation_expected_case_count": validation_expected_case_count,
+    }
+
+
+@dataclass(frozen=True, slots=True)
+class Phase8DefinitiveTrainingExecutionPolicy:
+    """Immutable, LOCKED training-execution/checkpoint-selection policy.
+
+    Every field is hard-locked to the value approved under
+    ``PHASE8-DEFINITIVE-TRAINING-POLICY-V1``. This dataclass is not
+    caller-tunable: :meth:`__post_init__` fails closed with
+    :class:`Phase8DefinitivePipelineConfigError` if any field differs from
+    its required value. The only public constructor is
+    :func:`build_definitive_training_execution_policy_v1`.
+    """
+
+    policy_identifier: str
+    total_optimizer_steps: int
+    candidate_checkpoint_steps: tuple[int, int]
+    early_stopping: bool
+    resume_policy: str
+    maximum_wall_clock_seconds: float
+    validation_expected_case_count: int
+    full_validation_required_for_every_candidate: bool
+    subset_validation_for_checkpoint_selection: bool
+    checkpoint_selection_metric: str
+    tie_break_policy: str
+    internal_test_used_for_selection: bool
+    external_data_used_for_selection: bool
+    external_labels_used_for_selection: bool
+    policy_hash: str
+
+    def __post_init__(self) -> None:
+        if self.policy_identifier != PHASE8_DEFINITIVE_TRAINING_POLICY_IDENTIFIER:
+            raise Phase8DefinitivePipelineConfigError(
+                f"policy_identifier must equal {PHASE8_DEFINITIVE_TRAINING_POLICY_IDENTIFIER!r}."
+            )
+        if self.total_optimizer_steps != _POLICY_TOTAL_OPTIMIZER_STEPS:
+            raise Phase8DefinitivePipelineConfigError(
+                f"total_optimizer_steps must equal {_POLICY_TOTAL_OPTIMIZER_STEPS!r}."
+            )
+        object.__setattr__(
+            self,
+            "candidate_checkpoint_steps",
+            tuple(int(v) for v in self.candidate_checkpoint_steps),
+        )
+        if self.candidate_checkpoint_steps != _POLICY_CANDIDATE_CHECKPOINT_STEPS:
+            raise Phase8DefinitivePipelineConfigError(
+                f"candidate_checkpoint_steps must equal "
+                f"{_POLICY_CANDIDATE_CHECKPOINT_STEPS!r}, got "
+                f"{self.candidate_checkpoint_steps!r}."
+            )
+        if self.early_stopping is not _POLICY_EARLY_STOPPING:
+            raise Phase8DefinitivePipelineConfigError(
+                f"early_stopping must be {_POLICY_EARLY_STOPPING!r}."
+            )
+        if self.resume_policy != _POLICY_RESUME_POLICY:
+            raise Phase8DefinitivePipelineConfigError(
+                f"resume_policy must equal {_POLICY_RESUME_POLICY!r}."
+            )
+        if self.maximum_wall_clock_seconds != _POLICY_MAXIMUM_WALL_CLOCK_SECONDS:
+            raise Phase8DefinitivePipelineConfigError(
+                f"maximum_wall_clock_seconds must equal {_POLICY_MAXIMUM_WALL_CLOCK_SECONDS!r}."
+            )
+        if self.validation_expected_case_count != _POLICY_VALIDATION_EXPECTED_CASE_COUNT:
+            raise Phase8DefinitivePipelineConfigError(
+                f"validation_expected_case_count must equal "
+                f"{_POLICY_VALIDATION_EXPECTED_CASE_COUNT!r}."
+            )
+        if (
+            self.full_validation_required_for_every_candidate
+            is not _POLICY_FULL_VALIDATION_REQUIRED_FOR_EVERY_CANDIDATE
+        ):
+            raise Phase8DefinitivePipelineConfigError(
+                "full_validation_required_for_every_candidate must be "
+                f"{_POLICY_FULL_VALIDATION_REQUIRED_FOR_EVERY_CANDIDATE!r}."
+            )
+        if (
+            self.subset_validation_for_checkpoint_selection
+            is not _POLICY_SUBSET_VALIDATION_FOR_CHECKPOINT_SELECTION
+        ):
+            raise Phase8DefinitivePipelineConfigError(
+                "subset_validation_for_checkpoint_selection must be "
+                f"{_POLICY_SUBSET_VALIDATION_FOR_CHECKPOINT_SELECTION!r}."
+            )
+        if self.checkpoint_selection_metric != _POLICY_CHECKPOINT_SELECTION_METRIC:
+            raise Phase8DefinitivePipelineConfigError(
+                f"checkpoint_selection_metric must equal {_POLICY_CHECKPOINT_SELECTION_METRIC!r}."
+            )
+        if self.tie_break_policy != _POLICY_TIE_BREAK_POLICY:
+            raise Phase8DefinitivePipelineConfigError(
+                f"tie_break_policy must equal {_POLICY_TIE_BREAK_POLICY!r}."
+            )
+        if self.internal_test_used_for_selection is not _POLICY_INTERNAL_TEST_USED_FOR_SELECTION:
+            raise Phase8DefinitivePipelineConfigError(
+                "internal_test_used_for_selection must be "
+                f"{_POLICY_INTERNAL_TEST_USED_FOR_SELECTION!r}."
+            )
+        if self.external_data_used_for_selection is not _POLICY_EXTERNAL_DATA_USED_FOR_SELECTION:
+            raise Phase8DefinitivePipelineConfigError(
+                "external_data_used_for_selection must be "
+                f"{_POLICY_EXTERNAL_DATA_USED_FOR_SELECTION!r}."
+            )
+        if (
+            self.external_labels_used_for_selection
+            is not _POLICY_EXTERNAL_LABELS_USED_FOR_SELECTION
+        ):
+            raise Phase8DefinitivePipelineConfigError(
+                "external_labels_used_for_selection must be "
+                f"{_POLICY_EXTERNAL_LABELS_USED_FOR_SELECTION!r}."
+            )
+        _require_self_hash(
+            self.policy_hash,
+            _training_policy_payload(
+                policy_identifier=self.policy_identifier,
+                total_optimizer_steps=self.total_optimizer_steps,
+                candidate_checkpoint_steps=self.candidate_checkpoint_steps,
+                early_stopping=self.early_stopping,
+                resume_policy=self.resume_policy,
+                maximum_wall_clock_seconds=self.maximum_wall_clock_seconds,
+                validation_expected_case_count=self.validation_expected_case_count,
+                full_validation_required_for_every_candidate=(
+                    self.full_validation_required_for_every_candidate
+                ),
+                subset_validation_for_checkpoint_selection=(
+                    self.subset_validation_for_checkpoint_selection
+                ),
+                checkpoint_selection_metric=self.checkpoint_selection_metric,
+                tie_break_policy=self.tie_break_policy,
+                internal_test_used_for_selection=self.internal_test_used_for_selection,
+                external_data_used_for_selection=self.external_data_used_for_selection,
+                external_labels_used_for_selection=self.external_labels_used_for_selection,
+            ),
+        )
+
+
+def build_definitive_training_execution_policy_v1() -> Phase8DefinitiveTrainingExecutionPolicy:
+    """Return the single approved ``PHASE8-DEFINITIVE-TRAINING-POLICY-V1`` instance."""
+
+    payload = _training_policy_payload(
+        policy_identifier=PHASE8_DEFINITIVE_TRAINING_POLICY_IDENTIFIER,
+        total_optimizer_steps=_POLICY_TOTAL_OPTIMIZER_STEPS,
+        candidate_checkpoint_steps=_POLICY_CANDIDATE_CHECKPOINT_STEPS,
+        early_stopping=_POLICY_EARLY_STOPPING,
+        resume_policy=_POLICY_RESUME_POLICY,
+        maximum_wall_clock_seconds=_POLICY_MAXIMUM_WALL_CLOCK_SECONDS,
+        validation_expected_case_count=_POLICY_VALIDATION_EXPECTED_CASE_COUNT,
+        full_validation_required_for_every_candidate=(
+            _POLICY_FULL_VALIDATION_REQUIRED_FOR_EVERY_CANDIDATE
+        ),
+        subset_validation_for_checkpoint_selection=(
+            _POLICY_SUBSET_VALIDATION_FOR_CHECKPOINT_SELECTION
+        ),
+        checkpoint_selection_metric=_POLICY_CHECKPOINT_SELECTION_METRIC,
+        tie_break_policy=_POLICY_TIE_BREAK_POLICY,
+        internal_test_used_for_selection=_POLICY_INTERNAL_TEST_USED_FOR_SELECTION,
+        external_data_used_for_selection=_POLICY_EXTERNAL_DATA_USED_FOR_SELECTION,
+        external_labels_used_for_selection=_POLICY_EXTERNAL_LABELS_USED_FOR_SELECTION,
+    )
+    return Phase8DefinitiveTrainingExecutionPolicy(
+        policy_identifier=PHASE8_DEFINITIVE_TRAINING_POLICY_IDENTIFIER,
+        total_optimizer_steps=_POLICY_TOTAL_OPTIMIZER_STEPS,
+        candidate_checkpoint_steps=_POLICY_CANDIDATE_CHECKPOINT_STEPS,
+        early_stopping=_POLICY_EARLY_STOPPING,
+        resume_policy=_POLICY_RESUME_POLICY,
+        maximum_wall_clock_seconds=_POLICY_MAXIMUM_WALL_CLOCK_SECONDS,
+        validation_expected_case_count=_POLICY_VALIDATION_EXPECTED_CASE_COUNT,
+        full_validation_required_for_every_candidate=(
+            _POLICY_FULL_VALIDATION_REQUIRED_FOR_EVERY_CANDIDATE
+        ),
+        subset_validation_for_checkpoint_selection=(
+            _POLICY_SUBSET_VALIDATION_FOR_CHECKPOINT_SELECTION
+        ),
+        checkpoint_selection_metric=_POLICY_CHECKPOINT_SELECTION_METRIC,
+        tie_break_policy=_POLICY_TIE_BREAK_POLICY,
+        internal_test_used_for_selection=_POLICY_INTERNAL_TEST_USED_FOR_SELECTION,
+        external_data_used_for_selection=_POLICY_EXTERNAL_DATA_USED_FOR_SELECTION,
+        external_labels_used_for_selection=_POLICY_EXTERNAL_LABELS_USED_FOR_SELECTION,
+        policy_hash=sha256_json(payload),
+    )
+
+
+# ---------------------------------------------------------------------------
+# H. Continuous training with checkpoint snapshots
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class Phase8DefinitiveContinuousTrainingRunResult:
+    """Result of one continuous, non-reinitialized training run with snapshots.
+
+    ``checkpoint_snapshots`` maps ``optimizer_steps_completed`` (e.g. ``250``
+    or ``500``) to a deep-copied ``model.state_dict()`` taken immediately
+    after that many steps completed; a step whose training was not reached
+    (e.g. because an earlier step went non-finite) has no entry. Each
+    snapshot is an independent deep copy (see :func:`copy.deepcopy`), so
+    later training never mutates an earlier snapshot in place.
+    """
+
+    step_results: tuple[Phase8DefinitiveTrainingStepResult, ...]
+    all_steps_finite: bool
+    checkpoint_snapshots: dict[int, Any]
+
+
+def _run_definitive_continuous_training_with_snapshots_core(
+    case_references: Sequence[Phase8DefinitiveTrainCaseReference],
+    *,
+    positive_case_ids: frozenset[str] | set[str],
+    loader: Phase8DefinitiveCaseLoader | Callable[[str], Phase8DefinitiveTrainCase],
+    config: Phase8DefinitiveConfig,
+    total_optimizer_steps: int,
+    candidate_checkpoint_steps: tuple[int, ...],
+    rng_seed: int | None = None,
+) -> Phase8DefinitiveContinuousTrainingRunResult:
+    """Shared implementation behind the locked, policy-driven public entrypoint.
+
+    This private helper is parametrized on step counts purely so unit tests
+    can exercise the snapshot/continuity mechanics with a tiny step budget
+    without waiting for 500 real optimizer steps; it is not itself a
+    training-budget policy and is never called directly by production code
+    with anything other than the locked policy values (see
+    :func:`run_definitive_continuous_training_with_snapshots`, the only
+    public entrypoint).
+    """
+
+    if not case_references:
+        raise Phase8DefinitivePipelineRuntimeError(
+            "run_definitive_continuous_training_with_snapshots requires at least one "
+            "case reference."
+        )
+    if total_optimizer_steps < 1:
+        raise Phase8DefinitivePipelineRuntimeError("total_optimizer_steps must be at least 1.")
+    if not candidate_checkpoint_steps:
+        raise Phase8DefinitivePipelineRuntimeError("candidate_checkpoint_steps must be nonempty.")
+
+    known_case_ids = {reference.case_id for reference in case_references}
+    for positive_case_id in positive_case_ids:
+        if positive_case_id not in known_case_ids:
+            raise Phase8DefinitivePipelineRuntimeError(
+                f"positive_case_ids contains {positive_case_id!r}, which is not present in "
+                "case_references."
+            )
+    positive_refs = [
+        reference for reference in case_references if reference.case_id in positive_case_ids
+    ]
+    if not positive_refs:
+        raise Phase8DefinitivePipelineRuntimeError(
+            "no case_references entry is marked in positive_case_ids; at least one is required."
+        )
+
+    torch = _import_torch()
+    monai = _import_monai()
+
+    seed = config.seed if rng_seed is None else rng_seed
+    # The model/optimizer are seeded and constructed exactly once for the
+    # entire continuous run; there is no re-seeding or re-initialization at
+    # any candidate checkpoint step.
+    torch.manual_seed(seed)
+    torch.use_deterministic_algorithms(True)
+    sampling_rng = np.random.default_rng(seed)
+
+    model = _build_definitive_segresnet_model(torch=torch, monai=monai, config=config)
+    optimizer = torch.optim.AdamW(
+        model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay
+    )
+    loss_function = monai.losses.DiceCELoss(to_onehot_y=True, softmax=True)
+
+    candidate_steps_remaining = set(candidate_checkpoint_steps)
+    step_results: list[Phase8DefinitiveTrainingStepResult] = []
+    snapshots: dict[int, Any] = {}
+    all_finite = True
+
+    for step_index in range(total_optimizer_steps):
+        positive_case_id = positive_refs[step_index % len(positive_refs)].case_id
+        negative_case_index = int(sampling_rng.integers(0, len(case_references)))
+        negative_case_id = case_references[negative_case_index].case_id
+
+        positive_case = loader(positive_case_id)
+        negative_case = (
+            positive_case if negative_case_id == positive_case_id else loader(negative_case_id)
+        )
+
+        step_result = _run_definitive_training_step(
+            step_index=step_index,
+            positive_case=positive_case,
+            negative_case=negative_case,
+            config=config,
+            model=model,
+            optimizer=optimizer,
+            loss_function=loss_function,
+            torch=torch,
+            sampling_rng=sampling_rng,
+        )
+        step_results.append(step_result)
+        del positive_case, negative_case
+
+        if not (step_result.loss_finite and step_result.gradient_finite):
+            all_finite = False
+            break
+
+        steps_completed = step_index + 1
+        if steps_completed in candidate_steps_remaining:
+            # A deep copy is required (not a bare reference to
+            # ``model.state_dict()``, whose tensors would otherwise continue
+            # to be mutated in place by subsequent optimizer steps): each
+            # snapshot must be an independent, frozen-in-time copy.
+            snapshots[steps_completed] = copy.deepcopy(model.state_dict())
+
+    return Phase8DefinitiveContinuousTrainingRunResult(
+        step_results=tuple(step_results),
+        all_steps_finite=all_finite,
+        checkpoint_snapshots=snapshots,
+    )
+
+
+def run_definitive_continuous_training_with_snapshots(
+    case_references: Sequence[Phase8DefinitiveTrainCaseReference],
+    *,
+    positive_case_ids: frozenset[str] | set[str],
+    loader: Phase8DefinitiveCaseLoader | Callable[[str], Phase8DefinitiveTrainCase],
+    config: Phase8DefinitiveConfig,
+    policy: Phase8DefinitiveTrainingExecutionPolicy,
+    rng_seed: int | None = None,
+) -> Phase8DefinitiveContinuousTrainingRunResult:
+    """Run one continuous ``policy.total_optimizer_steps``-step training run.
+
+    The model and optimizer are constructed and seeded exactly once (not
+    re-seeded at step 250), then trained continuously by repeated calls to
+    the single shared :func:`_run_definitive_training_step` helper -- the
+    same step implementation used by :func:`run_definitive_training` and
+    :func:`run_definitive_training_from_references`. A deep-copied
+    ``model.state_dict()`` snapshot is captured immediately after each step
+    count in ``policy.candidate_checkpoint_steps`` (250 and 500) completes.
+    If loss or any gradient goes non-finite at any step, training stops
+    immediately (fail-closed, matching the existing ``all_steps_finite``
+    behavior elsewhere in this module) and no snapshot is taken for any
+    un-reached candidate step.
+
+    This function fails closed if ``policy.total_optimizer_steps`` or
+    ``policy.candidate_checkpoint_steps`` were tampered with -- defense in
+    depth, even though :class:`Phase8DefinitiveTrainingExecutionPolicy`
+    already self-validates both fields at construction time.
+    """
+
+    if policy.total_optimizer_steps != _POLICY_TOTAL_OPTIMIZER_STEPS:
+        raise Phase8DefinitivePipelineConfigError(
+            f"policy.total_optimizer_steps must equal {_POLICY_TOTAL_OPTIMIZER_STEPS!r}."
+        )
+    if policy.candidate_checkpoint_steps != _POLICY_CANDIDATE_CHECKPOINT_STEPS:
+        raise Phase8DefinitivePipelineConfigError(
+            f"policy.candidate_checkpoint_steps must equal {_POLICY_CANDIDATE_CHECKPOINT_STEPS!r}."
+        )
+
+    return _run_definitive_continuous_training_with_snapshots_core(
+        case_references,
+        positive_case_ids=positive_case_ids,
+        loader=loader,
+        config=config,
+        total_optimizer_steps=policy.total_optimizer_steps,
+        candidate_checkpoint_steps=policy.candidate_checkpoint_steps,
+        rng_seed=rng_seed,
+    )
+
+
+# ---------------------------------------------------------------------------
+# I. Checkpoint snapshot serialization and no-overwrite publication
+# ---------------------------------------------------------------------------
+
+
+def serialize_checkpoint_state_dict(state_dict: Any) -> tuple[bytes, str, int]:
+    """Serialize a ``state_dict`` deterministically enough to hash and publish.
+
+    Returns ``(payload_bytes, sha256_hex, byte_size)``.
+    """
+
+    torch = _import_torch()
+    buffer = io.BytesIO()
+    torch.save(state_dict, buffer)
+    payload = buffer.getvalue()
+    return payload, hashlib.sha256(payload).hexdigest(), len(payload)
+
+
+def _publish_checkpoint_bytes_no_overwrite(*, payload: bytes, output_path: Path) -> None:
+    """Write ``payload`` to ``output_path`` without ever overwriting an existing file.
+
+    Mirrors :func:`protoem_ct.data._phase2_publication.publish_text_no_overwrite`'s
+    hardlink-then-fallback-rename pattern, adapted for raw bytes rather than
+    UTF-8 text.
+    """
+
+    temp_path = output_path.with_name(f".{output_path.name}.tmp")
+    created_temp = False
+    try:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        if temp_path.exists():
+            raise Phase8DefinitiveCheckpointPublicationError(
+                f"temporary checkpoint publication path already exists: {temp_path}"
+            )
+        temp_path.write_bytes(payload)
+        created_temp = True
+        if output_path.exists():
+            raise Phase8DefinitiveCheckpointPublicationError(
+                f"checkpoint publication target already exists: {output_path}"
+            )
+        try:
+            os.link(temp_path, output_path)
+        except OSError as link_exc:
+            if output_path.exists():
+                raise Phase8DefinitiveCheckpointPublicationError(
+                    f"checkpoint publication target already exists: {output_path}"
+                ) from link_exc
+            os.rename(temp_path, output_path)
+        else:
+            temp_path.unlink()
+        created_temp = False
+    except Phase8DefinitiveCheckpointPublicationError:
+        raise
+    except OSError as exc:
+        raise Phase8DefinitivePipelineRuntimeError(
+            "failed to publish Phase 8 definitive checkpoint bytes"
+        ) from exc
+    finally:
+        if created_temp and temp_path.exists():
+            temp_path.unlink()
+
+
+@dataclass(frozen=True, slots=True)
+class Phase8DefinitiveCheckpointPublicationResult:
+    """One published checkpoint snapshot: its file, hash, and metadata."""
+
+    optimizer_step: int
+    output_path: Path
+    checkpoint_sha256: str
+    checkpoint_byte_size: int
+    checkpoint_metadata: Phase8CheckpointMetadata
+
+
+def publish_definitive_checkpoint_snapshot(
+    *,
+    state_dict: Any,
+    optimizer_step: int,
+    output_root: Path,
+    config: Phase8DefinitiveConfig,
+    development_manifest_hash: str,
+    development_split_hash: str,
+    originating_git_commit: str,
+    package_environment_reference: ArtifactReference,
+    preprocessing_evidence_hash: str,
+    completion_status: str = "completed",
+    seed: int | None = None,
+) -> Phase8DefinitiveCheckpointPublicationResult:
+    """Serialize, hash, and no-overwrite-publish one candidate checkpoint snapshot.
+
+    ``output_root`` is validated with
+    :func:`protoem_ct.data.phase2_paths.validate_explicit_external_output_root`
+    before anything is written. ``optimizer_step`` must be one of the locked
+    candidate checkpoint steps (250 or 500). Checkpoint metadata is built on
+    top of the existing, unmodified :func:`build_definitive_checkpoint_metadata`
+    (never freeze-eligible); this function does not fork
+    :class:`Phase8CheckpointMetadata`. Publishing twice to the same
+    ``output_root``/``optimizer_step`` fails closed.
+    """
+
+    if optimizer_step not in _POLICY_CANDIDATE_CHECKPOINT_STEPS:
+        raise Phase8DefinitiveCheckpointPublicationError(
+            f"optimizer_step must be one of {_POLICY_CANDIDATE_CHECKPOINT_STEPS!r}, got "
+            f"{optimizer_step!r}."
+        )
+
+    validated_root = validate_explicit_external_output_root(output_root)
+    payload, checkpoint_sha256, checkpoint_byte_size = serialize_checkpoint_state_dict(state_dict)
+    output_path = validated_root / f"phase8_definitive_checkpoint_step_{optimizer_step}.pt"
+    _publish_checkpoint_bytes_no_overwrite(payload=payload, output_path=output_path)
+
+    checkpoint_metadata = build_definitive_checkpoint_metadata(
+        checkpoint_sha256=checkpoint_sha256,
+        checkpoint_byte_size=checkpoint_byte_size,
+        config=config,
+        development_manifest_hash=development_manifest_hash,
+        development_split_hash=development_split_hash,
+        originating_git_commit=originating_git_commit,
+        package_environment_reference=package_environment_reference,
+        completion_status=completion_status,
+        preprocessing_evidence_hash=preprocessing_evidence_hash,
+        seed=seed,
+    )
+
+    return Phase8DefinitiveCheckpointPublicationResult(
+        optimizer_step=optimizer_step,
+        output_path=output_path,
+        checkpoint_sha256=checkpoint_sha256,
+        checkpoint_byte_size=checkpoint_byte_size,
+        checkpoint_metadata=checkpoint_metadata,
+    )
+
+
+# ---------------------------------------------------------------------------
+# J. Full development-validation orchestration (exactly 20 unique cases)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class Phase8DefinitiveValidationCaseReference:
+    """A lightweight, non-medical reference to one validation case.
+
+    Mirrors :class:`Phase8DefinitiveTrainCaseReference`: holds only the
+    anonymous ``case_id`` and never embeds image/label arrays.
+    """
+
+    case_id: str
+
+
+class Phase8DefinitiveValidationCaseLoader(Protocol):
+    """Loads exactly one fully preprocessed validation case, given its case_id."""
+
+    def __call__(self, case_id: str) -> Phase8DefinitiveValidationCase: ...
+
+
+@dataclass(frozen=True, slots=True)
+class Phase8DefinitiveFullValidationResult:
+    """Result of a full, one-at-a-time, 20-case development-validation pass."""
+
+    candidate_step: int
+    case_results: tuple[Phase8DefinitiveValidationRunResult, ...]
+    case_ids: tuple[str, ...]
+    mean_tumor_dice: float
+
+
+def run_definitive_full_validation(
+    case_references: Sequence[Phase8DefinitiveValidationCaseReference],
+    *,
+    loader: (
+        Phase8DefinitiveValidationCaseLoader | Callable[[str], Phase8DefinitiveValidationCase]
+    ),
+    model: Any,
+    config: Phase8DefinitiveConfig,
+    policy: Phase8DefinitiveTrainingExecutionPolicy,
+    candidate_step: int,
+) -> Phase8DefinitiveFullValidationResult:
+    """Run the locked full 20-case development-validation pass for one candidate.
+
+    Fails closed unless ``case_references`` contains exactly
+    ``policy.validation_expected_case_count`` (20) *unique* case IDs -- 19,
+    21, and 20-with-a-duplicate are all rejected. Cases are loaded and
+    evaluated strictly one at a time via ``loader`` (each case delegates to
+    the existing :func:`run_definitive_validation`); no full-volume array is
+    retained past the iteration that produced its result, so there is no
+    persistent cross-case cache. ``mean_tumor_dice`` is computed only from
+    tumor Dice (never IoU, never loss); if any case's prediction is
+    non-finite, this function raises rather than silently excluding that
+    case from the mean.
+    """
+
+    case_ids = [reference.case_id for reference in case_references]
+    if len(case_ids) != policy.validation_expected_case_count:
+        raise Phase8DefinitivePipelineValidationError(
+            f"expected exactly {policy.validation_expected_case_count} validation case "
+            f"references, got {len(case_ids)}."
+        )
+    if len(set(case_ids)) != len(case_ids):
+        raise Phase8DefinitivePipelineValidationError(
+            "validation case references contain one or more duplicate case_id values."
+        )
+
+    case_results: list[Phase8DefinitiveValidationRunResult] = []
+    for case_id in case_ids:
+        case = loader(case_id)
+        result = run_definitive_validation(model, case, config=config)
+        case_results.append(result)
+        del case
+
+    for result in case_results:
+        if not result.prediction_finite or not math.isfinite(result.tumor_dice):
+            raise Phase8DefinitivePipelineValidationError(
+                f"validation case {result.case_id!r} produced a non-finite prediction; "
+                "cannot compute mean_tumor_dice from an invalid run."
+            )
+
+    mean_dice = sum(result.tumor_dice for result in case_results) / len(case_results)
+
+    return Phase8DefinitiveFullValidationResult(
+        candidate_step=candidate_step,
+        case_results=tuple(case_results),
+        case_ids=tuple(sorted(case_ids)),
+        mean_tumor_dice=mean_dice,
+    )
+
+
+# ---------------------------------------------------------------------------
+# K. Checkpoint selection
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class Phase8DefinitiveCheckpointSelectionResult:
+    """The outcome of comparing the two candidate checkpoints' validation results."""
+
+    candidate_step_250: int
+    candidate_step_500: int
+    mean_tumor_dice_step_250: float
+    mean_tumor_dice_step_500: float
+    selected_step: int
+    case_ids: tuple[str, ...]
+    policy: Phase8DefinitiveTrainingExecutionPolicy
+    config: Phase8DefinitiveConfig
+
+
+def select_definitive_checkpoint(
+    *,
+    result_step_250: Phase8DefinitiveFullValidationResult | None,
+    result_step_500: Phase8DefinitiveFullValidationResult | None,
+    policy: Phase8DefinitiveTrainingExecutionPolicy,
+    config: Phase8DefinitiveConfig,
+) -> Phase8DefinitiveCheckpointSelectionResult:
+    """Select the higher-mean-tumor-Dice candidate checkpoint; fails closed otherwise.
+
+    Selection uses ``mean_tumor_dice`` exclusively -- there is no ``loss``
+    parameter anywhere in this signature, and IoU is never read. On an exact
+    ``==`` tie, step 250 is selected (``policy.tie_break_policy ==
+    "earliest_checkpoint_step"``). Fails closed (raising
+    :class:`Phase8DefinitivePipelineSelectionError`) if either candidate
+    result is missing, either candidate's step is not 250/500, either
+    candidate's per-case validation count is not exactly
+    ``policy.validation_expected_case_count`` unique case IDs, any candidate
+    contains a non-finite tumor Dice, or the two candidates were validated on
+    different case sets.
+    """
+
+    if result_step_250 is None or result_step_500 is None:
+        raise Phase8DefinitivePipelineSelectionError(
+            "both step-250 and step-500 full-validation results are required for selection."
+        )
+
+    candidates = {250: result_step_250, 500: result_step_500}
+    for expected_step, result in candidates.items():
+        if result.candidate_step != expected_step:
+            raise Phase8DefinitivePipelineSelectionError(
+                f"candidate result for step {expected_step} has candidate_step="
+                f"{result.candidate_step!r}."
+            )
+        if len(result.case_results) != policy.validation_expected_case_count:
+            raise Phase8DefinitivePipelineSelectionError(
+                f"candidate step {expected_step} has {len(result.case_results)} validation "
+                f"case results, expected {policy.validation_expected_case_count}."
+            )
+        result_case_ids = [case_result.case_id for case_result in result.case_results]
+        if len(set(result_case_ids)) != len(result_case_ids):
+            raise Phase8DefinitivePipelineSelectionError(
+                f"candidate step {expected_step} has duplicate validation case IDs."
+            )
+        for case_result in result.case_results:
+            if not case_result.prediction_finite or not math.isfinite(case_result.tumor_dice):
+                raise Phase8DefinitivePipelineSelectionError(
+                    f"candidate step {expected_step} has a non-finite tumor_dice for case "
+                    f"{case_result.case_id!r}; selection fails closed."
+                )
+
+    if result_step_250.case_ids != result_step_500.case_ids:
+        raise Phase8DefinitivePipelineSelectionError(
+            "step-250 and step-500 candidates were validated on different case sets."
+        )
+
+    mean_250 = result_step_250.mean_tumor_dice
+    mean_500 = result_step_500.mean_tumor_dice
+
+    if mean_500 > mean_250:
+        selected_step = 500
+    elif mean_250 > mean_500:
+        selected_step = 250
+    else:
+        # Exact tie: policy.tie_break_policy == "earliest_checkpoint_step".
+        selected_step = 250
+
+    return Phase8DefinitiveCheckpointSelectionResult(
+        candidate_step_250=250,
+        candidate_step_500=500,
+        mean_tumor_dice_step_250=mean_250,
+        mean_tumor_dice_step_500=mean_500,
+        selected_step=selected_step,
+        case_ids=result_step_250.case_ids,
+        policy=policy,
+        config=config,
+    )
+
+
+# ---------------------------------------------------------------------------
+# L. Machine-readable checkpoint-selection evidence artifact
+# ---------------------------------------------------------------------------
+
+PHASE8_DEFINITIVE_CHECKPOINT_SELECTION_EVIDENCE_SCHEMA_NAME: Final[str] = (
+    "phase8_definitive_checkpoint_selection_evidence"
+)
+PHASE8_DEFINITIVE_CHECKPOINT_SELECTION_EVIDENCE_SCHEMA_VERSION: Final[str] = "v1"
+
+
+def _checkpoint_selection_evidence_payload(
+    *,
+    schema_name: str,
+    schema_version: str,
+    policy_hash: str,
+    candidate_step_250: int,
+    candidate_step_500: int,
+    candidate_checkpoint_hash_step_250: str,
+    candidate_checkpoint_hash_step_500: str,
+    validation_case_set_identity_hash: str,
+    mean_tumor_dice_step_250: float,
+    mean_tumor_dice_step_500: float,
+    selected_checkpoint_step: int,
+    selected_checkpoint_hash: str,
+    selection_metric: str,
+    tie_break_policy: str,
+    internal_test_used: bool,
+    external_data_used: bool,
+    external_labels_used: bool,
+    selection_completed: bool,
+) -> dict[str, JsonValue]:
+    return {
+        "candidate_checkpoint_hash_step_250": candidate_checkpoint_hash_step_250,
+        "candidate_checkpoint_hash_step_500": candidate_checkpoint_hash_step_500,
+        "candidate_step_250": candidate_step_250,
+        "candidate_step_500": candidate_step_500,
+        "external_data_used": external_data_used,
+        "external_labels_used": external_labels_used,
+        "internal_test_used": internal_test_used,
+        "mean_tumor_dice_step_250": mean_tumor_dice_step_250,
+        "mean_tumor_dice_step_500": mean_tumor_dice_step_500,
+        "policy_hash": policy_hash,
+        "schema_name": schema_name,
+        "schema_version": schema_version,
+        "selected_checkpoint_hash": selected_checkpoint_hash,
+        "selected_checkpoint_step": selected_checkpoint_step,
+        "selection_completed": selection_completed,
+        "selection_metric": selection_metric,
+        "tie_break_policy": tie_break_policy,
+        "validation_case_set_identity_hash": validation_case_set_identity_hash,
+    }
+
+
+def _require_sha256_hex(value: str, *, field_name: str) -> None:
+    if not _SHA256_HEX_RE.fullmatch(value):
+        raise Phase8DefinitivePipelineValidationError(
+            f"{field_name} must be a lowercase SHA-256 hex digest."
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class Phase8DefinitiveCheckpointSelectionEvidence:
+    """Machine-readable evidence of a Package-A checkpoint selection decision.
+
+    This is evidence, not a freeze artifact: it records what was selected and
+    why, but it carries no freeze-eligibility flag and must never be treated
+    as one.
+    """
+
+    schema_name: str
+    schema_version: str
+    policy_hash: str
+    candidate_step_250: int
+    candidate_step_500: int
+    candidate_checkpoint_hash_step_250: str
+    candidate_checkpoint_hash_step_500: str
+    validation_case_set_identity_hash: str
+    mean_tumor_dice_step_250: float
+    mean_tumor_dice_step_500: float
+    selected_checkpoint_step: int
+    selected_checkpoint_hash: str
+    selection_metric: str
+    tie_break_policy: str
+    internal_test_used: bool
+    external_data_used: bool
+    external_labels_used: bool
+    selection_completed: bool
+    evidence_hash: str
+
+    def __post_init__(self) -> None:
+        if self.schema_name != PHASE8_DEFINITIVE_CHECKPOINT_SELECTION_EVIDENCE_SCHEMA_NAME:
+            raise Phase8DefinitivePipelineValidationError(
+                f"schema_name must equal "
+                f"{PHASE8_DEFINITIVE_CHECKPOINT_SELECTION_EVIDENCE_SCHEMA_NAME!r}."
+            )
+        if self.schema_version != PHASE8_DEFINITIVE_CHECKPOINT_SELECTION_EVIDENCE_SCHEMA_VERSION:
+            raise Phase8DefinitivePipelineValidationError(
+                f"schema_version must equal "
+                f"{PHASE8_DEFINITIVE_CHECKPOINT_SELECTION_EVIDENCE_SCHEMA_VERSION!r}."
+            )
+        if self.candidate_step_250 != 250 or self.candidate_step_500 != 500:
+            raise Phase8DefinitivePipelineValidationError(
+                "candidate_step_250 must equal 250 and candidate_step_500 must equal 500."
+            )
+        if self.selected_checkpoint_step not in (250, 500):
+            raise Phase8DefinitivePipelineValidationError(
+                "selected_checkpoint_step must be 250 or 500."
+            )
+        if self.selection_metric != _POLICY_CHECKPOINT_SELECTION_METRIC:
+            raise Phase8DefinitivePipelineValidationError(
+                f"selection_metric must equal {_POLICY_CHECKPOINT_SELECTION_METRIC!r}."
+            )
+        if self.tie_break_policy != _POLICY_TIE_BREAK_POLICY:
+            raise Phase8DefinitivePipelineValidationError(
+                f"tie_break_policy must equal {_POLICY_TIE_BREAK_POLICY!r}."
+            )
+        if self.internal_test_used is not False:
+            raise Phase8DefinitivePipelineValidationError("internal_test_used must be False.")
+        if self.external_data_used is not False:
+            raise Phase8DefinitivePipelineValidationError("external_data_used must be False.")
+        if self.external_labels_used is not False:
+            raise Phase8DefinitivePipelineValidationError("external_labels_used must be False.")
+        _require_sha256_hex(self.policy_hash, field_name="policy_hash")
+        _require_sha256_hex(
+            self.candidate_checkpoint_hash_step_250,
+            field_name="candidate_checkpoint_hash_step_250",
+        )
+        _require_sha256_hex(
+            self.candidate_checkpoint_hash_step_500,
+            field_name="candidate_checkpoint_hash_step_500",
+        )
+        _require_sha256_hex(
+            self.validation_case_set_identity_hash, field_name="validation_case_set_identity_hash"
+        )
+        _require_sha256_hex(self.selected_checkpoint_hash, field_name="selected_checkpoint_hash")
+
+        expected_hash = sha256_json(
+            _checkpoint_selection_evidence_payload(
+                schema_name=self.schema_name,
+                schema_version=self.schema_version,
+                policy_hash=self.policy_hash,
+                candidate_step_250=self.candidate_step_250,
+                candidate_step_500=self.candidate_step_500,
+                candidate_checkpoint_hash_step_250=self.candidate_checkpoint_hash_step_250,
+                candidate_checkpoint_hash_step_500=self.candidate_checkpoint_hash_step_500,
+                validation_case_set_identity_hash=self.validation_case_set_identity_hash,
+                mean_tumor_dice_step_250=self.mean_tumor_dice_step_250,
+                mean_tumor_dice_step_500=self.mean_tumor_dice_step_500,
+                selected_checkpoint_step=self.selected_checkpoint_step,
+                selected_checkpoint_hash=self.selected_checkpoint_hash,
+                selection_metric=self.selection_metric,
+                tie_break_policy=self.tie_break_policy,
+                internal_test_used=self.internal_test_used,
+                external_data_used=self.external_data_used,
+                external_labels_used=self.external_labels_used,
+                selection_completed=self.selection_completed,
+            )
+        )
+        if self.evidence_hash != expected_hash:
+            raise Phase8DefinitivePipelineValidationError(
+                "evidence_hash does not match the canonical selection-evidence identity."
+            )
+
+
+def build_definitive_checkpoint_selection_evidence(
+    *,
+    selection: Phase8DefinitiveCheckpointSelectionResult,
+    checkpoint_hash_step_250: str,
+    checkpoint_hash_step_500: str,
+) -> Phase8DefinitiveCheckpointSelectionEvidence:
+    """Build the machine-readable selection-evidence artifact from a selection result."""
+
+    selected_checkpoint_hash = (
+        checkpoint_hash_step_250 if selection.selected_step == 250 else checkpoint_hash_step_500
+    )
+    validation_case_set_identity_hash = sha256_json(list(selection.case_ids))
+
+    payload = _checkpoint_selection_evidence_payload(
+        schema_name=PHASE8_DEFINITIVE_CHECKPOINT_SELECTION_EVIDENCE_SCHEMA_NAME,
+        schema_version=PHASE8_DEFINITIVE_CHECKPOINT_SELECTION_EVIDENCE_SCHEMA_VERSION,
+        policy_hash=selection.policy.policy_hash,
+        candidate_step_250=selection.candidate_step_250,
+        candidate_step_500=selection.candidate_step_500,
+        candidate_checkpoint_hash_step_250=checkpoint_hash_step_250,
+        candidate_checkpoint_hash_step_500=checkpoint_hash_step_500,
+        validation_case_set_identity_hash=validation_case_set_identity_hash,
+        mean_tumor_dice_step_250=selection.mean_tumor_dice_step_250,
+        mean_tumor_dice_step_500=selection.mean_tumor_dice_step_500,
+        selected_checkpoint_step=selection.selected_step,
+        selected_checkpoint_hash=selected_checkpoint_hash,
+        selection_metric=_POLICY_CHECKPOINT_SELECTION_METRIC,
+        tie_break_policy=_POLICY_TIE_BREAK_POLICY,
+        internal_test_used=False,
+        external_data_used=False,
+        external_labels_used=False,
+        selection_completed=True,
+    )
+
+    return Phase8DefinitiveCheckpointSelectionEvidence(
+        schema_name=PHASE8_DEFINITIVE_CHECKPOINT_SELECTION_EVIDENCE_SCHEMA_NAME,
+        schema_version=PHASE8_DEFINITIVE_CHECKPOINT_SELECTION_EVIDENCE_SCHEMA_VERSION,
+        policy_hash=selection.policy.policy_hash,
+        candidate_step_250=selection.candidate_step_250,
+        candidate_step_500=selection.candidate_step_500,
+        candidate_checkpoint_hash_step_250=checkpoint_hash_step_250,
+        candidate_checkpoint_hash_step_500=checkpoint_hash_step_500,
+        validation_case_set_identity_hash=validation_case_set_identity_hash,
+        mean_tumor_dice_step_250=selection.mean_tumor_dice_step_250,
+        mean_tumor_dice_step_500=selection.mean_tumor_dice_step_500,
+        selected_checkpoint_step=selection.selected_step,
+        selected_checkpoint_hash=selected_checkpoint_hash,
+        selection_metric=_POLICY_CHECKPOINT_SELECTION_METRIC,
+        tie_break_policy=_POLICY_TIE_BREAK_POLICY,
+        internal_test_used=False,
+        external_data_used=False,
+        external_labels_used=False,
+        selection_completed=True,
+        evidence_hash=sha256_json(payload),
+    )
+
+
+# ---------------------------------------------------------------------------
+# M. Process-level watchdog for continuous training
+# ---------------------------------------------------------------------------
+#
+# Mirrors ``run_phase8_bounded_pilot_with_watchdog`` /
+# ``_phase8_bounded_pilot_child_entrypoint`` in
+# :mod:`protoem_ct.external.definitive_training_pilot`: a parent process
+# supervises the entire continuous training run inside an isolated,
+# killable child process using ``multiprocessing.get_context("spawn")`` and
+# a ``Pipe``. On timeout the child is terminated (SIGTERM, escalating to
+# ``.kill()``) and joined in a ``finally`` block on every code path, no
+# partial success is ever surfaced, and there is no automatic retry.
+
+_DEFAULT_DEFINITIVE_TRAINING_CHILD_TERMINATION_GRACE_SECONDS: Final[float] = 5.0
+
+
+def _definitive_training_child_entrypoint(
+    conn: Connection,
+    target: Callable[..., Phase8DefinitiveContinuousTrainingRunResult],
+    kwargs: Mapping[str, Any],
+) -> None:
+    """Run ``target(**kwargs)`` inside the child process and send back the outcome."""
+
+    try:
+        result = target(**kwargs)
+    except BaseException as exc:  # noqa: BLE001 -- propagated to the parent unchanged.
+        try:
+            conn.send(("error", exc))
+        except Exception:  # noqa: BLE001 -- exc itself failed to pickle; send a substitute.
+            conn.send(
+                (
+                    "error",
+                    Phase8DefinitivePipelineRuntimeError(
+                        f"child training process raised an unpicklable exception: "
+                        f"{type(exc).__name__}: {exc}"
+                    ),
+                )
+            )
+        finally:
+            conn.close()
+        return
+    conn.send(("ok", result))
+    conn.close()
+
+
+def run_definitive_continuous_training_with_snapshots_and_watchdog(
+    case_references: Sequence[Phase8DefinitiveTrainCaseReference],
+    *,
+    positive_case_ids: frozenset[str] | set[str],
+    loader: Phase8DefinitiveCaseLoader | Callable[[str], Phase8DefinitiveTrainCase],
+    config: Phase8DefinitiveConfig,
+    policy: Phase8DefinitiveTrainingExecutionPolicy,
+    rng_seed: int | None = None,
+    wall_clock_limit_seconds: float | None = None,
+    _target: Callable[
+        ..., Phase8DefinitiveContinuousTrainingRunResult
+    ] = run_definitive_continuous_training_with_snapshots,
+    _multiprocessing_context: BaseContext | None = None,
+    _termination_grace_seconds: float = (
+        _DEFAULT_DEFINITIVE_TRAINING_CHILD_TERMINATION_GRACE_SECONDS
+    ),
+) -> Phase8DefinitiveContinuousTrainingRunResult:
+    """Run continuous training inside a supervised, killable child process.
+
+    ``wall_clock_limit_seconds`` defaults to the locked
+    ``policy.maximum_wall_clock_seconds`` (36000.0 seconds / 10 hours); it is
+    an explicit override on *this call's* enforcement only -- it never
+    mutates or bypasses the locked policy object itself, so passing a tiny
+    value in a test does not weaken
+    :class:`Phase8DefinitiveTrainingExecutionPolicy`'s own hard-locked
+    ``maximum_wall_clock_seconds`` field.
+
+    On timeout, the child is terminated at the operating-system level and
+    this function raises :class:`Phase8DefinitiveTrainingWatchdogTimeoutError`
+    -- no partial training result, snapshot, or checkpoint selection is ever
+    surfaced for that call, and there is no automatic retry; the caller must
+    make a fresh call.
+
+    ``_target`` and ``_multiprocessing_context`` are testing-only seams (not
+    part of the public contract); production callers must not pass them.
+    Production always uses ``multiprocessing.get_context("spawn")``.
+    """
+
+    supervisor_start_time = time.monotonic()
+    deadline_seconds = (
+        policy.maximum_wall_clock_seconds
+        if wall_clock_limit_seconds is None
+        else wall_clock_limit_seconds
+    )
+
+    kwargs: dict[str, Any] = {
+        "case_references": case_references,
+        "positive_case_ids": positive_case_ids,
+        "loader": loader,
+        "config": config,
+        "policy": policy,
+        "rng_seed": rng_seed,
+    }
+
+    ctx = _multiprocessing_context or multiprocessing.get_context("spawn")
+    parent_conn, child_conn = ctx.Pipe(duplex=False)
+    # BaseContext.Process is dynamically bound per concrete context subclass;
+    # mypy's typeshed stub does not expose it on the base class.
+    child = ctx.Process(  # type: ignore[attr-defined]
+        target=_definitive_training_child_entrypoint,
+        kwargs={"conn": child_conn, "target": _target, "kwargs": kwargs},
+        daemon=False,
+    )
+
+    def _terminate_and_join_child() -> None:
+        if not child.is_alive():
+            return
+        child.terminate()
+        child.join(timeout=_termination_grace_seconds)
+        if child.is_alive():
+            child.kill()
+            child.join(timeout=_termination_grace_seconds)
+
+    try:
+        child.start()
+        # The child now owns its end of the pipe; the parent must close its
+        # copy of the child's end so EOF is detected correctly.
+        child_conn.close()
+
+        elapsed_before_join = time.monotonic() - supervisor_start_time
+        join_timeout = max(0.0, deadline_seconds - elapsed_before_join)
+        child.join(timeout=join_timeout)
+
+        if child.is_alive():
+            raise Phase8DefinitiveTrainingWatchdogTimeoutError(
+                f"process-level watchdog killed the child training process after "
+                f"{deadline_seconds:.3f}s with no checkpoint selection; the child was "
+                f"terminated at the operating-system process level, not by an in-process "
+                f"elapsed-time check."
+            )
+
+        if parent_conn.poll():
+            try:
+                status, payload = parent_conn.recv()
+            except EOFError as exc:
+                raise Phase8DefinitivePipelineRuntimeError(
+                    f"child training process exited (exitcode={child.exitcode}) without "
+                    f"returning a result."
+                ) from exc
+        else:
+            raise Phase8DefinitivePipelineRuntimeError(
+                f"child training process exited (exitcode={child.exitcode}) without "
+                f"returning a result."
+            )
+
+        if status == "error":
+            raise cast(BaseException, payload)
+        return cast(Phase8DefinitiveContinuousTrainingRunResult, payload)
+    finally:
+        _terminate_and_join_child()
+        parent_conn.close()

@@ -2319,6 +2319,23 @@ Planned final Gate 8 commands:
 - `git status --porcelain --untracked-files=all` after synthetic publication; and
 - real external artifact hash verification only when explicitly approved and actually run.
 
+### Phase 8 Definitive Training Orchestration Implementation Note
+
+Status: implementation and synthetic-test completed locally on 2026-08-08 under
+`PHASE8-DEFINITIVE-TRAINING-POLICY-V1` (see `docs/DECISIONS.md`). This substage extended
+`src/protoem_ct/external/definitive_pipeline.py` with a locked training-execution policy (500 fixed
+optimizer steps; checkpoint candidates only at steps 250 and 500; both requiring complete 20-case
+development-validation evaluation; no subset-based checkpoint selection; mean-tumor-Dice checkpoint
+selection with an earliest-step tie-break; no early stopping; no resume; a 10-hour hard watchdog; no
+internal-test, external-data, or external-label use), one continuous single-trajectory
+training-with-snapshot runner, full development-validation orchestration over exactly 20 unique
+cases loaded one at a time with no persistent full-volume cache, checkpoint selection logic, and a
+machine-readable checkpoint-selection-evidence artifact. All work is implementation-only: no
+definitive training was executed, no real checkpoint was selected, no freeze occurred, and no
+`/Volumes` or real dataset access occurred. Wave 4 and Wave 5 remain `BLOCKED`. This is not itself a
+Wave 4/5 readiness release; it prepares orchestration for a future separately approved real
+execution.
+
 ## Implementation Notes and Command Results
 
 Phase 0 implemented only the environment contract, repository structure, quality gates, temporary synthetic fixture strategy, validation helper, and `protoem-ct validate-pair` CLI smoke path.
