@@ -50,9 +50,9 @@ reuse its hard-locked, pilot-only, non-definitive dataclasses.
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Any, Final, cast
+from typing import Any, Final, Protocol, cast
 
 import numpy as np
 
@@ -94,6 +94,17 @@ REQUIRED_DEVICE_TYPE: Final[str] = "cpu"
 REQUIRED_AMP_ENABLED: Final[bool] = False
 REQUIRED_AUGMENTATION_POLICY: Final[str] = "none"
 REQUIRED_SEED: Final[int] = 1729
+
+# Locked SegResNet architecture values (approved as part of
+# PHASE8-DEFINITIVE-CONFIG-DESIGN-V1; hash-bound via Phase8DefinitiveConfig).
+REQUIRED_SPATIAL_DIMS: Final[int] = 3
+REQUIRED_IN_CHANNELS: Final[int] = 1
+REQUIRED_OUT_CHANNELS: Final[int] = 2
+REQUIRED_INIT_FILTERS: Final[int] = 8
+REQUIRED_BLOCKS_DOWN: Final[tuple[int, ...]] = (1, 1, 1)
+REQUIRED_BLOCKS_UP: Final[tuple[int, ...]] = (1, 1)
+REQUIRED_DROPOUT_PROB: Final[float | None] = None
+REQUIRED_UPSAMPLE_MODE: Final[str] = "deconv"
 
 # Locked validation-candidate values.
 REQUIRED_VALIDATION_METHOD: Final[str] = "full_volume_sliding_window"
@@ -169,18 +180,31 @@ def _config_payload(
     inference_threshold: float,
     internal_test_used_for_selection: bool,
     external_data_used_for_selection: bool,
+    spatial_dims: int,
+    in_channels: int,
+    out_channels: int,
+    init_filters: int,
+    blocks_down: Sequence[int],
+    blocks_up: Sequence[int],
+    dropout_prob: float | None,
+    upsample_mode: str,
 ) -> dict[str, JsonValue]:
     return {
         "amp_enabled": amp_enabled,
         "augmentation_policy": augmentation_policy,
+        "blocks_down": list(blocks_down),
+        "blocks_up": list(blocks_up),
         "checkpoint_selection_metric": checkpoint_selection_metric,
         "design_identifier": design_identifier,
         "device_type": device_type,
+        "dropout_prob": dropout_prob,
         "external_data_used_for_selection": external_data_used_for_selection,
         "hu_clip_max": hu_clip_max,
         "hu_clip_min": hu_clip_min,
         "image_interpolation_policy": image_interpolation_policy,
+        "in_channels": in_channels,
         "inference_threshold": inference_threshold,
+        "init_filters": init_filters,
         "intensity_scale_max": intensity_scale_max,
         "intensity_scale_min": intensity_scale_min,
         "internal_test_used_for_selection": internal_test_used_for_selection,
@@ -190,6 +214,7 @@ def _config_payload(
         "model_family": model_family,
         "optimizer_name": optimizer_name,
         "orientation_policy": orientation_policy,
+        "out_channels": out_channels,
         "patch_size": list(patch_size),
         "positive_negative_ratio": list(positive_negative_ratio),
         "sampling_policy": sampling_policy,
@@ -197,7 +222,9 @@ def _config_payload(
         "sliding_window_batch_size": sliding_window_batch_size,
         "sliding_window_overlap": sliding_window_overlap,
         "sliding_window_roi_size": list(sliding_window_roi_size),
+        "spatial_dims": spatial_dims,
         "tumor_raw_label_value": tumor_raw_label_value,
+        "upsample_mode": upsample_mode,
         "validation_method": validation_method,
         "weight_decay": weight_decay,
     }
@@ -244,6 +271,14 @@ class Phase8DefinitiveConfig:
     inference_threshold: float
     internal_test_used_for_selection: bool
     external_data_used_for_selection: bool
+    spatial_dims: int
+    in_channels: int
+    out_channels: int
+    init_filters: int
+    blocks_down: tuple[int, ...]
+    blocks_up: tuple[int, ...]
+    dropout_prob: float | None
+    upsample_mode: str
     config_hash: str
 
     def __post_init__(self) -> None:
@@ -370,6 +405,40 @@ class Phase8DefinitiveConfig:
                 "external_data_used_for_selection must be "
                 f"{REQUIRED_EXTERNAL_DATA_USED_FOR_SELECTION!r}."
             )
+        if self.spatial_dims != REQUIRED_SPATIAL_DIMS:
+            raise Phase8DefinitivePipelineConfigError(
+                f"spatial_dims must equal {REQUIRED_SPATIAL_DIMS!r}."
+            )
+        if self.in_channels != REQUIRED_IN_CHANNELS:
+            raise Phase8DefinitivePipelineConfigError(
+                f"in_channels must equal {REQUIRED_IN_CHANNELS!r}."
+            )
+        if self.out_channels != REQUIRED_OUT_CHANNELS:
+            raise Phase8DefinitivePipelineConfigError(
+                f"out_channels must equal {REQUIRED_OUT_CHANNELS!r}."
+            )
+        if self.init_filters != REQUIRED_INIT_FILTERS:
+            raise Phase8DefinitivePipelineConfigError(
+                f"init_filters must equal {REQUIRED_INIT_FILTERS!r}."
+            )
+        object.__setattr__(self, "blocks_down", tuple(int(v) for v in self.blocks_down))
+        if self.blocks_down != REQUIRED_BLOCKS_DOWN:
+            raise Phase8DefinitivePipelineConfigError(
+                f"blocks_down must equal {REQUIRED_BLOCKS_DOWN!r}, got {self.blocks_down!r}."
+            )
+        object.__setattr__(self, "blocks_up", tuple(int(v) for v in self.blocks_up))
+        if self.blocks_up != REQUIRED_BLOCKS_UP:
+            raise Phase8DefinitivePipelineConfigError(
+                f"blocks_up must equal {REQUIRED_BLOCKS_UP!r}, got {self.blocks_up!r}."
+            )
+        if self.dropout_prob != REQUIRED_DROPOUT_PROB:
+            raise Phase8DefinitivePipelineConfigError(
+                f"dropout_prob must equal {REQUIRED_DROPOUT_PROB!r}."
+            )
+        if self.upsample_mode != REQUIRED_UPSAMPLE_MODE:
+            raise Phase8DefinitivePipelineConfigError(
+                f"upsample_mode must equal {REQUIRED_UPSAMPLE_MODE!r}."
+            )
         _require_self_hash(
             self.config_hash,
             _config_payload(
@@ -402,6 +471,14 @@ class Phase8DefinitiveConfig:
                 inference_threshold=self.inference_threshold,
                 internal_test_used_for_selection=self.internal_test_used_for_selection,
                 external_data_used_for_selection=self.external_data_used_for_selection,
+                spatial_dims=self.spatial_dims,
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
+                init_filters=self.init_filters,
+                blocks_down=self.blocks_down,
+                blocks_up=self.blocks_up,
+                dropout_prob=self.dropout_prob,
+                upsample_mode=self.upsample_mode,
             ),
         )
 
@@ -447,6 +524,14 @@ def build_definitive_config_v1() -> Phase8DefinitiveConfig:
         inference_threshold=REQUIRED_INFERENCE_THRESHOLD,
         internal_test_used_for_selection=REQUIRED_INTERNAL_TEST_USED_FOR_SELECTION,
         external_data_used_for_selection=REQUIRED_EXTERNAL_DATA_USED_FOR_SELECTION,
+        spatial_dims=REQUIRED_SPATIAL_DIMS,
+        in_channels=REQUIRED_IN_CHANNELS,
+        out_channels=REQUIRED_OUT_CHANNELS,
+        init_filters=REQUIRED_INIT_FILTERS,
+        blocks_down=REQUIRED_BLOCKS_DOWN,
+        blocks_up=REQUIRED_BLOCKS_UP,
+        dropout_prob=REQUIRED_DROPOUT_PROB,
+        upsample_mode=REQUIRED_UPSAMPLE_MODE,
     )
     return Phase8DefinitiveConfig(
         design_identifier=PHASE8_DEFINITIVE_CONFIG_DESIGN_IDENTIFIER,
@@ -478,6 +563,14 @@ def build_definitive_config_v1() -> Phase8DefinitiveConfig:
         inference_threshold=REQUIRED_INFERENCE_THRESHOLD,
         internal_test_used_for_selection=REQUIRED_INTERNAL_TEST_USED_FOR_SELECTION,
         external_data_used_for_selection=REQUIRED_EXTERNAL_DATA_USED_FOR_SELECTION,
+        spatial_dims=REQUIRED_SPATIAL_DIMS,
+        in_channels=REQUIRED_IN_CHANNELS,
+        out_channels=REQUIRED_OUT_CHANNELS,
+        init_filters=REQUIRED_INIT_FILTERS,
+        blocks_down=REQUIRED_BLOCKS_DOWN,
+        blocks_up=REQUIRED_BLOCKS_UP,
+        dropout_prob=REQUIRED_DROPOUT_PROB,
+        upsample_mode=REQUIRED_UPSAMPLE_MODE,
         config_hash=sha256_json(payload),
     )
 
@@ -740,6 +833,35 @@ class Phase8DefinitiveTrainCase:
 
 
 @dataclass(frozen=True, slots=True)
+class Phase8DefinitiveTrainCaseReference:
+    """A lightweight, non-medical reference to one training case.
+
+    Holds only the anonymous ``case_id`` (mirroring the ``case_<hex>``-style
+    anonymous identifiers used elsewhere in this package); it never embeds
+    image/label arrays and never holds a raw patient identifier or a
+    filesystem path. Used by :func:`run_definitive_training_from_references`
+    so a caller never has to materialize every case's full-volume arrays in
+    memory at once -- only ``case_id`` strings are held for the whole case
+    pool, and the actual arrays are fetched one case at a time, on demand,
+    via a caller-supplied :class:`Phase8DefinitiveCaseLoader`.
+    """
+
+    case_id: str
+
+
+class Phase8DefinitiveCaseLoader(Protocol):
+    """Loads exactly one fully preprocessed training case, given its case_id.
+
+    Implementations are supplied by the caller and are responsible for any
+    dataset discovery and filesystem/dataset access; this module never
+    performs such access itself and never invokes a loader with anything
+    other than a ``case_id`` string.
+    """
+
+    def __call__(self, case_id: str) -> Phase8DefinitiveTrainCase: ...
+
+
+@dataclass(frozen=True, slots=True)
 class Phase8DefinitiveTrainingStepResult:
     """Per-step training diagnostics."""
 
@@ -758,22 +880,25 @@ class Phase8DefinitiveTrainingRunResult:
     model_state_dict: Any
 
 
-def _build_definitive_segresnet_model(*, torch: Any, monai: Any) -> Any:
-    # Architecture hyperparameters below (init_filters, blocks_down/up,
-    # upsample_mode) are not scientifically locked by
-    # PHASE8-DEFINITIVE-CONFIG-DESIGN-V1; they are reused as engineering
-    # reference from the bounded, non-definitive pilot
-    # (definitive_training_pilot.py's ``_build_pilot_segresnet_model``), not
-    # a new scientific decision.
+def _build_definitive_segresnet_model(
+    *, torch: Any, monai: Any, config: Phase8DefinitiveConfig
+) -> Any:
+    # Architecture hyperparameters below (spatial_dims, in/out_channels,
+    # init_filters, blocks_down/up, dropout_prob, upsample_mode) are
+    # scientifically locked by PHASE8-DEFINITIVE-CONFIG-DESIGN-V1 and are
+    # part of ``config.config_hash``; they are read from ``config`` rather
+    # than hard-coded so tampering with any of them is caught fail-closed by
+    # :meth:`Phase8DefinitiveConfig.__post_init__` before this function ever
+    # runs.
     return monai.networks.nets.SegResNet(
-        spatial_dims=3,
-        init_filters=8,
-        in_channels=1,
-        out_channels=2,
-        dropout_prob=None,
-        blocks_down=(1, 1, 1),
-        blocks_up=(1, 1),
-        upsample_mode="deconv",
+        spatial_dims=config.spatial_dims,
+        init_filters=config.init_filters,
+        in_channels=config.in_channels,
+        out_channels=config.out_channels,
+        dropout_prob=config.dropout_prob,
+        blocks_down=config.blocks_down,
+        blocks_up=config.blocks_up,
+        upsample_mode=config.upsample_mode,
     ).to(torch.device("cpu"))
 
 
@@ -785,6 +910,93 @@ def _patch_to_tensors(patch: Phase8DefinitivePatch, *, torch: Any) -> tuple[Any,
         np.ascontiguousarray(patch.label_patch.astype(np.int64))[None, None, ...]
     ).to(dtype=torch.long)
     return image_tensor, label_tensor
+
+
+def _run_definitive_training_step(
+    *,
+    step_index: int,
+    positive_case: Phase8DefinitiveTrainCase,
+    negative_case: Phase8DefinitiveTrainCase,
+    config: Phase8DefinitiveConfig,
+    model: Any,
+    optimizer: Any,
+    loss_function: Any,
+    torch: Any,
+    sampling_rng: np.random.Generator,
+) -> Phase8DefinitiveTrainingStepResult:
+    """Run exactly one fail-closed AdamW/DiceCE optimizer step on CPU.
+
+    This is the single shared training-step implementation: it samples one
+    positive patch from ``positive_case`` and one negative patch from
+    ``negative_case`` at the locked 1:1 ratio, runs the forward/backward
+    pass, and applies the optimizer step unless the loss or any gradient is
+    non-finite. Both :func:`run_definitive_training` (small in-memory case
+    list) and :func:`run_definitive_training_from_references` (memory-safe,
+    loader-based case-by-case path) call this helper so there is exactly one
+    training-step implementation, not two parallel copies. The caller is
+    responsible for choosing which cases to pass in for this step and for
+    not retaining them beyond the call.
+    """
+
+    positive_patches = sample_foreground_aware_patches(
+        positive_case.image,
+        positive_case.label_binary,
+        config=config,
+        positive_count=1,
+        negative_count=0,
+        rng=sampling_rng,
+    )
+    negative_patches = sample_foreground_aware_patches(
+        negative_case.image,
+        negative_case.label_binary,
+        config=config,
+        positive_count=0,
+        negative_count=1,
+        rng=sampling_rng,
+    )
+
+    image_tensors = []
+    label_tensors = []
+    for patch in (*positive_patches, *negative_patches):
+        image_tensor, label_tensor = _patch_to_tensors(patch, torch=torch)
+        image_tensors.append(image_tensor)
+        label_tensors.append(label_tensor)
+    batch_image = torch.cat(image_tensors, dim=0)
+    batch_label = torch.cat(label_tensors, dim=0)
+
+    optimizer.zero_grad(set_to_none=True)
+    logits = model(batch_image)
+    loss = loss_function(logits, batch_label)
+    loss_value = float(loss.item())
+    loss_finite = math.isfinite(loss_value)
+    if not loss_finite:
+        return Phase8DefinitiveTrainingStepResult(
+            step_index=step_index,
+            loss_value=loss_value,
+            loss_finite=False,
+            gradient_finite=False,
+        )
+
+    loss.backward()
+    gradient_finite = all(
+        parameter.grad is None or bool(torch.isfinite(parameter.grad).all().item())
+        for parameter in model.parameters()
+    )
+    if not gradient_finite:
+        return Phase8DefinitiveTrainingStepResult(
+            step_index=step_index,
+            loss_value=loss_value,
+            loss_finite=True,
+            gradient_finite=False,
+        )
+
+    optimizer.step()
+    return Phase8DefinitiveTrainingStepResult(
+        step_index=step_index,
+        loss_value=loss_value,
+        loss_finite=True,
+        gradient_finite=True,
+    )
 
 
 def run_definitive_training(
@@ -827,7 +1039,7 @@ def run_definitive_training(
     torch.use_deterministic_algorithms(True)
     sampling_rng = np.random.default_rng(seed)
 
-    model = _build_definitive_segresnet_model(torch=torch, monai=monai)
+    model = _build_definitive_segresnet_model(torch=torch, monai=monai, config=config)
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay
     )
@@ -841,75 +1053,138 @@ def run_definitive_training(
         negative_case_index = int(sampling_rng.integers(0, len(train_cases)))
         negative_case = train_cases[negative_case_index]
 
-        positive_patches = sample_foreground_aware_patches(
-            positive_case.image,
-            positive_case.label_binary,
+        step_result = _run_definitive_training_step(
+            step_index=step_index,
+            positive_case=positive_case,
+            negative_case=negative_case,
             config=config,
-            positive_count=1,
-            negative_count=0,
-            rng=sampling_rng,
+            model=model,
+            optimizer=optimizer,
+            loss_function=loss_function,
+            torch=torch,
+            sampling_rng=sampling_rng,
         )
-        negative_patches = sample_foreground_aware_patches(
-            negative_case.image,
-            negative_case.label_binary,
-            config=config,
-            positive_count=0,
-            negative_count=1,
-            rng=sampling_rng,
-        )
-
-        image_tensors = []
-        label_tensors = []
-        for patch in (*positive_patches, *negative_patches):
-            image_tensor, label_tensor = _patch_to_tensors(patch, torch=torch)
-            image_tensors.append(image_tensor)
-            label_tensors.append(label_tensor)
-        batch_image = torch.cat(image_tensors, dim=0)
-        batch_label = torch.cat(label_tensors, dim=0)
-
-        optimizer.zero_grad(set_to_none=True)
-        logits = model(batch_image)
-        loss = loss_function(logits, batch_label)
-        loss_value = float(loss.item())
-        loss_finite = math.isfinite(loss_value)
-        if not loss_finite:
-            step_results.append(
-                Phase8DefinitiveTrainingStepResult(
-                    step_index=step_index,
-                    loss_value=loss_value,
-                    loss_finite=False,
-                    gradient_finite=False,
-                )
-            )
+        step_results.append(step_result)
+        if not (step_result.loss_finite and step_result.gradient_finite):
             all_finite = False
             break
 
-        loss.backward()
-        gradient_finite = all(
-            parameter.grad is None or bool(torch.isfinite(parameter.grad).all().item())
-            for parameter in model.parameters()
+    return Phase8DefinitiveTrainingRunResult(
+        step_results=tuple(step_results),
+        all_steps_finite=all_finite,
+        model_state_dict=model.state_dict(),
+    )
+
+
+def run_definitive_training_from_references(
+    case_references: Sequence[Phase8DefinitiveTrainCaseReference],
+    *,
+    positive_case_ids: frozenset[str] | set[str],
+    loader: Phase8DefinitiveCaseLoader | Callable[[str], Phase8DefinitiveTrainCase],
+    config: Phase8DefinitiveConfig,
+    max_steps: int,
+    rng_seed: int | None = None,
+) -> Phase8DefinitiveTrainingRunResult:
+    """Memory-safe variant of :func:`run_definitive_training` for large case pools.
+
+    Unlike :func:`run_definitive_training`, the caller never has to
+    materialize every case's full-volume arrays in memory at once: only the
+    lightweight ``case_id``-only ``case_references`` are held for the whole
+    pool (e.g. all 91 development TRAIN cases), and ``positive_case_ids`` is
+    a caller-supplied set of case IDs known (from existing Phase 2
+    lesion-summary artifacts) to contain tumor foreground -- this function
+    never inspects array content to decide positivity, since it never loads
+    a case it does not need.
+
+    For each optimizer step, the positive and negative case IDs are chosen
+    with the exact same deterministic scheme as
+    :func:`run_definitive_training` (``positive_refs[step_index %
+    len(positive_refs)]`` and ``sampling_rng.integers(0,
+    len(case_references))``), and only the case(s) required for that step
+    are fetched via ``loader``. If the chosen positive and negative case IDs
+    are identical for a step, ``loader`` is invoked exactly once for that
+    case that step. The loaded full case(s) are held only in local
+    variables scoped to that single iteration -- there is no persistent,
+    cross-step cache, so at most two full preprocessed cases (one if
+    positive and negative coincide) are logically alive in memory at any
+    point during a step. This function reuses
+    :func:`_run_definitive_training_step` (the same shared step
+    implementation used by :func:`run_definitive_training`); it does not
+    duplicate the AdamW/DiceCE/backward/step logic.
+
+    This function performs no dataset discovery and no filesystem access of
+    its own; ``loader`` is entirely caller-supplied.
+    """
+
+    if not case_references:
+        raise Phase8DefinitivePipelineRuntimeError(
+            "run_definitive_training_from_references requires at least one case reference."
         )
-        if not gradient_finite:
-            step_results.append(
-                Phase8DefinitiveTrainingStepResult(
-                    step_index=step_index,
-                    loss_value=loss_value,
-                    loss_finite=True,
-                    gradient_finite=False,
-                )
+    if max_steps < 1:
+        raise Phase8DefinitivePipelineRuntimeError("max_steps must be at least 1.")
+
+    known_case_ids = {reference.case_id for reference in case_references}
+    for positive_case_id in positive_case_ids:
+        if positive_case_id not in known_case_ids:
+            raise Phase8DefinitivePipelineRuntimeError(
+                f"positive_case_ids contains {positive_case_id!r}, which is not present in "
+                "case_references."
             )
+    positive_refs = [
+        reference for reference in case_references if reference.case_id in positive_case_ids
+    ]
+    if not positive_refs:
+        raise Phase8DefinitivePipelineRuntimeError(
+            "no case_references entry is marked in positive_case_ids; at least one is required."
+        )
+
+    torch = _import_torch()
+    monai = _import_monai()
+
+    seed = config.seed if rng_seed is None else rng_seed
+    torch.manual_seed(seed)
+    torch.use_deterministic_algorithms(True)
+    sampling_rng = np.random.default_rng(seed)
+
+    model = _build_definitive_segresnet_model(torch=torch, monai=monai, config=config)
+    optimizer = torch.optim.AdamW(
+        model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay
+    )
+    loss_function = monai.losses.DiceCELoss(to_onehot_y=True, softmax=True)
+
+    step_results: list[Phase8DefinitiveTrainingStepResult] = []
+    all_finite = True
+
+    for step_index in range(max_steps):
+        positive_case_id = positive_refs[step_index % len(positive_refs)].case_id
+        negative_case_index = int(sampling_rng.integers(0, len(case_references)))
+        negative_case_id = case_references[negative_case_index].case_id
+
+        # Load only what this single step needs. If the two IDs coincide,
+        # the loader is invoked once and the same in-memory case object is
+        # reused as both positive and negative source for this step; either
+        # way, nothing loaded here is retained past this iteration.
+        positive_case = loader(positive_case_id)
+        negative_case = (
+            positive_case if negative_case_id == positive_case_id else loader(negative_case_id)
+        )
+
+        step_result = _run_definitive_training_step(
+            step_index=step_index,
+            positive_case=positive_case,
+            negative_case=negative_case,
+            config=config,
+            model=model,
+            optimizer=optimizer,
+            loss_function=loss_function,
+            torch=torch,
+            sampling_rng=sampling_rng,
+        )
+        step_results.append(step_result)
+        del positive_case, negative_case
+        if not (step_result.loss_finite and step_result.gradient_finite):
             all_finite = False
             break
-
-        optimizer.step()
-        step_results.append(
-            Phase8DefinitiveTrainingStepResult(
-                step_index=step_index,
-                loss_value=loss_value,
-                loss_finite=True,
-                gradient_finite=True,
-            )
-        )
 
     return Phase8DefinitiveTrainingRunResult(
         step_results=tuple(step_results),

@@ -505,3 +505,36 @@
 - Consequences: Gate 6 documentation, publication Markdown, ablation comparison, and run summaries
   state that positive-step parameters are supplied, not trained. Phase 6 can execute the optional
   parameterized schedule path without claiming schedule learning or Phase 7 functionality.
+
+### 2026-08-08: Approve Definitive SegResNet Architecture and Require Memory-Safe Training Input
+
+- Status: accepted
+- Context: `PHASE8-DEFINITIVE-ARCHITECTURE-MEMORY-POLICY-V1`. The Phase 8 definitive-training
+  pipeline (`src/protoem_ct/external/definitive_pipeline.py`) previously hard-coded MONAI SegResNet
+  architecture kwargs (`spatial_dims=3, in_channels=1, out_channels=2, init_filters=8,
+  blocks_down=(1,1,1), blocks_up=(1,1), dropout_prob=None, upsample_mode="deconv"`) as an
+  undocumented engineering-reference value inherited from the bounded, non-scientific Substage 4B
+  pilot, not as an approved scientific decision. Separately, `run_definitive_training` required the
+  caller to supply a `Sequence[Phase8DefinitiveTrainCase]` holding complete preprocessed image/label
+  NumPy arrays for every case, which would force all 91 development-TRAIN volumes to coexist in RAM
+  for a real run.
+- Decision: The exact SegResNet architecture values above are now explicitly approved independently
+  of the pilot and are hash-bound fields on `Phase8DefinitiveConfig`, fail-closed validated in
+  `__post_init__`, and read by `_build_definitive_segresnet_model` from the config rather than from
+  hard-coded literals. This approval does not make the Substage 4B pilot scientific evidence; no
+  architecture comparison or hyperparameter search was performed. A memory-safe training-input path,
+  `run_definitive_training_from_references`, was added: callers supply lightweight
+  `Phase8DefinitiveTrainCaseReference` objects (anonymous `case_id` only, no arrays) plus a
+  caller-supplied per-case loader callable. Preprocessing is sequential and on-demand: at most two
+  full preprocessed cases (one if the deterministically-selected positive and negative case IDs
+  coincide, loaded once) are live in memory per optimizer step, and no persistent full-volume cache
+  exists across steps. Case selection remains deterministic under seed `1729`, and the locked
+  foreground-biased 1:1 positive:negative sampling policy is unchanged, reused via the existing
+  `sample_foreground_aware_patches` function through one shared internal step helper used by both the
+  existing small in-memory API and the new reference-based path. No definitive training was executed
+  under this decision.
+- Consequences: A future real 91-case definitive training run can use
+  `run_definitive_training_from_references` without materializing all 91 preprocessed volumes in RAM
+  simultaneously. Any future change to the locked architecture values requires a new, separately
+  approved design identifier. This decision does not select a checkpoint, freeze preprocessing, or
+  release Wave 4/5.
