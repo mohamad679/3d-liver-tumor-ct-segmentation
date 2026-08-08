@@ -584,3 +584,54 @@
   VALIDATION partition to produce genuine selection evidence, but this decision by itself does not
   authorize that execution, does not freeze preprocessing/support/threshold/checkpoint decisions,
   and does not release Wave 4 or Wave 5.
+
+### 2026-08-08: Materialize Definitive Training Patches Sequentially (Implementation Only)
+
+- Status: accepted
+- Context: `P8-DEFINITIVE-PATCH-MATERIALIZATION-V1`. Package A/B's memory-safe
+  `run_definitive_training_from_references` and
+  `run_definitive_continuous_training_with_snapshots` correctly avoid holding all 91 development
+  TRAIN volumes in RAM at once, but a real filesystem loader performing load, RAS reorientation,
+  resampling, normalization, and label conversion on every loader invocation would repreprocess a
+  full CT volume on every one of the 500 optimizer steps a real run needs. Package B measured
+  preprocessing of two real cases at approximately 32.92 seconds total against approximately 23.81
+  seconds for two optimizer steps, so repeated full-volume preprocessing inside all 500 steps was
+  judged operationally unacceptable against the approved wall-clock budget.
+- Decision: The approved memory policy
+  (`preprocess_cases_sequentially_and_materialize_only_required_training_patches`) is now
+  implemented as a two-stage mechanism in `definitive_pipeline.py`, with no scientific policy
+  change of any kind. `build_definitive_patch_request_schedule` generates a deterministic,
+  self-hashed `Phase8DefinitivePatchSchedule` of exactly `policy.total_optimizer_steps` (500)
+  entries, each fixing one positive and one negative anonymous case ID for one optimizer step, in
+  exact step order, before any medical volume is loaded. Positive-case rotation is unchanged
+  (`positive_refs[step_index % len(positive_refs)]`); negative-case selection uses the same
+  `np.random.default_rng(seed).integers(0, len(case_references))` algorithm, but now on a
+  dedicated, single-purpose RNG stream used only for case selection -- intentionally decoupled from
+  the separate patch-voxel-position RNG used during materialization, because case selection must be
+  resolvable before any real image/label array exists and therefore cannot share a stream with
+  sampling draws whose count depends on real volume content. `case_references` order is preserved
+  exactly as supplied, with no internal sorting or renumbering. `materialize_definitive_training_patches`
+  then processes cases strictly sequentially in that same order: for each case the schedule actually
+  requires, the caller-supplied loader is invoked exactly once, every patch any schedule entry needs
+  from that case is sampled (via the existing, unchanged `sample_foreground_aware_patches`, using a
+  deterministic per-`(seed, step_index, role)` RNG independent of case content) and published, and
+  the loaded case is discarded before the next case is loaded -- at most one full preprocessed case
+  is live at any point, and no persistent full-volume cache exists across cases or across separate
+  materialization runs. Published patch artifacts are anonymous NPZ arrays plus self-hashed JSON
+  metadata (step index, role, anonymous case ID, shape/dtype, deterministic SHA-256 content hash,
+  the definitive config hash, and the schedule hash; no raw patient identifier and no filesystem
+  source path), written beneath an explicit external output root with no-overwrite publication
+  reusing the same hardlink-then-rename helper as checkpoint-snapshot publication.
+  `run_definitive_training_from_materialized_patches` trains from these pre-materialized patches in
+  exact step order, initializing the model, optimizer, and seed exactly once for the whole run and
+  reusing the existing shared fail-closed forward/backward step helper (split into a
+  patches-consuming core shared by both the in-memory and materialized-patch paths, so there is no
+  second scientific training algorithm); checkpoint snapshots remain positioned at exactly steps 250
+  and 500. No architecture, preprocessing, sampling ratio, optimizer, loss, device, AMP, seed, step
+  budget, checkpoint-candidate, or selection policy value changed. No definitive training was
+  executed and no real patch, checkpoint, or dataset access occurred under this decision.
+- Consequences: A future approved real definitive-training run can build the 500-step schedule,
+  materialize its patches from the real 91-case development TRAIN partition one case at a time, and
+  train from those patches without ever repeating full-volume preprocessing inside the optimizer
+  loop. This decision does not select a checkpoint, freeze preprocessing, or release Wave 4/5, and
+  does not by itself authorize real definitive training execution.

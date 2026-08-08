@@ -6,11 +6,22 @@ as ``PHASE8-DEFINITIVE-CONFIG-DESIGN-V1`` (see
 case-count preprocessing / training / validation pipeline for the Phase 8
 definitive development candidate.
 
-This is **implementation only**. It performs no filesystem I/O, no dataset
-access, and no ``/Volumes`` access of any kind -- every function operates on
-already-in-memory NumPy arrays and (for the training/validation runners)
-in-memory ``torch``/``monai`` tensors and models supplied by the caller. It
-must never be pointed at a real dataset from this module alone.
+This is **implementation only**. It performs no dataset discovery and no
+``/Volumes`` access of any kind -- every function operates on already
+in-memory NumPy arrays (supplied directly, or fetched one case at a time via
+a caller-supplied loader) and (for the training/validation runners)
+in-memory ``torch``/``monai`` tensors and models. The only filesystem writes
+this module performs are explicit, caller-directed publications beneath an
+explicit, validated external output root (checkpoint snapshots and
+materialized training patches); it must never be pointed at a real dataset
+from this module alone.
+
+This module also implements the approved, LOCKED
+``P8-DEFINITIVE-PATCH-MATERIALIZATION-V1`` design: a deterministic 500-step
+patch-request schedule plus sequential, one-case-at-a-time patch
+materialization, so a real definitive run never repeats full-volume
+preprocessing on every optimizer step (see Sections N-P below and
+``docs/DECISIONS.md``).
 
 Locked design values (do not change without a new, separately approved
 design identifier):
@@ -52,6 +63,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import io
+import json
 import math
 import multiprocessing
 import os
@@ -66,7 +78,7 @@ from typing import Any, Final, Protocol, cast
 
 import numpy as np
 
-from protoem_ct.artifacts.hashing import JsonValue, sha256_json
+from protoem_ct.artifacts.hashing import JsonValue, canonical_json_bytes, sha256_json
 from protoem_ct.data.phase2_paths import validate_explicit_external_output_root
 from protoem_ct.external.internal_evidence import (
     PHASE8_CHECKPOINT_METADATA_SCHEMA_NAME,
@@ -83,6 +95,9 @@ _SHA256_HEX_RE: Final[re.Pattern[str]] = re.compile(r"^[0-9a-f]{64}$")
 # ---------------------------------------------------------------------------
 
 PHASE8_DEFINITIVE_CONFIG_DESIGN_IDENTIFIER: Final[str] = "PHASE8-DEFINITIVE-CONFIG-DESIGN-V1"
+PHASE8_DEFINITIVE_PATCH_MATERIALIZATION_DESIGN_IDENTIFIER: Final[str] = (
+    "P8-DEFINITIVE-PATCH-MATERIALIZATION-V1"
+)
 
 # Locked preprocessing values.
 REQUIRED_ORIENTATION_POLICY: Final[str] = "ras"
@@ -176,6 +191,14 @@ class Phase8DefinitiveTrainingWatchdogTimeoutError(Phase8DefinitivePipelineRunti
     make a fresh call to retry, and no checkpoint selection is ever performed
     for the call that timed out.
     """
+
+
+class Phase8DefinitivePatchScheduleError(Phase8DefinitivePipelineError):
+    """Raised when a deterministic patch-request schedule violates a hard invariant."""
+
+
+class Phase8DefinitivePatchMaterializationError(Phase8DefinitivePipelineError):
+    """Raised when sequential patch materialization or publication fails closed."""
 
 
 # ---------------------------------------------------------------------------
@@ -989,9 +1012,40 @@ def _run_definitive_training_step(
         rng=sampling_rng,
     )
 
+    return _run_definitive_training_step_from_patches(
+        step_index=step_index,
+        positive_patch=positive_patches[0],
+        negative_patch=negative_patches[0],
+        model=model,
+        optimizer=optimizer,
+        loss_function=loss_function,
+        torch=torch,
+    )
+
+
+def _run_definitive_training_step_from_patches(
+    *,
+    step_index: int,
+    positive_patch: Phase8DefinitivePatch,
+    negative_patch: Phase8DefinitivePatch,
+    model: Any,
+    optimizer: Any,
+    loss_function: Any,
+    torch: Any,
+) -> Phase8DefinitiveTrainingStepResult:
+    """Run exactly one fail-closed AdamW/DiceCE optimizer step from two ready patches.
+
+    This is the lower-level half of :func:`_run_definitive_training_step`,
+    factored out so :func:`run_definitive_training_from_materialized_patches`
+    can drive the identical forward/backward/optimizer/fail-closed logic
+    directly from pre-materialized patch pairs without re-deriving it and
+    without calling :func:`sample_foreground_aware_patches` (which requires a
+    full in-memory volume that materialized-patch training never loads).
+    """
+
     image_tensors = []
     label_tensors = []
-    for patch in (*positive_patches, *negative_patches):
+    for patch in (positive_patch, negative_patch):
         image_tensor, label_tensor = _patch_to_tensors(patch, torch=torch)
         image_tensors.append(image_tensor)
         label_tensors.append(label_tensor)
@@ -1862,12 +1916,21 @@ def serialize_checkpoint_state_dict(state_dict: Any) -> tuple[bytes, str, int]:
     return payload, hashlib.sha256(payload).hexdigest(), len(payload)
 
 
-def _publish_checkpoint_bytes_no_overwrite(*, payload: bytes, output_path: Path) -> None:
+def _publish_bytes_no_overwrite(
+    *,
+    payload: bytes,
+    output_path: Path,
+    overwrite_error: type[
+        Phase8DefinitivePipelineError
+    ] = Phase8DefinitiveCheckpointPublicationError,
+) -> None:
     """Write ``payload`` to ``output_path`` without ever overwriting an existing file.
 
     Mirrors :func:`protoem_ct.data._phase2_publication.publish_text_no_overwrite`'s
     hardlink-then-fallback-rename pattern, adapted for raw bytes rather than
-    UTF-8 text.
+    UTF-8 text. Shared by checkpoint-snapshot publication and materialized
+    training-patch publication so there is exactly one no-overwrite
+    byte-publication implementation, not two parallel copies.
     """
 
     temp_path = output_path.with_name(f".{output_path.name}.tmp")
@@ -1875,31 +1938,27 @@ def _publish_checkpoint_bytes_no_overwrite(*, payload: bytes, output_path: Path)
     try:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         if temp_path.exists():
-            raise Phase8DefinitiveCheckpointPublicationError(
-                f"temporary checkpoint publication path already exists: {temp_path}"
-            )
+            raise overwrite_error(f"temporary publication path already exists: {temp_path}")
         temp_path.write_bytes(payload)
         created_temp = True
         if output_path.exists():
-            raise Phase8DefinitiveCheckpointPublicationError(
-                f"checkpoint publication target already exists: {output_path}"
-            )
+            raise overwrite_error(f"publication target already exists: {output_path}")
         try:
             os.link(temp_path, output_path)
         except OSError as link_exc:
             if output_path.exists():
-                raise Phase8DefinitiveCheckpointPublicationError(
-                    f"checkpoint publication target already exists: {output_path}"
+                raise overwrite_error(
+                    f"publication target already exists: {output_path}"
                 ) from link_exc
             os.rename(temp_path, output_path)
         else:
             temp_path.unlink()
         created_temp = False
-    except Phase8DefinitiveCheckpointPublicationError:
+    except Phase8DefinitivePipelineError:
         raise
     except OSError as exc:
         raise Phase8DefinitivePipelineRuntimeError(
-            "failed to publish Phase 8 definitive checkpoint bytes"
+            "failed to publish Phase 8 definitive bytes"
         ) from exc
     finally:
         if created_temp and temp_path.exists():
@@ -1952,7 +2011,11 @@ def publish_definitive_checkpoint_snapshot(
     validated_root = validate_explicit_external_output_root(output_root)
     payload, checkpoint_sha256, checkpoint_byte_size = serialize_checkpoint_state_dict(state_dict)
     output_path = validated_root / f"phase8_definitive_checkpoint_step_{optimizer_step}.pt"
-    _publish_checkpoint_bytes_no_overwrite(payload=payload, output_path=output_path)
+    _publish_bytes_no_overwrite(
+        payload=payload,
+        output_path=output_path,
+        overwrite_error=Phase8DefinitiveCheckpointPublicationError,
+    )
 
     checkpoint_metadata = build_definitive_checkpoint_metadata(
         checkpoint_sha256=checkpoint_sha256,
@@ -2542,3 +2605,780 @@ def run_definitive_continuous_training_with_snapshots_and_watchdog(
     finally:
         _terminate_and_join_child()
         parent_conn.close()
+
+
+# ---------------------------------------------------------------------------
+# N. Deterministic patch-request schedule (P8-DEFINITIVE-PATCH-MATERIALIZATION-V1)
+# ---------------------------------------------------------------------------
+#
+# A real 500-step definitive run must not repeatedly load and preprocess
+# complete CT volumes on every optimizer step (Package B measured ~32.9s to
+# preprocess two real cases against ~23.8s for two optimizer steps -- full
+# per-step preprocessing would be operationally unacceptable over 500 steps).
+# This section fixes, before any medical volume is loaded, exactly which
+# positive/negative case each of the 500 optimizer steps will need.
+#
+# The negative-case-selection RNG here is a dedicated stream
+# (``np.random.default_rng(seed)``, one ``integers(0, len(case_references))``
+# draw per step) used *only* for case selection. It is intentionally
+# decoupled from the separate patch-voxel-position RNG used later during
+# materialization (Section O): case selection must be resolvable purely from
+# case IDs, before any real image/label array exists, so it cannot share a
+# stream with sampling draws whose count depends on real volume content
+# (e.g. negative-patch retry attempts). Positive-case rotation
+# (``positive_refs[step_index % len(positive_refs)]``) is identical to the
+# existing loader-based continuous-training path and needs no RNG at all.
+
+
+def _patch_schedule_payload(
+    *,
+    schedule_identifier: str,
+    config_hash: str,
+    policy_hash: str,
+    seed: int,
+    total_optimizer_steps: int,
+    case_reference_ids: Sequence[str],
+    positive_case_ids: Sequence[str],
+    entries: Sequence[Phase8DefinitivePatchScheduleEntry],
+) -> dict[str, JsonValue]:
+    return {
+        "case_reference_ids": list(case_reference_ids),
+        "config_hash": config_hash,
+        "entries": [
+            {
+                "negative_case_id": entry.negative_case_id,
+                "positive_case_id": entry.positive_case_id,
+                "step_index": entry.step_index,
+            }
+            for entry in entries
+        ],
+        "policy_hash": policy_hash,
+        "positive_case_ids": list(positive_case_ids),
+        "schedule_identifier": schedule_identifier,
+        "seed": seed,
+        "total_optimizer_steps": total_optimizer_steps,
+    }
+
+
+@dataclass(frozen=True, slots=True)
+class Phase8DefinitivePatchScheduleEntry:
+    """One optimizer step's fixed positive/negative case-ID request."""
+
+    step_index: int
+    positive_case_id: str
+    negative_case_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class Phase8DefinitivePatchSchedule:
+    """Immutable, self-hashed request schedule for every optimizer step.
+
+    Holds only anonymous case IDs and integers -- no image/label array, no
+    filesystem path. The only public constructor is
+    :func:`build_definitive_patch_request_schedule`.
+    """
+
+    schedule_identifier: str
+    config_hash: str
+    policy_hash: str
+    seed: int
+    total_optimizer_steps: int
+    case_reference_ids: tuple[str, ...]
+    positive_case_ids: tuple[str, ...]
+    entries: tuple[Phase8DefinitivePatchScheduleEntry, ...]
+    schedule_hash: str
+
+    def __post_init__(self) -> None:
+        if self.schedule_identifier != PHASE8_DEFINITIVE_PATCH_MATERIALIZATION_DESIGN_IDENTIFIER:
+            raise Phase8DefinitivePatchScheduleError(
+                "schedule_identifier must equal "
+                f"{PHASE8_DEFINITIVE_PATCH_MATERIALIZATION_DESIGN_IDENTIFIER!r}."
+            )
+        object.__setattr__(self, "case_reference_ids", tuple(self.case_reference_ids))
+        object.__setattr__(self, "positive_case_ids", tuple(self.positive_case_ids))
+        object.__setattr__(self, "entries", tuple(self.entries))
+        if self.total_optimizer_steps < 1:
+            raise Phase8DefinitivePatchScheduleError("total_optimizer_steps must be at least 1.")
+        if len(self.entries) != self.total_optimizer_steps:
+            raise Phase8DefinitivePatchScheduleError(
+                f"expected exactly {self.total_optimizer_steps} schedule entries, got "
+                f"{len(self.entries)}."
+            )
+        for index, entry in enumerate(self.entries):
+            if entry.step_index != index:
+                raise Phase8DefinitivePatchScheduleError(
+                    f"schedule entry at position {index} has step_index={entry.step_index!r}; "
+                    "entries must be in strict ascending step order with no gaps or reordering."
+                )
+        _require_self_hash(
+            self.schedule_hash,
+            _patch_schedule_payload(
+                schedule_identifier=self.schedule_identifier,
+                config_hash=self.config_hash,
+                policy_hash=self.policy_hash,
+                seed=self.seed,
+                total_optimizer_steps=self.total_optimizer_steps,
+                case_reference_ids=self.case_reference_ids,
+                positive_case_ids=self.positive_case_ids,
+                entries=self.entries,
+            ),
+        )
+
+
+def _build_definitive_patch_request_schedule_core(
+    case_references: Sequence[Phase8DefinitiveTrainCaseReference],
+    *,
+    positive_case_ids: frozenset[str] | set[str],
+    config: Phase8DefinitiveConfig,
+    policy_hash: str,
+    seed: int,
+    total_optimizer_steps: int,
+) -> Phase8DefinitivePatchSchedule:
+    """Build the schedule without enforcing the locked 500-step count.
+
+    Kept separate from :func:`build_definitive_patch_request_schedule` purely
+    so unit tests can exercise schedule mechanics (ordering, hashing, RNG
+    determinism) with a tiny ``total_optimizer_steps`` instead of the locked
+    500; production code must call only the public wrapper, which always
+    passes ``policy.total_optimizer_steps``.
+    """
+
+    if not case_references:
+        raise Phase8DefinitivePatchScheduleError(
+            "build_definitive_patch_request_schedule requires at least one case reference."
+        )
+    if total_optimizer_steps < 1:
+        raise Phase8DefinitivePatchScheduleError("total_optimizer_steps must be at least 1.")
+
+    known_case_ids = {reference.case_id for reference in case_references}
+    for positive_case_id in positive_case_ids:
+        if positive_case_id not in known_case_ids:
+            raise Phase8DefinitivePatchScheduleError(
+                f"positive_case_ids contains {positive_case_id!r}, which is not present in "
+                "case_references."
+            )
+    positive_refs = [
+        reference for reference in case_references if reference.case_id in positive_case_ids
+    ]
+    if not positive_refs:
+        raise Phase8DefinitivePatchScheduleError(
+            "no case_references entry is marked in positive_case_ids; at least one is required."
+        )
+
+    case_selection_rng = np.random.default_rng(seed)
+
+    entries: list[Phase8DefinitivePatchScheduleEntry] = []
+    for step_index in range(total_optimizer_steps):
+        positive_case_id = positive_refs[step_index % len(positive_refs)].case_id
+        negative_index = int(case_selection_rng.integers(0, len(case_references)))
+        negative_case_id = case_references[negative_index].case_id
+        entries.append(
+            Phase8DefinitivePatchScheduleEntry(
+                step_index=step_index,
+                positive_case_id=positive_case_id,
+                negative_case_id=negative_case_id,
+            )
+        )
+
+    case_reference_ids = tuple(reference.case_id for reference in case_references)
+    sorted_positive_case_ids = tuple(sorted(positive_case_ids))
+    payload = _patch_schedule_payload(
+        schedule_identifier=PHASE8_DEFINITIVE_PATCH_MATERIALIZATION_DESIGN_IDENTIFIER,
+        config_hash=config.config_hash,
+        policy_hash=policy_hash,
+        seed=seed,
+        total_optimizer_steps=total_optimizer_steps,
+        case_reference_ids=case_reference_ids,
+        positive_case_ids=sorted_positive_case_ids,
+        entries=entries,
+    )
+    return Phase8DefinitivePatchSchedule(
+        schedule_identifier=PHASE8_DEFINITIVE_PATCH_MATERIALIZATION_DESIGN_IDENTIFIER,
+        config_hash=config.config_hash,
+        policy_hash=policy_hash,
+        seed=seed,
+        total_optimizer_steps=total_optimizer_steps,
+        case_reference_ids=case_reference_ids,
+        positive_case_ids=sorted_positive_case_ids,
+        entries=tuple(entries),
+        schedule_hash=sha256_json(payload),
+    )
+
+
+def build_definitive_patch_request_schedule(
+    case_references: Sequence[Phase8DefinitiveTrainCaseReference],
+    *,
+    positive_case_ids: frozenset[str] | set[str],
+    config: Phase8DefinitiveConfig,
+    policy: Phase8DefinitiveTrainingExecutionPolicy,
+    rng_seed: int | None = None,
+) -> Phase8DefinitivePatchSchedule:
+    """Build the deterministic, self-hashed 500-step patch-request schedule.
+
+    Every entry fixes one positive and one negative case ID for one
+    optimizer step, in exact step order, using the same positive-case
+    rotation and negative-case-selection algorithm as the existing
+    loader-based continuous-training case-selection logic (see the module
+    note above this section for why the negative-case RNG stream is
+    decoupled from patch-position sampling). This function performs no
+    dataset discovery, no filesystem access, and no medical-volume loading;
+    it is a pure function of ``case_references`` order, ``positive_case_ids``,
+    and ``config.seed``. ``case_references`` order is preserved exactly as
+    supplied -- there is no internal sorting or renumbering, matching
+    :func:`run_definitive_training_from_references`.
+    """
+
+    if policy.total_optimizer_steps != _POLICY_TOTAL_OPTIMIZER_STEPS:
+        raise Phase8DefinitivePipelineConfigError(
+            f"policy.total_optimizer_steps must equal {_POLICY_TOTAL_OPTIMIZER_STEPS!r}."
+        )
+
+    seed = config.seed if rng_seed is None else rng_seed
+    return _build_definitive_patch_request_schedule_core(
+        case_references,
+        positive_case_ids=positive_case_ids,
+        config=config,
+        policy_hash=policy.policy_hash,
+        seed=seed,
+        total_optimizer_steps=policy.total_optimizer_steps,
+    )
+
+
+# ---------------------------------------------------------------------------
+# O. Sequential patch materialization
+# ---------------------------------------------------------------------------
+
+
+PHASE8_DEFINITIVE_PATCH_METADATA_SCHEMA_NAME: Final[str] = "phase8_definitive_training_patch"
+PHASE8_DEFINITIVE_PATCH_METADATA_SCHEMA_VERSION: Final[str] = "v1"
+_VALID_PATCH_ROLES: Final[tuple[str, str]] = ("positive", "negative")
+
+
+def _patch_metadata_payload(
+    *,
+    schema_name: str,
+    schema_version: str,
+    step_index: int,
+    role: str,
+    case_id: str,
+    image_shape: Sequence[int],
+    image_dtype: str,
+    label_shape: Sequence[int],
+    label_dtype: str,
+    patch_content_sha256: str,
+    definitive_config_hash: str,
+    schedule_hash: str,
+) -> dict[str, JsonValue]:
+    return {
+        "case_id": case_id,
+        "definitive_config_hash": definitive_config_hash,
+        "image_dtype": image_dtype,
+        "image_shape": list(image_shape),
+        "label_dtype": label_dtype,
+        "label_shape": list(label_shape),
+        "patch_content_sha256": patch_content_sha256,
+        "role": role,
+        "schedule_hash": schedule_hash,
+        "schema_name": schema_name,
+        "schema_version": schema_version,
+        "step_index": step_index,
+    }
+
+
+@dataclass(frozen=True, slots=True)
+class Phase8DefinitivePatchMetadata:
+    """Machine-readable, self-hashed metadata for one materialized training patch.
+
+    Deliberately excludes any raw patient identifier and any filesystem
+    source path: only the caller-supplied anonymous ``case_id``, patch
+    shape/dtype, and hash-linked provenance are recorded.
+    """
+
+    schema_name: str
+    schema_version: str
+    step_index: int
+    role: str
+    case_id: str
+    image_shape: tuple[int, ...]
+    image_dtype: str
+    label_shape: tuple[int, ...]
+    label_dtype: str
+    patch_content_sha256: str
+    definitive_config_hash: str
+    schedule_hash: str
+    metadata_hash: str
+
+    def __post_init__(self) -> None:
+        if self.schema_name != PHASE8_DEFINITIVE_PATCH_METADATA_SCHEMA_NAME:
+            raise Phase8DefinitivePatchMaterializationError(
+                f"schema_name must equal {PHASE8_DEFINITIVE_PATCH_METADATA_SCHEMA_NAME!r}."
+            )
+        if self.schema_version != PHASE8_DEFINITIVE_PATCH_METADATA_SCHEMA_VERSION:
+            raise Phase8DefinitivePatchMaterializationError(
+                f"schema_version must equal {PHASE8_DEFINITIVE_PATCH_METADATA_SCHEMA_VERSION!r}."
+            )
+        if self.role not in _VALID_PATCH_ROLES:
+            raise Phase8DefinitivePatchMaterializationError(
+                f"role must be one of {_VALID_PATCH_ROLES!r}, got {self.role!r}."
+            )
+        if self.step_index < 0:
+            raise Phase8DefinitivePatchMaterializationError("step_index must be non-negative.")
+        object.__setattr__(self, "image_shape", tuple(int(v) for v in self.image_shape))
+        object.__setattr__(self, "label_shape", tuple(int(v) for v in self.label_shape))
+        _require_sha256_hex(self.patch_content_sha256, field_name="patch_content_sha256")
+        _require_sha256_hex(self.definitive_config_hash, field_name="definitive_config_hash")
+        _require_sha256_hex(self.schedule_hash, field_name="schedule_hash")
+        expected_hash = sha256_json(
+            _patch_metadata_payload(
+                schema_name=self.schema_name,
+                schema_version=self.schema_version,
+                step_index=self.step_index,
+                role=self.role,
+                case_id=self.case_id,
+                image_shape=self.image_shape,
+                image_dtype=self.image_dtype,
+                label_shape=self.label_shape,
+                label_dtype=self.label_dtype,
+                patch_content_sha256=self.patch_content_sha256,
+                definitive_config_hash=self.definitive_config_hash,
+                schedule_hash=self.schedule_hash,
+            )
+        )
+        if self.metadata_hash != expected_hash:
+            raise Phase8DefinitivePatchMaterializationError(
+                "metadata_hash does not match the canonical patch-metadata identity."
+            )
+
+
+def _patch_metadata_full_dict(metadata: Phase8DefinitivePatchMetadata) -> dict[str, JsonValue]:
+    payload = _patch_metadata_payload(
+        schema_name=metadata.schema_name,
+        schema_version=metadata.schema_version,
+        step_index=metadata.step_index,
+        role=metadata.role,
+        case_id=metadata.case_id,
+        image_shape=metadata.image_shape,
+        image_dtype=metadata.image_dtype,
+        label_shape=metadata.label_shape,
+        label_dtype=metadata.label_dtype,
+        patch_content_sha256=metadata.patch_content_sha256,
+        definitive_config_hash=metadata.definitive_config_hash,
+        schedule_hash=metadata.schedule_hash,
+    )
+    payload["metadata_hash"] = metadata.metadata_hash
+    return payload
+
+
+def _patch_metadata_from_json_dict(
+    payload: Mapping[str, JsonValue],
+) -> Phase8DefinitivePatchMetadata:
+    return Phase8DefinitivePatchMetadata(
+        schema_name=cast(str, payload["schema_name"]),
+        schema_version=cast(str, payload["schema_version"]),
+        step_index=cast(int, payload["step_index"]),
+        role=cast(str, payload["role"]),
+        case_id=cast(str, payload["case_id"]),
+        image_shape=tuple(cast(list[int], payload["image_shape"])),
+        image_dtype=cast(str, payload["image_dtype"]),
+        label_shape=tuple(cast(list[int], payload["label_shape"])),
+        label_dtype=cast(str, payload["label_dtype"]),
+        patch_content_sha256=cast(str, payload["patch_content_sha256"]),
+        definitive_config_hash=cast(str, payload["definitive_config_hash"]),
+        schedule_hash=cast(str, payload["schedule_hash"]),
+        metadata_hash=cast(str, payload["metadata_hash"]),
+    )
+
+
+def _patch_file_paths(patch_root: Path, *, step_index: int, role: str) -> tuple[Path, Path]:
+    base_name = f"step_{step_index:04d}_{role}"
+    return patch_root / f"{base_name}.npz", patch_root / f"{base_name}.json"
+
+
+@dataclass(frozen=True, slots=True)
+class Phase8DefinitivePatchPublicationRecord:
+    """One published training-patch artifact: its files, hash, and metadata."""
+
+    step_index: int
+    role: str
+    case_id: str
+    npz_path: Path
+    metadata_path: Path
+    metadata: Phase8DefinitivePatchMetadata
+
+
+def _publish_definitive_training_patch(
+    *,
+    patch: Phase8DefinitivePatch,
+    step_index: int,
+    role: str,
+    case_id: str,
+    patch_root: Path,
+    config: Phase8DefinitiveConfig,
+    schedule_hash: str,
+) -> Phase8DefinitivePatchPublicationRecord:
+    image = np.ascontiguousarray(patch.image_patch.astype(np.float32))
+    label = np.ascontiguousarray(patch.label_patch.astype(np.bool_))
+    if tuple(image.shape) != config.patch_size:
+        raise Phase8DefinitivePatchMaterializationError(
+            f"patch image shape {tuple(image.shape)} does not equal the locked patch_size "
+            f"{config.patch_size!r}."
+        )
+    if image.shape != label.shape:
+        raise Phase8DefinitivePatchMaterializationError(
+            f"patch image shape {image.shape} does not match label shape {label.shape}."
+        )
+    expected_positive = role == "positive"
+    if bool(np.any(label)) != expected_positive:
+        raise Phase8DefinitivePatchMaterializationError(
+            f"role={role!r} patch foreground-voxel presence does not match its declared role."
+        )
+
+    content_hash = hashlib.sha256(image.tobytes() + label.tobytes()).hexdigest()
+
+    npz_path, metadata_path = _patch_file_paths(patch_root, step_index=step_index, role=role)
+    if npz_path.exists() or metadata_path.exists():
+        raise Phase8DefinitivePatchMaterializationError(
+            f"a materialized patch already exists for step {step_index} role {role!r}; "
+            "overwrite is rejected."
+        )
+
+    metadata = Phase8DefinitivePatchMetadata(
+        schema_name=PHASE8_DEFINITIVE_PATCH_METADATA_SCHEMA_NAME,
+        schema_version=PHASE8_DEFINITIVE_PATCH_METADATA_SCHEMA_VERSION,
+        step_index=step_index,
+        role=role,
+        case_id=case_id,
+        image_shape=image.shape,
+        image_dtype=str(image.dtype),
+        label_shape=label.shape,
+        label_dtype=str(label.dtype),
+        patch_content_sha256=content_hash,
+        definitive_config_hash=config.config_hash,
+        schedule_hash=schedule_hash,
+        metadata_hash=sha256_json(
+            _patch_metadata_payload(
+                schema_name=PHASE8_DEFINITIVE_PATCH_METADATA_SCHEMA_NAME,
+                schema_version=PHASE8_DEFINITIVE_PATCH_METADATA_SCHEMA_VERSION,
+                step_index=step_index,
+                role=role,
+                case_id=case_id,
+                image_shape=image.shape,
+                image_dtype=str(image.dtype),
+                label_shape=label.shape,
+                label_dtype=str(label.dtype),
+                patch_content_sha256=content_hash,
+                definitive_config_hash=config.config_hash,
+                schedule_hash=schedule_hash,
+            )
+        ),
+    )
+
+    npz_buffer = io.BytesIO()
+    np.savez(npz_buffer, image=image, label=label)
+    _publish_bytes_no_overwrite(
+        payload=npz_buffer.getvalue(),
+        output_path=npz_path,
+        overwrite_error=Phase8DefinitivePatchMaterializationError,
+    )
+    _publish_bytes_no_overwrite(
+        payload=canonical_json_bytes(_patch_metadata_full_dict(metadata)),
+        output_path=metadata_path,
+        overwrite_error=Phase8DefinitivePatchMaterializationError,
+    )
+
+    return Phase8DefinitivePatchPublicationRecord(
+        step_index=step_index,
+        role=role,
+        case_id=case_id,
+        npz_path=npz_path,
+        metadata_path=metadata_path,
+        metadata=metadata,
+    )
+
+
+def _load_materialized_definitive_patch(
+    patch_root: Path, *, step_index: int, role: str
+) -> tuple[Phase8DefinitivePatch, Phase8DefinitivePatchMetadata]:
+    npz_path, metadata_path = _patch_file_paths(patch_root, step_index=step_index, role=role)
+    if not npz_path.exists() or not metadata_path.exists():
+        raise Phase8DefinitivePatchMaterializationError(
+            f"materialized patch files are missing for step {step_index} role {role!r}."
+        )
+
+    metadata_payload = json.loads(metadata_path.read_bytes().decode("utf-8"))
+    metadata = _patch_metadata_from_json_dict(metadata_payload)
+    if metadata.step_index != step_index or metadata.role != role:
+        raise Phase8DefinitivePatchMaterializationError(
+            f"materialized patch metadata for step {step_index} role {role!r} does not match "
+            "its filename."
+        )
+
+    with np.load(npz_path) as archive:
+        image = np.asarray(archive["image"])
+        label = np.asarray(archive["label"])
+    content_hash = hashlib.sha256(image.tobytes() + label.tobytes()).hexdigest()
+    if content_hash != metadata.patch_content_sha256:
+        raise Phase8DefinitivePatchMaterializationError(
+            f"materialized patch content hash mismatch for step {step_index} role {role!r}."
+        )
+
+    patch = Phase8DefinitivePatch(
+        image_patch=image, label_patch=label.astype(bool), is_positive=(role == "positive")
+    )
+    return patch, metadata
+
+
+@dataclass(frozen=True, slots=True)
+class Phase8DefinitivePatchMaterializationResult:
+    """Result of one sequential patch-materialization run.
+
+    ``processed_case_ids`` records, in the exact order each case was loaded,
+    every case actually fetched from ``loader`` -- each entry appears
+    exactly once, evidencing that no case was preprocessed twice and that no
+    persistent full-volume cache was consulted across cases.
+    """
+
+    schedule_hash: str
+    published_patches: tuple[Phase8DefinitivePatchPublicationRecord, ...]
+    processed_case_ids: tuple[str, ...]
+
+
+def materialize_definitive_training_patches(
+    schedule: Phase8DefinitivePatchSchedule,
+    *,
+    case_references: Sequence[Phase8DefinitiveTrainCaseReference],
+    positive_case_ids: frozenset[str] | set[str],
+    loader: Phase8DefinitiveCaseLoader | Callable[[str], Phase8DefinitiveTrainCase],
+    patch_root: Path,
+    config: Phase8DefinitiveConfig,
+) -> Phase8DefinitivePatchMaterializationResult:
+    """Materialize every patch ``schedule`` requires, one full case at a time.
+
+    Cases are processed strictly sequentially in ``case_references`` order
+    (the same order used to build ``schedule``; no internal reordering): for
+    each case the schedule actually requires, ``loader`` is invoked exactly
+    once, every patch any schedule entry needs from that case (as a positive
+    source, a negative source, or both) is sampled and published, and the
+    loaded case is then discarded before the next case is loaded. At most one
+    full preprocessed case is therefore live at any point during this
+    function, and no persistent cross-case cache is kept.
+
+    ``positive_case_ids`` is accepted explicitly (mirroring
+    :func:`run_definitive_training_from_references`) and cross-checked
+    against the positive-case set already baked into ``schedule`` -- a
+    redundant, fail-closed sanity check, not an independent source of
+    positivity (the schedule alone already fully determines every patch
+    request).
+
+    Patch-voxel-position sampling uses a dedicated deterministic RNG stream
+    derived only from ``(config.seed, step_index, role)`` -- independent of
+    case content and of the case-selection RNG used to build ``schedule`` --
+    so re-running this function against identical synthetic inputs reproduces
+    byte-identical patch content and metadata hashes (Section E determinism).
+    """
+
+    if schedule.config_hash != config.config_hash:
+        raise Phase8DefinitivePatchMaterializationError(
+            "schedule.config_hash does not match the supplied config."
+        )
+    supplied_case_ids = tuple(reference.case_id for reference in case_references)
+    if supplied_case_ids != schedule.case_reference_ids:
+        raise Phase8DefinitivePatchMaterializationError(
+            "case_references order/content does not match schedule.case_reference_ids."
+        )
+    if tuple(sorted(positive_case_ids)) != schedule.positive_case_ids:
+        raise Phase8DefinitivePatchMaterializationError(
+            "positive_case_ids does not match the positive-case set recorded in schedule."
+        )
+
+    validated_patch_root = validate_explicit_external_output_root(patch_root)
+
+    requirements: dict[str, list[tuple[int, str]]] = {}
+    for entry in schedule.entries:
+        requirements.setdefault(entry.positive_case_id, []).append((entry.step_index, "positive"))
+        requirements.setdefault(entry.negative_case_id, []).append((entry.step_index, "negative"))
+
+    published: list[Phase8DefinitivePatchPublicationRecord] = []
+    processed_case_ids: list[str] = []
+
+    for reference in case_references:
+        case_id = reference.case_id
+        required_entries = requirements.get(case_id)
+        if not required_entries:
+            continue
+
+        case = loader(case_id)
+        processed_case_ids.append(case_id)
+        try:
+            for step_index, role in required_entries:
+                patch_rng = np.random.default_rng(
+                    [config.seed, step_index, 0 if role == "positive" else 1]
+                )
+                record = _publish_definitive_training_patch(
+                    patch=sample_foreground_aware_patches(
+                        case.image,
+                        case.label_binary,
+                        config=config,
+                        positive_count=1 if role == "positive" else 0,
+                        negative_count=1 if role == "negative" else 0,
+                        rng=patch_rng,
+                    )[0],
+                    step_index=step_index,
+                    role=role,
+                    case_id=case_id,
+                    patch_root=validated_patch_root,
+                    config=config,
+                    schedule_hash=schedule.schedule_hash,
+                )
+                published.append(record)
+        finally:
+            del case
+
+    if len(published) != 2 * schedule.total_optimizer_steps:
+        raise Phase8DefinitivePatchMaterializationError(
+            f"expected {2 * schedule.total_optimizer_steps} published patches "
+            f"(one positive and one negative per step), got {len(published)}."
+        )
+
+    return Phase8DefinitivePatchMaterializationResult(
+        schedule_hash=schedule.schedule_hash,
+        published_patches=tuple(published),
+        processed_case_ids=tuple(processed_case_ids),
+    )
+
+
+# ---------------------------------------------------------------------------
+# P. Training from materialized patches
+# ---------------------------------------------------------------------------
+
+
+def _run_definitive_training_from_materialized_patches_core(
+    schedule: Phase8DefinitivePatchSchedule,
+    *,
+    patch_root: Path,
+    config: Phase8DefinitiveConfig,
+    total_optimizer_steps: int,
+    candidate_checkpoint_steps: tuple[int, ...],
+    rng_seed: int | None = None,
+) -> Phase8DefinitiveContinuousTrainingRunResult:
+    """Shared implementation behind the locked, policy-driven public entrypoint.
+
+    Parametrized on step counts purely so unit tests can exercise this path
+    with a tiny schedule instead of the locked 500 steps; see
+    :func:`run_definitive_training_from_materialized_patches` for the only
+    production entrypoint.
+    """
+
+    if schedule.config_hash != config.config_hash:
+        raise Phase8DefinitivePatchMaterializationError(
+            "schedule.config_hash does not match the supplied config."
+        )
+    if schedule.total_optimizer_steps != total_optimizer_steps:
+        raise Phase8DefinitivePipelineRuntimeError(
+            f"schedule.total_optimizer_steps ({schedule.total_optimizer_steps}) does not match "
+            f"total_optimizer_steps ({total_optimizer_steps})."
+        )
+    if not candidate_checkpoint_steps:
+        raise Phase8DefinitivePipelineRuntimeError("candidate_checkpoint_steps must be nonempty.")
+
+    torch = _import_torch()
+    monai = _import_monai()
+
+    seed = config.seed if rng_seed is None else rng_seed
+    # The model/optimizer are seeded and constructed exactly once for the
+    # entire run, matching run_definitive_continuous_training_with_snapshots.
+    torch.manual_seed(seed)
+    torch.use_deterministic_algorithms(True)
+
+    model = _build_definitive_segresnet_model(torch=torch, monai=monai, config=config)
+    optimizer = torch.optim.AdamW(
+        model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay
+    )
+    loss_function = monai.losses.DiceCELoss(to_onehot_y=True, softmax=True)
+
+    candidate_steps_remaining = set(candidate_checkpoint_steps)
+    step_results: list[Phase8DefinitiveTrainingStepResult] = []
+    snapshots: dict[int, Any] = {}
+    all_finite = True
+
+    validated_patch_root = validate_explicit_external_output_root(patch_root)
+
+    for entry in schedule.entries:
+        positive_patch, _ = _load_materialized_definitive_patch(
+            validated_patch_root, step_index=entry.step_index, role="positive"
+        )
+        negative_patch, _ = _load_materialized_definitive_patch(
+            validated_patch_root, step_index=entry.step_index, role="negative"
+        )
+
+        step_result = _run_definitive_training_step_from_patches(
+            step_index=entry.step_index,
+            positive_patch=positive_patch,
+            negative_patch=negative_patch,
+            model=model,
+            optimizer=optimizer,
+            loss_function=loss_function,
+            torch=torch,
+        )
+        step_results.append(step_result)
+        del positive_patch, negative_patch
+
+        if not (step_result.loss_finite and step_result.gradient_finite):
+            all_finite = False
+            break
+
+        steps_completed = entry.step_index + 1
+        if steps_completed in candidate_steps_remaining:
+            snapshots[steps_completed] = copy.deepcopy(model.state_dict())
+
+    return Phase8DefinitiveContinuousTrainingRunResult(
+        step_results=tuple(step_results),
+        all_steps_finite=all_finite,
+        checkpoint_snapshots=snapshots,
+    )
+
+
+def run_definitive_training_from_materialized_patches(
+    schedule: Phase8DefinitivePatchSchedule,
+    *,
+    patch_root: Path,
+    config: Phase8DefinitiveConfig,
+    policy: Phase8DefinitiveTrainingExecutionPolicy,
+    rng_seed: int | None = None,
+) -> Phase8DefinitiveContinuousTrainingRunResult:
+    """Train from pre-materialized patches, consuming them in exact step order.
+
+    Model, optimizer, and seed are each initialized exactly once for the
+    whole run (mirroring
+    :func:`run_definitive_continuous_training_with_snapshots`); no medical
+    volume is loaded or preprocessed here -- every optimizer step reads its
+    already-cropped positive/negative patch pair from ``patch_root`` (as
+    published by :func:`materialize_definitive_training_patches`) and
+    delegates to the same shared fail-closed
+    :func:`_run_definitive_training_step_from_patches` helper used
+    everywhere else in this module. Checkpoint snapshots are captured at
+    exactly ``policy.candidate_checkpoint_steps`` (250 and 500), identically
+    to the loader-based continuous-training path.
+    """
+
+    if policy.total_optimizer_steps != _POLICY_TOTAL_OPTIMIZER_STEPS:
+        raise Phase8DefinitivePipelineConfigError(
+            f"policy.total_optimizer_steps must equal {_POLICY_TOTAL_OPTIMIZER_STEPS!r}."
+        )
+    if policy.candidate_checkpoint_steps != _POLICY_CANDIDATE_CHECKPOINT_STEPS:
+        raise Phase8DefinitivePipelineConfigError(
+            f"policy.candidate_checkpoint_steps must equal {_POLICY_CANDIDATE_CHECKPOINT_STEPS!r}."
+        )
+    if schedule.policy_hash != policy.policy_hash:
+        raise Phase8DefinitivePatchMaterializationError(
+            "schedule.policy_hash does not match the supplied policy."
+        )
+
+    return _run_definitive_training_from_materialized_patches_core(
+        schedule,
+        patch_root=patch_root,
+        config=config,
+        total_optimizer_steps=policy.total_optimizer_steps,
+        candidate_checkpoint_steps=policy.candidate_checkpoint_steps,
+        rng_seed=rng_seed,
+    )

@@ -2336,6 +2336,24 @@ definitive training was executed, no real checkpoint was selected, no freeze occ
 Wave 4/5 readiness release; it prepares orchestration for a future separately approved real
 execution.
 
+### Phase 8 Definitive Patch Materialization Implementation Note
+
+Status: implementation and synthetic-test completed locally on 2026-08-08 under
+`P8-DEFINITIVE-PATCH-MATERIALIZATION-V1` (see `docs/DECISIONS.md`). This substage is an
+execution-efficiency correction only: it prevents the approved 500-step definitive run from
+repeatedly loading and preprocessing complete CT volumes on every optimizer step. It adds a
+deterministic, self-hashed 500-entry patch-request schedule (built before any medical volume is
+loaded, preserving the existing positive-case rotation and negative-case-selection algorithm on a
+dedicated RNG stream, in exact `case_references` order with no internal reordering), sequential
+one-case-at-a-time patch materialization (at most one full preprocessed case live at any point, no
+persistent full-volume cache, anonymous NPZ+JSON patch artifacts with no-overwrite publication
+outside Git), and a training path that consumes materialized patches in exact step order while
+initializing the model, optimizer, and seed exactly once and keeping checkpoint snapshots at
+exactly steps 250 and 500. No scientific policy (architecture, preprocessing, sampling ratio,
+optimizer, loss, device, AMP, seed, step budget, checkpoint candidates, or selection metric)
+changed. No real data was accessed, no real patches were materialized, no definitive training was
+executed, and no checkpoint selection or freeze occurred under this decision.
+
 ## Implementation Notes and Command Results
 
 Phase 0 implemented only the environment contract, repository structure, quality gates, temporary synthetic fixture strategy, validation helper, and `protoem-ct validate-pair` CLI smoke path.
