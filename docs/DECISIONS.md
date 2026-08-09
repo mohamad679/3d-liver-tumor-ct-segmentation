@@ -830,3 +830,59 @@
   checkpoint metadata. This entry does not perform external-evaluation preregistration, does not
   access 3D-IRCADb-01, and does not perform external inference -- preregistration remains the next,
   separately authorized Phase 8 stage.
+
+### 2026-08-09: Publish Package E Phase 8 External-Evaluation Preregistration
+
+- Status: accepted
+- Authorization: the user, acting as Phase 8 Master Supervisor in this session, explicitly directed
+  execution of "PACKAGE E — EXTERNAL EVALUATION PREREGISTRATION" against the completed, reviewed
+  Package D freeze recorded in the immediately preceding entry above, with an explicit, repeated
+  instruction that no 3D-IRCADb-01 image, label, or directory listing may be accessed at this stage.
+- Context: `Phase8ExternalPreregistration` (`preregistration.py`) and its sibling contracts
+  (`label_mapping.py`, `eligibility.py`, `domain_shift.py`, `statistical_policy.py`) were already
+  fully implemented and unit-tested from earlier Phase 8 work, but no wiring existed to assemble a
+  concrete preregistration instance from the real, now-frozen Package D decision inventory, or to
+  publish one. That wiring was the one genuinely missing piece for this step.
+- Decision: A new, minimal wiring module
+  `src/protoem_ct/external/preregistration_publication.py` (reviewed by one independent read-only
+  reviewer; two minor follow-up hardening fixes applied after review -- cross-checking the supplied
+  support-policy artifact's content against the freeze's own recorded `support_policy` hash, and
+  reusing `preregistration.py`'s own `PHASE8_ARTIFACT_REFERENCE_SCHEMA_NAME`/`_VERSION` constants
+  instead of duplicating them -- both verified not to change the published preregistration's
+  identity hash) builds `Phase8ExternalPreregistration` entirely from already-committed authority: it
+  reads the two Package D artifacts named in this task (`phase8_decision_freeze.json`,
+  `phase8_definitive_support_policy.json`) only after verifying each file's SHA-256 against the
+  caller-supplied expected value (fail-closed on mismatch, symlink, non-absolute path, or
+  non-regular-file), then cross-checks that `build_default_phase8_label_mapping_policy()` and the
+  `bootstrap_configuration`/`metric_configuration`/`publication_configuration` components of
+  `build_phase8_statistical_policy_bundle()` still hash to exactly what the freeze inventory already
+  recorded for those categories, failing closed on any drift rather than trusting local
+  recomputation. `frozen_decision_inventory_hash` is the freeze's own
+  `freeze_inventory_hash=efca32a42d435db05b171ae5f064d38c36eeaf1352e6c86df76fa1a8d94ac145`. Because
+  the anonymous external image manifest and domain-shift record do not exist yet -- no external data
+  has been accessed -- `anonymous_manifest_reference` and `domain_shift_record_reference` are left
+  `reference_state="unresolved"` (`artifact_hash=None`) and `lifecycle_state="draft"` is the only
+  value the schema permits in that state (`evaluation_ready` requires every reference resolved). All
+  nine `PHASE8_SEGMENTATION_METRICS` (`tumor_dice`, `tumor_iou`, `tumor_hd95`,
+  `tumor_normalized_surface_dice`, `lesion_wise_recall`, `lesion_wise_precision`, `lesion_f1`,
+  `false_positive_lesions_per_scan`, `tumor_volume_error`) are preregistered as descriptive metrics
+  with no new primary/confirmatory hierarchy introduced, per the existing statistical-policy
+  contract's own framing (`comparison_configuration.claims_policy="descriptive_only..."`). Bootstrap
+  policy (`case_patient` resampling unit, seed `1729`, `10000` resamples, `95%` percentile CI),
+  qualitative-montage selection (all eligible cases if <=20, else hash-ranked with the same seed), and
+  eligibility fail-closed rules (`build_phase8_eligibility_policy()`) are all bound by reference to
+  their existing, unmodified repository contracts -- none were redefined. `no_tuning_declaration`,
+  `external_label_access_state="unavailable_before_prediction_lock"`, and
+  `prediction_lock_requirement="required_before_label_access"` are hardcoded, not configurable.
+  Published, reject-on-overwrite, to
+  `/Volumes/Lexar/ProtoEM-CT/runs/phase8_external_preregistration_v1/phase8_external_preregistration.json`,
+  self-validating hash `75d287ade45d2a778153885838d8635606ba5ae739ed88dbf0580671258db291`. The
+  external cohort root `/Volumes/Lexar/ProtoEM-CT/datasets/external/3D-IRCADb-01` was recorded nowhere
+  in code, hashed payload, or published artifact -- it was never stat'd, listed, opened, or otherwise
+  observed by this work.
+- Consequences: Phase 8 now has a committed, hash-bound, self-validating draft preregistration for
+  the 3D-IRCADb-01 external evaluation, referencing only already-frozen Package D decisions and
+  already-committed repository policy contracts, with no new scientific decision introduced. This
+  entry does not access 3D-IRCADb-01, does not perform external inference, and does not compute any
+  metric -- image-only external inference (with predictions locked/hashed before any external label
+  is accessed) remains the next, separately authorized Phase 8 stage.
