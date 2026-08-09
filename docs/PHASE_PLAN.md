@@ -31,13 +31,12 @@ for the full package-by-package execution history (Packages A through H), and th
 
 Phase 9 is **SKIPPED BY USER DECISION / NOT EXECUTED**. No LLM/VLM/RAG work was implemented.
 
-Phase 10 (final scientific package) is in release-candidate preparation on
-`phase/10-final-scientific-package`. The package generates the final report, tables, figures,
-statistics, model card, data card, application materials, release checklist, and release-candidate
-metadata from saved machine-readable artifacts. Phase 10 is not closed until Gate 8 reproduction,
-final validation commands, and P10-R independent review pass.
+Phase 10 (final scientific package) is **CLOSED** on `phase/10-final-scientific-package`. The
+package generates the final report, tables, figures, statistics, model card, data card, application
+materials, release checklist, and release-candidate metadata from saved machine-readable artifacts.
+Gate 8 reproduction, final validation commands, and P10-R independent review passed.
 
-Active phase: Phase 10 only.
+Active phase: none. The core project is complete. Do not begin Phase 9 or any later phase.
 
 ## Phase 0 Scope
 

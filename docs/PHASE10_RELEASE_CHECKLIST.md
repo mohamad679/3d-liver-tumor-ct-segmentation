@@ -1,6 +1,6 @@
 # Phase 10 Release Checklist
 
-Status: release candidate prepared; final validation passed; independent P10-R review pending.
+Status: Phase 10 closed; Gate 8 passed; P10-R independent review passed.
 
 ## Scope
 
@@ -56,5 +56,5 @@ These must pass before Phase 10 closure:
 
 ## Final Review
 
-- [ ] P10-R independent review PASS.
-- [ ] Working tree clean after final commits.
+- [x] P10-R independent review PASS.
+- [x] Working tree clean after final commits.

@@ -46,7 +46,7 @@
   },
   {
    "path": "docs/PHASE10_RELEASE_CHECKLIST.md",
-   "sha256": "c9ca2a1119dc656fe1a861aa14e0d57e00d19f1773934989afa99d985e3c2789"
+   "sha256": "e4ba92882a4ddd99b069cb6c274b632493e356584ec968d955ac541f82b99925"
   },
   {
    "path": "README.md",
@@ -54,11 +54,11 @@
   },
   {
    "path": "ACCEPTANCE_CHECKLIST.md",
-   "sha256": "23fd9eca45b9e1e9db354071227af184871cf127bd6940bb6c420a92ae30042d"
+   "sha256": "95f31ce413d09f819a011b059c10bd01f98bfa32eb181167e82d18ad689707de"
   },
   {
    "path": "docs/PHASE_PLAN.md",
-   "sha256": "339c8abeafec5cb03a2942e6b1c3dfc47a96a2feb14a616f7fe5b2264b93ee22"
+   "sha256": "a213ecc5247e8cc1b9a6d02bd634e19ee0fb492163a42c4d7ea7eecb62c89e45"
   },
   {
    "path": "docs/DECISIONS.md",
@@ -73,7 +73,7 @@
  "inference_rerun": false,
  "lits_msd_policy": "single_lits_derived_development_source",
  "phase10_b_outputs_manifest_hash": "bce7894adbb3d059e6ee6367e7f90f49a30f32652e220d3aeb5b6298f2408035",
- "phase10_status": "release_candidate_prepared_pending_p10r_review",
+ "phase10_status": "complete_p10r_pass_gate8_pass_no_push",
  "phase9_status": "skipped_by_user_decision_not_executed",
  "predictions_committed": false,
  "raw_medical_data_committed": false,
@@ -81,7 +81,7 @@
  "schema_name": "phase10_release_candidate",
  "schema_version": "v1",
  "secrets_committed": false,
- "self_hash": "d7da99904e894ed5456e6fd8a948611b6162b8d916821cfcb0ba31d4387f7213",
- "source_package_commit": "6fef8d480accc5658f674c6ddb152b9ca09e73b2",
+ "self_hash": "95dc3d588261cd41dcc056e1036b370368277f83bafc87106fe98006199555cf",
+ "source_package_commit": "9c93c5cde1886ff2190941455a78c8c9e7acb443",
  "training_rerun": false
 }

@@ -361,12 +361,12 @@ Leakage and scope evidence:
 - [x] `uv run pytest -q` passes
 - [x] `make smoke` passes
 - [x] `uv run snakemake --cores 4 --rerun-incomplete reports/final_report.html` passes
-- [ ] P10-R independent review passes
+- [x] P10-R independent review passes
 - [x] Gate 8 passes: final report generated entirely from machine-readable artifacts
 
 ### Gate 8 Evidence
 
-Gate 8 status: PASS for artifact-only final-report reproduction; P10-R independent review pending.
+Gate 8 status: PASS for artifact-only final-report reproduction and P10-R independent review.
 
 Current artifact identities:
 

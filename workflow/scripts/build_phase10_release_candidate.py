@@ -88,7 +88,7 @@ def build_release_candidate(output: Path) -> dict[str, Any]:
         "final_report_manifest_hash": report_manifest["self_hash"],
         "final_report_html_sha256": report_manifest["report_html_sha256"],
         "phase9_status": "skipped_by_user_decision_not_executed",
-        "phase10_status": "release_candidate_prepared_pending_p10r_review",
+        "phase10_status": "complete_p10r_pass_gate8_pass_no_push",
         "gate8_status": "pass_final_report_generated_from_machine_readable_artifacts",
         "training_rerun": False,
         "inference_rerun": False,
