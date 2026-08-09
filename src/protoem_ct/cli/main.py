@@ -103,6 +103,13 @@ from protoem_ct.external import (
     run_phase8_wave3_policy_publication,
     run_phase8_wave4_readiness_publication,
 )
+from protoem_ct.external.definitive_real_training_driver import (
+    DEFAULT_WALL_CLOCK_LIMIT_SECONDS as DEFAULT_DEFINITIVE_REAL_TRAINING_WALL_CLOCK_LIMIT_SECONDS,
+)
+from protoem_ct.external.definitive_real_training_driver import (
+    Phase8DefinitiveRealTrainingError,
+    run_phase8_definitive_real_training_with_watchdog,
+)
 from protoem_ct.external.definitive_training import (
     Phase8DefinitiveTrainingError,
     build_phase8_definitive_training_config,
@@ -445,6 +452,16 @@ def _raise_phase8_definitive_training_run_cli_error(exc: Exception) -> None:
     """Exit with a concise Phase 8 definitive-training run error without data leakage."""
     typer.secho(
         f"Phase 8 definitive-training run error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase8_definitive_real_training_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 8 definitive real-training error without data leakage."""
+    typer.secho(
+        f"Phase 8 definitive real-training error: {type(exc).__name__}",
         err=True,
         fg=typer.colors.RED,
     )
@@ -2111,6 +2128,143 @@ def run_phase8_tiny_real_development_verification_command(
     typer.echo(f"summary_hash: {result.summary_hash}")
     for relative_name, digest in sorted(result.artifact_hashes.items()):
         typer.echo(f"artifact: {relative_name} sha256={digest}")
+
+
+@app.command("run-phase8-definitive-real-training")
+def run_phase8_definitive_real_training_command(
+    approve_definitive_real_training: Annotated[
+        bool,
+        typer.Option(
+            "--approve-definitive-real-training",
+            help=(
+                "Required explicit approval. Without this flag the command refuses "
+                "before opening any file."
+            ),
+        ),
+    ] = False,
+    manifest_path: Annotated[
+        Path,
+        typer.Option(
+            "--manifest-path", help="Explicit absolute path to the approved Phase 2 manifest JSON."
+        ),
+    ] = ...,  # type: ignore[assignment]
+    split_path: Annotated[
+        Path,
+        typer.Option(
+            "--split-path",
+            help="Explicit absolute path to the approved Phase 2 development split JSON.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    lesion_components_path: Annotated[
+        Path,
+        typer.Option(
+            "--lesion-components-path",
+            help="Explicit absolute path to the approved Phase 2 lesion-components JSON.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    expected_lesion_components_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-lesion-components-sha256",
+            help="Caller-declared SHA-256 of the lesion-components file, verified before parsing.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    dataset_root: Annotated[
+        Path,
+        typer.Option(
+            "--dataset-root", help="Explicit absolute, read-only, approved raw dataset root."
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help=(
+                "Explicit absolute, nonexistent, non-symlinked output root outside the repository."
+            ),
+        ),
+    ] = ...,  # type: ignore[assignment]
+    git_commit: Annotated[
+        str,
+        typer.Option(
+            "--git-commit", help="Originating Git commit hash (7-64 lowercase hex characters)."
+        ),
+    ] = ...,  # type: ignore[assignment]
+    package_versions_json: Annotated[
+        str,
+        typer.Option(
+            "--package-versions-json",
+            help='JSON object of package name to version, e.g. {"torch": "2.2.0"}.',
+        ),
+    ] = ...,  # type: ignore[assignment]
+    wall_clock_limit_seconds: Annotated[
+        float,
+        typer.Option(
+            "--wall-clock-limit-seconds",
+            help="Hard wall-clock watchdog limit in seconds (default 36000.0 = 10 hours).",
+        ),
+    ] = DEFAULT_DEFINITIVE_REAL_TRAINING_WALL_CLOCK_LIMIT_SECONDS,
+    repository_root: Annotated[
+        Path | None,
+        typer.Option(
+            "--repository-root",
+            help="Explicit absolute repository root used only for output-root rejection.",
+        ),
+    ] = None,
+) -> None:
+    """Run the real Phase 8 definitive-development training pipeline (Package C).
+
+    Verifies the manifest/split byte-hash against the two locked, approved
+    values before opening any file; derives the 500-step patch schedule from
+    case-ID metadata only; materializes patches sequentially from the 91-case
+    TRAIN partition; runs one continuous 500-step training trajectory with
+    snapshots at steps 250 and 500; publishes both checkpoints
+    (``freeze_eligible=False``); evaluates both on the same 20-case
+    VALIDATION partition; and selects the higher-mean-tumor-Dice checkpoint
+    (tie -> step 250). The entire pipeline runs inside a process-level
+    watchdog with a 10-hour default deadline. Requires explicit
+    ``--approve-definitive-real-training``; without it, the command refuses
+    before opening any file.
+    """
+
+    if not approve_definitive_real_training:
+        typer.secho(
+            "Phase 8 definitive real training requires --approve-definitive-real-training.",
+            err=True,
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        package_versions = _parse_bounded_pilot_package_versions(package_versions_json)
+        result = run_phase8_definitive_real_training_with_watchdog(
+            manifest_path=manifest_path,
+            split_path=split_path,
+            lesion_components_path=lesion_components_path,
+            expected_lesion_components_sha256=expected_lesion_components_sha256,
+            dataset_root=dataset_root,
+            output_root=output_root,
+            repository_root=repository_root or Path.cwd(),
+            git_commit=git_commit,
+            package_versions=package_versions,
+            wall_clock_limit_seconds=wall_clock_limit_seconds,
+        )
+    except (Phase8DefinitiveRealTrainingError, ValueError, OSError) as exc:
+        _raise_phase8_definitive_real_training_cli_error(exc)
+
+    typer.echo("Phase 8 definitive real training complete")
+    typer.echo("freeze_eligible: false")
+    typer.echo(f"config_hash: {result.config_hash}")
+    typer.echo(f"policy_hash: {result.policy_hash}")
+    typer.echo(f"schedule_hash: {result.schedule_hash}")
+    typer.echo(f"mean_tumor_dice_step_250: {result.mean_tumor_dice_step_250}")
+    typer.echo(f"mean_tumor_dice_step_500: {result.mean_tumor_dice_step_500}")
+    typer.echo(f"selected_checkpoint_step: {result.selected_checkpoint_step}")
+    typer.echo(f"selection_evidence_hash: {result.selection_evidence_hash}")
+    typer.echo(f"access_ledger_hash: {result.access_ledger_hash}")
+    typer.echo(f"checkpoint_sha256_step_250: {result.checkpoint_sha256_step_250}")
+    typer.echo(f"checkpoint_sha256_step_500: {result.checkpoint_sha256_step_500}")
+    typer.echo(f"elapsed_seconds: {result.elapsed_seconds}")
 
 
 def _parse_bounded_pilot_package_versions(payload: str) -> dict[str, str]:
