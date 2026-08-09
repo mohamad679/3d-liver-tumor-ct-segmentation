@@ -886,3 +886,56 @@
   entry does not access 3D-IRCADb-01, does not perform external inference, and does not compute any
   metric -- image-only external inference (with predictions locked/hashed before any external label
   is accessed) remains the next, separately authorized Phase 8 stage.
+
+### 2026-08-09: Publish Package F Phase 8 External Image-Only Inference and Prediction Lock
+
+- Status: accepted
+- Authorization: the user, acting as Phase 8 Master Supervisor in this session, explicitly directed
+  execution of "PACKAGE F -- EXTERNAL IMAGE-ONLY INFERENCE + PREDICTION LOCK" against the completed,
+  reviewed Package E preregistration recorded in the immediately preceding entry above, with explicit
+  image-only access approved and external label access explicitly not approved.
+- Context: no real image-only inference driver existed yet -- `ircadb.py`, `image_qa.py`, and
+  `manifest.py` covered image-only discovery/QA/manifest contracts, and `definitive_pipeline.py`
+  covered frozen preprocessing/architecture/inference primitives, but nothing wired frozen-checkpoint
+  inference to real external DICOM images or published a prediction lock.
+- Decision: A new, minimal wiring module `src/protoem_ct/external/image_only_inference.py` (plus a
+  small image-only DICOM volume+affine loader, `load_patient_dicom_zip_volume`, added to the existing
+  `image_qa.py`) was implemented, synthetically tested (20 tests, including determinism, fail-closed
+  identity/output-root/non-finite/incomplete-inventory checks, and a structural proof that garbage-byte
+  `MASKS_DICOM.zip`/`LABELLED_DICOM.zip` sibling files are never opened), independently reviewed by one
+  read-only reviewer (PASS), and committed (`9cde59f29986cd82c71e2ebb1429f6d5bc306da1`,
+  `feat(phase8): add external image-only inference driver`) before any external image was opened for
+  definitive inference. The driver reuses `definitive_pipeline.py`'s unmodified frozen preprocessing
+  (RAS reorientation, trilinear resampling to `PHASE8-DEFINITIVE-TRAIN-SPACING-V1`
+  `[0.767578125, 0.767578125, 1.0]` mm, HU clip `[-1000,1000]`, intensity scale `[-1,1]`), frozen
+  SegResNet architecture, frozen sliding-window inference (ROI `[96,96,64]`, overlap `0.25`, batch `1`,
+  CPU, AMP disabled), and frozen threshold `0.5` -- no scientific value was changed. It verifies the
+  freeze artifact SHA-256, the preregistration's self-hash, the checkpoint SHA-256, and the definitive
+  config hash before opening any external image, and never discovers, opens, or reads
+  `MASKS_DICOM.zip`/`LABELLED_DICOM.zip`/`MESHES_VTK.zip`/`liver_*.jpg`.
+
+  Run against dataset root `/Volumes/Lexar/ProtoEM-CT/datasets/external/3D-IRCADb-01/raw/3Dircadb1`
+  once, definitively, using the isolated CPU torch/MONAI environment
+  (`environments/phase3-baselines/intel-macos-cpu`), at Git HEAD
+  `9cde59f29986cd82c71e2ebb1429f6d5bc306da1`. All 20 image-only cases (`ext-ircadb-001`..`020`)
+  produced a finite, binary, uint8 prediction; none failed. Published, reject-on-overwrite, to
+  `/Volumes/Lexar/ProtoEM-CT/runs/phase8_external_image_inference_v1`: one `.npy` prediction array and
+  one self-hashed `_prediction_record.json` per case under `predictions/`, plus
+  `phase8_external_prediction_lock.json` (`lock_hash`
+  `190532a6abb7c3308de9abe7dc7455f4fafae464d51347ea2273874d13afdc94`) and a non-medical
+  `phase8_external_image_only_inference_summary.json`. The lock binds `cohort_identifier`
+  (`3d_ircadb_01`), the preregistration hash, freeze artifact SHA-256, checkpoint SHA-256, definitive
+  config hash, frozen threshold, support policy (`no_support`), target spacing, the complete ordered
+  20-case ID/prediction-hash inventory, `external_label_access=false`, `no_tuning=true`,
+  `inference_completion_state="completed"`, and the executing Git commit. No label-dependent metric
+  (Dice, IoU, HD95, NSD, lesion metrics) was computed anywhere in this work; only image-side technical
+  diagnostics (finite output, prediction existence, shape/geometry consistency) were checked. One
+  independent read-only reviewer re-verified all published artifacts against the frozen identities,
+  recomputed every prediction file's SHA-256 against the lock, confirmed no label-path token appears in
+  any published metadata, confirmed no prediction file was modified after lock publication, and
+  returned PASS on all checklist items.
+- Consequences: Phase 8 now has a complete, hash-locked, image-only external prediction inventory for
+  all 20 3D-IRCADb-01 cases, published before any external label was ever accessed. This entry does not
+  access 3D-IRCADb-01 labels, does not perform external evaluation, and does not compute any metric --
+  external label access and evaluation against these already-locked predictions remain the next,
+  separately authorized Phase 8 stage.
