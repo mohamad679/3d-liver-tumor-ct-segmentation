@@ -1,0 +1,26 @@
+{
+ "figure_id": "phase10_checkpoint_selection",
+ "points": [
+  {
+   "label": "Step 250",
+   "source_artifact": "phase8_definitive_training_v1/phase8_definitive_checkpoint_selection_evidence.json",
+   "source_field": "mean_tumor_dice_step_250",
+   "source_metric": "mean_tumor_dice_step_250",
+   "value": 0.0016380082094079678,
+   "value_kind": "descriptive"
+  },
+  {
+   "label": "Step 500",
+   "source_artifact": "phase8_definitive_training_v1/phase8_definitive_checkpoint_selection_evidence.json",
+   "source_field": "mean_tumor_dice_step_500",
+   "source_metric": "mean_tumor_dice_step_500",
+   "value": 0.01579295321113191,
+   "value_kind": "descriptive"
+  }
+ ],
+ "schema_name": "phase10_figure",
+ "schema_version": "v1",
+ "self_hash": "de384c7cd85ffa5fe1d9f3e3991db7432855747178d76bc8f3c6bd3ff6b3e6c6",
+ "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+ "title": "Phase 10 Checkpoint Selection Evidence"
+}

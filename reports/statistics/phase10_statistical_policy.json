@@ -1,0 +1,15 @@
+{
+ "bootstrap_policy": {
+  "confidence_level": 0.95,
+  "interval_method": "percentile",
+  "random_seed": 1729,
+  "resample_count": 10000,
+  "resampling_unit": "case_patient"
+ },
+ "internal_external_policy": "descriptive_only_no_superiority_or_generalization_claims",
+ "new_phase10_significance_tests": 0,
+ "schema_name": "phase10_statistical_policy",
+ "schema_version": "v1",
+ "self_hash": "f8648cfeece708559c0c92e26f4443346fef9f2d15c913e9872d43fd23ecdda8",
+ "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9"
+}

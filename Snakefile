@@ -21,11 +21,26 @@ from generate_phase2_synthetic_fixture import (  # noqa: E402
 
 DATA_CONFIG = REPO_ROOT / "configs" / "data" / "synthetic.yaml"
 EXPERIMENT_CONFIG = REPO_ROOT / "configs" / "experiment" / "phase1.yaml"
+PYTHON = sys.executable
 
-GIT_COMMIT = required_config_value(config, "git_commit")
-CREATED_AT_UTC = required_config_value(config, "created_at_utc")
-GENERATED_ROOT_RAW = required_config_value(config, "generated_root")
-GENERATED_ROOT_PATH = Path(GENERATED_ROOT_RAW)
+PHASE10_TARGETS = {
+    "reports/final_report.html",
+    "reports/final_report.md",
+    "reports/phase10/final_report_manifest.json",
+    "reports/phase10/phase10_b_outputs_manifest.json",
+    "reports/phase10/artifact_inventory.json",
+}
+REQUESTED_PHASE10_TARGET = any(arg in PHASE10_TARGETS for arg in sys.argv)
+
+if REQUESTED_PHASE10_TARGET:
+    GIT_COMMIT = "phase10-artifact-only"
+    CREATED_AT_UTC = "2026-08-09T00:00:00Z"
+    GENERATED_ROOT_PATH = Path("/tmp/protoem-ct-unused-phase1-root")
+else:
+    GIT_COMMIT = required_config_value(config, "git_commit")
+    CREATED_AT_UTC = required_config_value(config, "created_at_utc")
+    GENERATED_ROOT_RAW = required_config_value(config, "generated_root")
+    GENERATED_ROOT_PATH = Path(GENERATED_ROOT_RAW)
 
 if not GENERATED_ROOT_PATH.is_absolute():
     raise WorkflowError("generated_root must be an absolute path")
@@ -51,12 +66,85 @@ EVALUATION_ARTIFACT = ARTIFACT_ROOT / "evaluation.json"
 REPORT_MARKDOWN = REPORT_ROOT / "phase1_report.md"
 REPORT_ARTIFACT = REPORT_ROOT / "report_artifact.json"
 LOG_ROOT = validate_child_path(GENERATED_ROOT, GENERATED_ROOT / "logs")
+PHASE10_INVENTORY_JSON = Path("reports") / "phase10" / "artifact_inventory.json"
+PHASE10_INVENTORY_MARKDOWN = Path("reports") / "phase10" / "ARTIFACT_INVENTORY.md"
+PHASE10_B_MANIFEST = Path("reports") / "phase10" / "phase10_b_outputs_manifest.json"
+PHASE10_FINAL_REPORT_MARKDOWN = Path("reports") / "final_report.md"
+PHASE10_FINAL_REPORT_HTML = Path("reports") / "final_report.html"
+PHASE10_FINAL_REPORT_MANIFEST = Path("reports") / "phase10" / "final_report_manifest.json"
+PHASE10_REPRODUCTION_README = Path("docs") / "PHASE10_REPRODUCTION.md"
 
 
 rule all:
     input:
         report_markdown=str(REPORT_MARKDOWN),
         report_artifact=str(REPORT_ARTIFACT),
+
+
+if REQUESTED_PHASE10_TARGET:
+
+    rule phase10_artifact_inventory:
+        input:
+            script=str(REPO_ROOT / "workflow" / "scripts" / "build_phase10_artifact_inventory.py"),
+        output:
+            json=str(PHASE10_INVENTORY_JSON),
+            markdown=str(PHASE10_INVENTORY_MARKDOWN),
+        params:
+            python=PYTHON,
+            repo_root=str(REPO_ROOT),
+            drive_root=str(Path("/Volumes/Lexar/ProtoEM-CT/runs")),
+        shell:
+            """
+            {params.python:q} {input.script:q} \
+                --repo-root {params.repo_root:q} \
+                --drive-root {params.drive_root:q} \
+                --output-json {output.json:q} \
+                --output-markdown {output.markdown:q}
+            """
+
+
+    rule phase10_scientific_outputs:
+        input:
+            inventory=rules.phase10_artifact_inventory.output.json,
+            inventory_script=str(
+                REPO_ROOT / "workflow" / "scripts" / "build_phase10_artifact_inventory.py"
+            ),
+            script=str(REPO_ROOT / "workflow" / "scripts" / "build_phase10_scientific_outputs.py"),
+        output:
+            manifest=str(PHASE10_B_MANIFEST),
+        params:
+            python=PYTHON,
+            reports_root=str(REPO_ROOT / "reports"),
+        shell:
+            """
+            {params.python:q} {input.script:q} \
+                --inventory {input.inventory:q} \
+                --reports-root {params.reports_root:q}
+            """
+
+
+    rule phase10_final_report:
+        input:
+            inventory=rules.phase10_artifact_inventory.output.json,
+            b_manifest=rules.phase10_scientific_outputs.output.manifest,
+            script=str(REPO_ROOT / "workflow" / "scripts" / "build_phase10_final_report.py"),
+        output:
+            markdown=str(PHASE10_FINAL_REPORT_MARKDOWN),
+            html=str(PHASE10_FINAL_REPORT_HTML),
+            manifest=str(PHASE10_FINAL_REPORT_MANIFEST),
+            reproduction_readme=str(PHASE10_REPRODUCTION_README),
+        params:
+            python=PYTHON,
+        shell:
+            """
+            {params.python:q} {input.script:q} \
+                --inventory {input.inventory:q} \
+                --b-manifest {input.b_manifest:q} \
+                --report-md {output.markdown:q} \
+                --report-html {output.html:q} \
+                --report-manifest {output.manifest:q} \
+                --reproduction-readme {output.reproduction_readme:q}
+            """
 
 
 rule create_data:

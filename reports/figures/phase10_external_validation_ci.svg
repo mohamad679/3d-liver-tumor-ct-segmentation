@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="272" role="img" aria-label="Phase 10 External Validation Bootstrap CIs">
+<style>text{font-family:Arial,sans-serif;font-size:13px;fill:#1f2933}.title{font-size:18px;font-weight:700}.bar{fill:#357a7f}.neg{fill:#b85c38}.axis{stroke:#6b7280;stroke-width:1}.ci{stroke:#243b53;stroke-width:2}</style>
+<text class="title" x="20" y="30">Phase 10 External Validation Bootstrap CIs</text>
+<line class="axis" x1="220.00" y1="52" x2="220.00" y2="246" />
+<text x="20" y="80">Dice</text>
+<line class="ci" x1="294.64" y1="75" x2="650.00" y2="75" />
+<rect class="bar" x="220.00" y="64" width="242.66" height="22" />
+<text x="670" y="80">0.0141157</text>
+<text x="20" y="126">IoU</text>
+<line class="ci" x1="257.96" y1="121" x2="439.94" y2="121" />
+<rect class="bar" x="220.00" y="110" width="124.04" height="22" />
+<text x="670" y="126">0.00721538</text>
+<text x="20" y="172">NSD</text>
+<line class="ci" x1="234.95" y1="167" x2="325.94" y2="167" />
+<rect class="bar" x="220.00" y="156" width="56.75" height="22" />
+<text x="670" y="172">0.00330141</text>
+<text x="20" y="218">Lesion F1</text>
+<line class="ci" x1="226.68" y1="213" x2="242.43" y2="213" />
+<rect class="bar" x="220.00" y="202" width="14.26" height="22" />
+<text x="670" y="218">0.000829379</text>
+</svg>

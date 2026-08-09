@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="180" role="img" aria-label="Phase 10 Checkpoint Selection Evidence">
+<style>text{font-family:Arial,sans-serif;font-size:13px;fill:#1f2933}.title{font-size:18px;font-weight:700}.bar{fill:#357a7f}.neg{fill:#b85c38}.axis{stroke:#6b7280;stroke-width:1}.ci{stroke:#243b53;stroke-width:2}</style>
+<text class="title" x="20" y="30">Phase 10 Checkpoint Selection Evidence</text>
+<line class="axis" x1="220.00" y1="52" x2="220.00" y2="154" />
+<text x="20" y="80">Step 250</text>
+<rect class="bar" x="220.00" y="64" width="44.60" height="22" />
+<text x="670" y="80">0.00163801</text>
+<text x="20" y="126">Step 500</text>
+<rect class="bar" x="220.00" y="110" width="430.00" height="22" />
+<text x="670" y="126">0.015793</text>
+</svg>

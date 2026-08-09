@@ -1,0 +1,108 @@
+{
+ "figures": [
+  {
+   "id": "phase10_cohort_counts",
+   "json_path": "/Users/mohsenshamsijazeb/Projects/protoem-ct/reports/figures/phase10_cohort_counts.json",
+   "json_sha256": "741845f83b325d1626a26b46704e1976b6ec9ca9c1adfb9af5761f9236f23f0f",
+   "self_hash": "36e1376a6061d4320fb68593940f803f4ea230047c35cc4bc750cf377637fc97",
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "svg_path": "/Users/mohsenshamsijazeb/Projects/protoem-ct/reports/figures/phase10_cohort_counts.svg",
+   "svg_sha256": "c4ffb85d9413a1258dc4c13bf61f29d0c46d2aeb57e152c087f02ab6e8f1d321"
+  },
+  {
+   "id": "phase10_external_validation_ci",
+   "json_path": "/Users/mohsenshamsijazeb/Projects/protoem-ct/reports/figures/phase10_external_validation_ci.json",
+   "json_sha256": "93d707e8bee8207e9707a3fdc8995bb5cf438c371ccd3e11d9a2871a43220600",
+   "self_hash": "5bf506c43ec46b411b57cb94cc3d7aa2ccca0f06329faf762bfdbce806f17208",
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "svg_path": "/Users/mohsenshamsijazeb/Projects/protoem-ct/reports/figures/phase10_external_validation_ci.svg",
+   "svg_sha256": "aa8de05e010dac932d3451b2b9398973195bb2017cd485564fc38b0dbb1a5843"
+  },
+  {
+   "id": "phase10_checkpoint_selection",
+   "json_path": "/Users/mohsenshamsijazeb/Projects/protoem-ct/reports/figures/phase10_checkpoint_selection.json",
+   "json_sha256": "8d412bbc394780cf8e998ffff69127e32cb09ff50968ff6d6df67151a1541340",
+   "self_hash": "de384c7cd85ffa5fe1d9f3e3991db7432855747178d76bc8f3c6bd3ff6b3e6c6",
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "svg_path": "/Users/mohsenshamsijazeb/Projects/protoem-ct/reports/figures/phase10_checkpoint_selection.svg",
+   "svg_sha256": "0423cd6200741a14d60b1cf543c4916c24db2b4b22cf4042e4008bd7dc615f95"
+  },
+  {
+   "id": "phase10_internal_external_tumor_dice",
+   "json_path": "/Users/mohsenshamsijazeb/Projects/protoem-ct/reports/figures/phase10_internal_external_tumor_dice.json",
+   "json_sha256": "5dee9c4d87467c613f1baad39eea07609b14f338ef95c916c72ed06ee9298cf4",
+   "self_hash": "89269ff25e3e4361d333a4c3eaaa04176b18782b204f71bd31f666d6f06d13f2",
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "svg_path": "/Users/mohsenshamsijazeb/Projects/protoem-ct/reports/figures/phase10_internal_external_tumor_dice.svg",
+   "svg_sha256": "d16d12c8e41e1c99851b878e7732e982b6789410fb4476e76c833b7fe01ef578"
+  }
+ ],
+ "schema_name": "phase10_b_outputs_manifest",
+ "schema_version": "v1",
+ "self_hash": "bce7894adbb3d059e6ee6367e7f90f49a30f32652e220d3aeb5b6298f2408035",
+ "source_comparison_artifact": "/Volumes/Lexar/ProtoEM-CT/runs/phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+ "source_comparison_artifact_sha256": "df0250dac164c944f34e0b6629388150cda0d718f16a05df1b06ebb9ee03266d",
+ "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+ "source_inventory_path": "reports/phase10/artifact_inventory.json",
+ "statistics": [
+  {
+   "id": "phase10_statistical_policy",
+   "json_path": "/Users/mohsenshamsijazeb/Projects/protoem-ct/reports/statistics/phase10_statistical_policy.json",
+   "json_sha256": "ef25a91797a886372b50a772ceeec4939a3714a21554c8699ec24c52850f56ef",
+   "self_hash": "f8648cfeece708559c0c92e26f4443346fef9f2d15c913e9872d43fd23ecdda8",
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9"
+  },
+  {
+   "id": "phase10_external_bootstrap_ci",
+   "json_path": "/Users/mohsenshamsijazeb/Projects/protoem-ct/reports/statistics/phase10_external_bootstrap_ci.json",
+   "json_sha256": "8c022edec1812cdf6c6b5cc23ceceee9dded2e5a6fe96e70738cf1844341489e",
+   "self_hash": "e03c010036650fd0a502fe9ca5ccba492c15bfc74e8735a13f27db19fc3250f1",
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9"
+  },
+  {
+   "id": "phase10_internal_external_descriptive_comparison",
+   "json_path": "/Users/mohsenshamsijazeb/Projects/protoem-ct/reports/statistics/phase10_internal_external_descriptive_comparison.json",
+   "json_sha256": "57934cd4f18e7d7953bc83c8108adf52e317ee499a7f0a170d3077ead55891cc",
+   "self_hash": "904cbbcf26632ad163c4240e4adcc85bbbd4b13d17a58ada4103feedb9011e40",
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9"
+  }
+ ],
+ "tables": [
+  {
+   "csv_path": "/Users/mohsenshamsijazeb/Projects/protoem-ct/reports/tables/phase10_cohort_data_summary.csv",
+   "csv_sha256": "94868f9fd9a57005277a95fec6e75e6c8f027a73047a1c3b793391244aa51176",
+   "id": "phase10_cohort_data_summary",
+   "json_path": "/Users/mohsenshamsijazeb/Projects/protoem-ct/reports/tables/phase10_cohort_data_summary.json",
+   "json_sha256": "26041f1607ac179f2b277b7291d647da3c37b44e16aba64cf7269c5b4acc8a91",
+   "self_hash": "864c00af4b952e08bc45cd7c6a29585a2dccd86dc501a9ead09dc2ade99a1870",
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9"
+  },
+  {
+   "csv_path": "/Users/mohsenshamsijazeb/Projects/protoem-ct/reports/tables/phase10_external_validation_metrics.csv",
+   "csv_sha256": "98999caa345fff341c29d81d01cb3c74b68ed93d40a77294944369d6c431b5cb",
+   "id": "phase10_external_validation_metrics",
+   "json_path": "/Users/mohsenshamsijazeb/Projects/protoem-ct/reports/tables/phase10_external_validation_metrics.json",
+   "json_sha256": "0a583b511d58b95fb063218557f39b9f9e8085cebad0a46f51c421aba1b1adcf",
+   "self_hash": "617aa4fa1d4bd29c755c24122ce6a9597e1bbc3882f24ad3b84bbcf54c1d0c10",
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9"
+  },
+  {
+   "csv_path": "/Users/mohsenshamsijazeb/Projects/protoem-ct/reports/tables/phase10_internal_external_descriptive_comparison.csv",
+   "csv_sha256": "6cc2ad22b28d01e95d062b4b31a00d6bc83c21bf12678bebb97d991d227dfdeb",
+   "id": "phase10_internal_external_descriptive_comparison",
+   "json_path": "/Users/mohsenshamsijazeb/Projects/protoem-ct/reports/tables/phase10_internal_external_descriptive_comparison.json",
+   "json_sha256": "08dec4914a779a49dd0256ca0d43069c7e6d9d9813ca39abb65bf16ac643073a",
+   "self_hash": "ae2f50c290a1fecf5f8e537f7bf1e2911cef74a265bfdbc8951158b70c57bfaa",
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9"
+  },
+  {
+   "csv_path": "/Users/mohsenshamsijazeb/Projects/protoem-ct/reports/tables/phase10_unavailable_results_and_limitations.csv",
+   "csv_sha256": "e53fcbbcde65f501c7faab5259c62b4ace2005997d603ea0a15eb7a9b622e16c",
+   "id": "phase10_unavailable_results_and_limitations",
+   "json_path": "/Users/mohsenshamsijazeb/Projects/protoem-ct/reports/tables/phase10_unavailable_results_and_limitations.json",
+   "json_sha256": "5bb2575c5ab6e21e14fea745053955b35918d3f669104e3288d0473847d29e47",
+   "self_hash": "ce6a9f9283622cd0af9984ca0e485eaf835d73637af3a13da0a26ad7679b1a22",
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9"
+  }
+ ]
+}

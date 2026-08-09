@@ -1,0 +1,87 @@
+{
+ "artifact_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+ "checkpoints_or_weights_committed": false,
+ "external_label_tuning": false,
+ "external_validation_interpretation": "negative_result_no_strong_generalization_claim",
+ "files": [
+  {
+   "path": "reports/final_report.md",
+   "sha256": "898d54f24921aaafc69d7b6136e5dfc57c847090cc2272257e0b9c27b86443f3"
+  },
+  {
+   "path": "reports/final_report.html",
+   "sha256": "c7db978eae68e4177e309cc1488dcf4af1195d5edb0614c37b095628f0915dda"
+  },
+  {
+   "path": "reports/phase10/artifact_inventory.json",
+   "sha256": "05473c2cb2276c8ac9da79ed7ea40c9cd4485d1dc15b8d3c126ba0e71677268a"
+  },
+  {
+   "path": "reports/phase10/phase10_b_outputs_manifest.json",
+   "sha256": "605259f1ad07b6e533b78ebb8e99bd16cbeed734a6cb738f052b11856c1899fe"
+  },
+  {
+   "path": "reports/phase10/final_report_manifest.json",
+   "sha256": "0f45a85fc711557d2c9230a51aeda01d58921990b389fa89158896b2e0da1d6f"
+  },
+  {
+   "path": "docs/PHASE10_REPRODUCTION.md",
+   "sha256": "6b934187aa94e6e30b19c0ac92cd87e5023aba24476a6c993e5492bb96c01a75"
+  },
+  {
+   "path": "MODEL_CARD.md",
+   "sha256": "ab2d4fcb792e94a7175b35ea082e4436ca83185d53ff364f52044578a8724131"
+  },
+  {
+   "path": "DATA_CARD.md",
+   "sha256": "49ab0dd1ecdd902ed773e3e0c27d722dab9ac6486d8bb827e345e6fdf5839c3f"
+  },
+  {
+   "path": "docs/PHASE10_CV_PROJECT_SUMMARY.md",
+   "sha256": "1f6b708cc411c6edd5317cfb392d551bb757ce4221c8b22c2c9cf4f8bfa8cb26"
+  },
+  {
+   "path": "docs/PHASE10_MOTIVATION_EVIDENCE_PARAGRAPH.md",
+   "sha256": "44cbb753d210850eda9c838a6cafe300cf3fd2c31161244ae360567076d2e348"
+  },
+  {
+   "path": "docs/PHASE10_RELEASE_CHECKLIST.md",
+   "sha256": "e4ba92882a4ddd99b069cb6c274b632493e356584ec968d955ac541f82b99925"
+  },
+  {
+   "path": "README.md",
+   "sha256": "d3facefc32d99f6a31b505b391ee1d6a4de726661b2d3999c0b307490aa02e47"
+  },
+  {
+   "path": "ACCEPTANCE_CHECKLIST.md",
+   "sha256": "95f31ce413d09f819a011b059c10bd01f98bfa32eb181167e82d18ad689707de"
+  },
+  {
+   "path": "docs/PHASE_PLAN.md",
+   "sha256": "a213ecc5247e8cc1b9a6d02bd634e19ee0fb492163a42c4d7ea7eecb62c89e45"
+  },
+  {
+   "path": "docs/DECISIONS.md",
+   "sha256": "ca5db33eedc468301da0e0a45c5845ce35c6528bcc54599b1c52d39e13e1e671"
+  }
+ ],
+ "final_report_html_sha256": "c7db978eae68e4177e309cc1488dcf4af1195d5edb0614c37b095628f0915dda",
+ "final_report_manifest_hash": "d6fdc2e46ef8f44ee6e69f4ec4d4ed4e8de5bc4cf71ec302ed51fe411c62101f",
+ "gate8_status": "pass_final_report_generated_from_machine_readable_artifacts",
+ "git_branch": "phase/10-final-scientific-package",
+ "git_commit_identity_policy": "The commit containing this tracked metadata file cannot be embedded inside the same file without changing the commit hash. Resolve the containing commit with release_candidate_containing_commit_resolution.",
+ "inference_rerun": false,
+ "lits_msd_policy": "single_lits_derived_development_source",
+ "phase10_b_outputs_manifest_hash": "bce7894adbb3d059e6ee6367e7f90f49a30f32652e220d3aeb5b6298f2408035",
+ "phase10_status": "complete_p10r_pass_gate8_pass_no_push",
+ "phase9_status": "skipped_by_user_decision_not_executed",
+ "predictions_committed": false,
+ "raw_medical_data_committed": false,
+ "release_candidate_containing_commit_resolution": "git log -1 --format=%H -- reports/phase10/release_candidate.json",
+ "schema_name": "phase10_release_candidate",
+ "schema_version": "v1",
+ "secrets_committed": false,
+ "self_hash": "95dc3d588261cd41dcc056e1036b370368277f83bafc87106fe98006199555cf",
+ "source_package_commit": "9c93c5cde1886ff2190941455a78c8c9e7acb443",
+ "training_rerun": false
+}

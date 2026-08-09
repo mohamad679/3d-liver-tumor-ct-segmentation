@@ -1,0 +1,58 @@
+{
+ "figure_id": "phase10_cohort_counts",
+ "points": [
+  {
+   "label": "Train",
+   "source_artifact": "phase2_real_lits_v2/split.json",
+   "source_field": "train_case_count",
+   "source_metric": "train_case_count",
+   "value": 91,
+   "value_kind": "descriptive"
+  },
+  {
+   "label": "Validation",
+   "source_artifact": "phase2_real_lits_v2/split.json",
+   "source_field": "validation_case_count",
+   "source_metric": "validation_case_count",
+   "value": 20,
+   "value_kind": "descriptive"
+  },
+  {
+   "label": "Internal test",
+   "source_artifact": "phase2_real_lits_v2/split.json",
+   "source_field": "internal_test_case_count",
+   "source_metric": "internal_test_case_count",
+   "value": 20,
+   "value_kind": "descriptive"
+  },
+  {
+   "label": "External discovered",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json",
+   "source_field": "discovered_count",
+   "source_metric": "external_discovered_count",
+   "value": 20,
+   "value_kind": "descriptive"
+  },
+  {
+   "label": "External eligible",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json",
+   "source_field": "evaluation_eligible_count",
+   "source_metric": "external_evaluation_eligible_count",
+   "value": 15,
+   "value_kind": "descriptive"
+  },
+  {
+   "label": "External excluded",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json",
+   "source_field": "excluded_count",
+   "source_metric": "external_excluded_count",
+   "value": 5,
+   "value_kind": "descriptive"
+  }
+ ],
+ "schema_name": "phase10_figure",
+ "schema_version": "v1",
+ "self_hash": "36e1376a6061d4320fb68593940f803f4ea230047c35cc4bc750cf377637fc97",
+ "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+ "title": "Phase 10 Cohort Counts"
+}

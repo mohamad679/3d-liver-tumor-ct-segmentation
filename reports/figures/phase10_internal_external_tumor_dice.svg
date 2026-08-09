@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="180" role="img" aria-label="Phase 10 Internal vs External Tumor Dice">
+<style>text{font-family:Arial,sans-serif;font-size:13px;fill:#1f2933}.title{font-size:18px;font-weight:700}.bar{fill:#357a7f}.neg{fill:#b85c38}.axis{stroke:#6b7280;stroke-width:1}.ci{stroke:#243b53;stroke-width:2}</style>
+<text class="title" x="20" y="30">Phase 10 Internal vs External Tumor Dice</text>
+<line class="axis" x1="220.00" y1="52" x2="220.00" y2="154" />
+<text x="20" y="80">Internal validation Dice</text>
+<rect class="bar" x="220.00" y="64" width="271.50" height="22" />
+<text x="670" y="80">0.015793</text>
+<text x="20" y="126">External macro Dice</text>
+<line class="ci" x1="294.64" y1="121" x2="650.00" y2="121" />
+<rect class="bar" x="220.00" y="110" width="242.66" height="22" />
+<text x="670" y="126">0.0141157</text>
+</svg>

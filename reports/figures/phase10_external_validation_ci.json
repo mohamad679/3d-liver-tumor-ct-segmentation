@@ -1,0 +1,66 @@
+{
+ "figure_id": "phase10_external_validation_ci",
+ "points": [
+  {
+   "ci_high": 0.02501302650455788,
+   "ci_high_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "ci_high_source_field": "metrics.tumor_dice.ci_high",
+   "ci_low": 0.004341547521318757,
+   "ci_low_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "ci_low_source_field": "metrics.tumor_dice.ci_low",
+   "label": "Dice",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+   "source_field": "aggregate.macro_dice",
+   "source_metric": "macro_dice",
+   "value": 0.014115733440605011,
+   "value_kind": "confirmatory"
+  },
+  {
+   "ci_high": 0.012793720568727924,
+   "ci_high_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "ci_high_source_field": "metrics.tumor_iou.ci_high",
+   "ci_low": 0.002208283278991875,
+   "ci_low_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "ci_low_source_field": "metrics.tumor_iou.ci_low",
+   "label": "IoU",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+   "source_field": "aggregate.macro_iou",
+   "source_metric": "macro_iou",
+   "value": 0.007215381213910843,
+   "value_kind": "confirmatory"
+  },
+  {
+   "ci_high": 0.0061626388043957,
+   "ci_high_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "ci_high_source_field": "metrics.tumor_normalized_surface_dice.ci_high",
+   "ci_low": 0.0008695378349168014,
+   "ci_low_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "ci_low_source_field": "metrics.tumor_normalized_surface_dice.ci_low",
+   "label": "NSD",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+   "source_field": "aggregate.macro_normalized_surface_dice",
+   "source_metric": "macro_normalized_surface_dice",
+   "value": 0.0033014104480338863,
+   "value_kind": "confirmatory"
+  },
+  {
+   "ci_high": 0.001304960931868939,
+   "ci_high_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "ci_high_source_field": "metrics.lesion_f1.ci_high",
+   "ci_low": 0.00038875182666259906,
+   "ci_low_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "ci_low_source_field": "metrics.lesion_f1.ci_low",
+   "label": "Lesion F1",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+   "source_field": "aggregate.macro_lesion_f1",
+   "source_metric": "macro_lesion_f1",
+   "value": 0.0008293785379380446,
+   "value_kind": "confirmatory"
+  }
+ ],
+ "schema_name": "phase10_figure",
+ "schema_version": "v1",
+ "self_hash": "5bf506c43ec46b411b57cb94cc3d7aa2ccca0f06329faf762bfdbce806f17208",
+ "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+ "title": "Phase 10 External Validation Bootstrap CIs"
+}
