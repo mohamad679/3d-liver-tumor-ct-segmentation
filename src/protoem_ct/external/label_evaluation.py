@@ -119,6 +119,14 @@ _BOOTSTRAP_SEED: Final[int] = 1729
 _BOOTSTRAP_RESAMPLE_COUNT: Final[int] = 10000
 _BOOTSTRAP_CONFIDENCE: Final[float] = 0.95
 
+# Module-level (rather than inline) so tests can monkeypatch it without touching the real
+# external drive. This path is read-only evidence produced by the already-frozen Package C
+# checkpoint-selection step; it is never written by this module.
+_INTERNAL_CHECKPOINT_EVIDENCE_PATH: Final[Path] = Path(
+    "/Volumes/Lexar/ProtoEM-CT/runs/phase8_definitive_training_v1/"
+    "phase8_definitive_checkpoint_selection_evidence.json"
+)
+
 _PHASE8_METRIC_SCALAR_EXTRACTORS: Final[
     dict[str, Any]
 ] = {}  # populated below, after BaselineCaseMetrics is imported.
@@ -961,16 +969,17 @@ def run_phase8_external_label_evaluation(
 def _build_internal_external_comparison(
     *, bootstrap: Mapping[str, Mapping[str, JsonValue]]
 ) -> dict[str, JsonValue]:
-    internal_evidence_path = Path(
-        "/Volumes/Lexar/ProtoEM-CT/runs/phase8_definitive_training_v1/"
-        "phase8_definitive_checkpoint_selection_evidence.json"
-    )
+    internal_evidence_path = _INTERNAL_CHECKPOINT_EVIDENCE_PATH
     internal_tumor_dice: float | None = None
     internal_checkpoint_sha256: str | None = None
     if internal_evidence_path.is_file():
         evidence = json.loads(internal_evidence_path.read_text(encoding="utf-8"))
         internal_tumor_dice = evidence.get("mean_tumor_dice_step_500")
-        internal_checkpoint_sha256 = evidence.get("checkpoint_sha256")
+        # `phase8_definitive_checkpoint_selection_evidence` (see
+        # protoem_ct.external.definitive_pipeline / definitive_training) publishes the selected
+        # checkpoint hash under the key "selected_checkpoint_hash", not "checkpoint_sha256". The
+        # latter key does not exist in that schema, so the previous lookup always returned None.
+        internal_checkpoint_sha256 = evidence.get("selected_checkpoint_hash")
 
     tumor_dice_bootstrap = bootstrap["tumor_dice"]
     comparisons: dict[str, JsonValue] = {}

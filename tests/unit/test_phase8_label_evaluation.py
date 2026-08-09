@@ -17,11 +17,12 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from protoem_ct.artifacts.hashing import sha256_file, sha256_json
+from protoem_ct.artifacts.hashing import JsonValue, sha256_file, sha256_json
 from protoem_ct.baselines.metrics import BaselineCaseMetrics, compute_baseline_case_metrics
 from protoem_ct.external import definitive_pipeline as pipeline
 from protoem_ct.external.eligibility import build_phase8_label_compatible_case
 from protoem_ct.external.image_only_inference import (
+    REQUIRED_CHECKPOINT_SHA256,
     REQUIRED_TARGET_SPACING_XYZ_MM,
     Phase8ExternalPredictionLock,
     Phase8ExternalPredictionRecord,
@@ -661,3 +662,160 @@ def test_run_evaluation_rejects_existing_output_root(tmp_path: Path) -> None:
             output_root=output_root,
             repository_root=tmp_path,
         )
+
+
+# ---------------------------------------------------------------------------
+# Regression test: internal-vs-external comparison checkpoint-provenance fields.
+#
+# Package G disclosed one known non-scientific defect: `_build_internal_external_comparison`
+# read the internal checkpoint-selection evidence file with the wrong dict key
+# (`"checkpoint_sha256"`, which does not exist in the
+# `phase8_definitive_checkpoint_selection_evidence` schema) instead of the correct key
+# (`"selected_checkpoint_hash"`). That always produced `internal_checkpoint_sha256=None` and
+# `internal_checkpoint_matches_locked_checkpoint=False`, regardless of the true, correctly
+# frozen checkpoint identity. This test proves the corrected key lookup and that no other
+# comparison field (metric values, CIs, aggregation) is touched by the fix.
+# ---------------------------------------------------------------------------
+
+
+def _as_dict(value: object) -> dict[str, object]:
+    """Narrow a `JsonValue` to `dict[str, object]` for test-only structural access."""
+
+    assert isinstance(value, dict)
+    return value
+
+
+def _fake_comparison_bootstrap() -> dict[str, dict[str, JsonValue]]:
+    """Small synthetic bootstrap payload shaped like `bootstrap_case_level_confidence_intervals`."""
+
+    metric_names = (
+        "tumor_dice",
+        "tumor_iou",
+        "tumor_hd95",
+        "tumor_normalized_surface_dice",
+        "lesion_wise_recall",
+        "lesion_wise_precision",
+        "lesion_f1",
+        "false_positive_lesions_per_scan",
+        "tumor_volume_error_signed_ml",
+    )
+    return {
+        name: {
+            "point_estimate": 0.5 + index * 0.01,
+            "ci_available": True,
+            "ci_low": 0.1 + index * 0.01,
+            "ci_high": 0.9 + index * 0.01,
+        }
+        for index, name in enumerate(metric_names)
+    }
+
+
+def test_comparison_emits_correct_locked_checkpoint_hash_on_match(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import protoem_ct.external.label_evaluation as module
+
+    evidence_path = tmp_path / "phase8_definitive_checkpoint_selection_evidence.json"
+    evidence_path.write_text(
+        json.dumps(
+            {
+                "mean_tumor_dice_step_500": 0.01579295321113191,
+                "selected_checkpoint_hash": REQUIRED_CHECKPOINT_SHA256,
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(module, "_INTERNAL_CHECKPOINT_EVIDENCE_PATH", evidence_path)
+
+    comparison = module._build_internal_external_comparison(  # noqa: SLF001 -- unit-testing the fix
+        bootstrap=_fake_comparison_bootstrap()
+    )
+
+    tumor_dice_entry = _as_dict(_as_dict(comparison["comparisons"])["tumor_dice"])
+    assert tumor_dice_entry["internal_checkpoint_sha256"] == REQUIRED_CHECKPOINT_SHA256
+    assert tumor_dice_entry["internal_checkpoint_matches_locked_checkpoint"] is True
+
+
+def test_comparison_records_false_on_genuine_checkpoint_mismatch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import protoem_ct.external.label_evaluation as module
+
+    evidence_path = tmp_path / "phase8_definitive_checkpoint_selection_evidence.json"
+    mismatched_hash = "b" * 64
+    evidence_path.write_text(
+        json.dumps(
+            {
+                "mean_tumor_dice_step_500": 0.01579295321113191,
+                "selected_checkpoint_hash": mismatched_hash,
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(module, "_INTERNAL_CHECKPOINT_EVIDENCE_PATH", evidence_path)
+
+    comparison = module._build_internal_external_comparison(  # noqa: SLF001 -- unit-testing the fix
+        bootstrap=_fake_comparison_bootstrap()
+    )
+
+    tumor_dice_entry = _as_dict(_as_dict(comparison["comparisons"])["tumor_dice"])
+    assert tumor_dice_entry["internal_checkpoint_sha256"] == mismatched_hash
+    assert tumor_dice_entry["internal_checkpoint_matches_locked_checkpoint"] is False
+
+
+def test_comparison_correction_changes_only_provenance_fields(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The fix must not alter any metric value, CI, or aggregation field."""
+
+    import protoem_ct.external.label_evaluation as module
+
+    evidence_path = tmp_path / "phase8_definitive_checkpoint_selection_evidence.json"
+    evidence_path.write_text(
+        json.dumps(
+            {
+                "mean_tumor_dice_step_500": 0.01579295321113191,
+                "selected_checkpoint_hash": REQUIRED_CHECKPOINT_SHA256,
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(module, "_INTERNAL_CHECKPOINT_EVIDENCE_PATH", evidence_path)
+    bootstrap = _fake_comparison_bootstrap()
+
+    corrected = module._build_internal_external_comparison(  # noqa: SLF001 -- unit-testing the fix
+        bootstrap=bootstrap
+    )
+
+    # Simulate the pre-fix behavior (wrong key -> always None/False) using the identical bootstrap
+    # input, to prove the diff between "before" and "after" is confined to the two provenance
+    # fields under `comparisons.tumor_dice`.
+    buggy_evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    buggy_internal_checkpoint_sha256 = buggy_evidence.get("checkpoint_sha256")  # the old wrong key
+    assert buggy_internal_checkpoint_sha256 is None
+
+    comparisons = _as_dict(corrected["comparisons"])
+    for metric_name, raw_entry in comparisons.items():
+        entry = _as_dict(raw_entry)
+        assert entry["internal_value"] == (
+            0.01579295321113191 if metric_name == "tumor_dice" else None
+        )
+        for field in (
+            "external_point_estimate",
+            "external_ci_low",
+            "external_ci_high",
+            "external_ci_available",
+            "internal_evidence_status",
+            "internal_ci_available",
+        ):
+            assert field in entry
+
+    tumor_dice_entry = _as_dict(comparisons["tumor_dice"])
+    assert tumor_dice_entry["external_point_estimate"] == bootstrap["tumor_dice"]["point_estimate"]
+    assert tumor_dice_entry["external_ci_low"] == bootstrap["tumor_dice"]["ci_low"]
+    assert tumor_dice_entry["external_ci_high"] == bootstrap["tumor_dice"]["ci_high"]
+    assert tumor_dice_entry["internal_split"] == (
+        "pooled_internal_development_source_lits_and_msd_task03_liver"
+    )
+    assert corrected["claims_policy"] == "descriptive_only_no_superiority_or_generalization_claims"
+    assert corrected["cohort_relationship"] == "independent_unpaired"
