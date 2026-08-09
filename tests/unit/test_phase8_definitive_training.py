@@ -19,11 +19,11 @@ from typer.testing import CliRunner
 from protoem_ct.artifacts.hashing import sha256_json
 from protoem_ct.cli.main import app
 from protoem_ct.external.definitive_training import (
-    AWAITING_EXPLICIT_USER_APPROVAL,
+    AWAITING_EXPLICIT_USER_AUTHORIZATION,
     DEFINITIVE_TIE_BREAK_ORDER,
     PHASE8_DEFINITIVE_EXECUTION_RELEASE_SCHEMA_NAME,
     PHASE8_DEFINITIVE_TRAINING_SCHEMA_VERSION,
-    RELEASE_AUTHORIZED_BY_EXPLICIT_USER_APPROVAL,
+    RELEASE_AUTHORIZED_BY_EXPLICIT_USER_AUTHORIZATION,
     RELEASE_STATE_NOT_RELEASED,
     RELEASE_STATE_RELEASED,
     REQUIRED_CANDIDATE_ID,
@@ -216,7 +216,7 @@ def _released_release(config: Phase8DefinitiveTrainingConfig) -> Phase8Definitiv
     """
 
     payload = {
-        "authorized_by": RELEASE_AUTHORIZED_BY_EXPLICIT_USER_APPROVAL,
+        "authorized_by": RELEASE_AUTHORIZED_BY_EXPLICIT_USER_AUTHORIZATION,
         "authorized_max_training_steps": 1000,
         "bound_config_hash": config.config_hash,
         "release_scope_description": "test-only-direct-release",
@@ -231,7 +231,7 @@ def _released_release(config: Phase8DefinitiveTrainingConfig) -> Phase8Definitiv
         bound_config_hash=config.config_hash,
         release_scope_description="test-only-direct-release",
         authorized_max_training_steps=1000,
-        authorized_by=RELEASE_AUTHORIZED_BY_EXPLICIT_USER_APPROVAL,
+        authorized_by=RELEASE_AUTHORIZED_BY_EXPLICIT_USER_AUTHORIZATION,
         release_hash=sha256_json(payload),
     )
 
@@ -374,7 +374,7 @@ def test_hash_helpers_match_self_hash() -> None:
 
 def test_config_builder_always_awaiting_approval() -> None:
     config, _preprocessing, _inventory_obj = _config()
-    assert config.execution_release_state == AWAITING_EXPLICIT_USER_APPROVAL
+    assert config.execution_release_state == AWAITING_EXPLICIT_USER_AUTHORIZATION
     assert config.device_type == "cpu"
     assert config.amp_enabled is False
     assert config.threshold_policy_type == "fixed_constant"
@@ -482,7 +482,7 @@ def test_release_requires_authorized_by_when_released() -> None:
 
 def test_release_rejects_authorized_by_when_not_released() -> None:
     payload = {
-        "authorized_by": RELEASE_AUTHORIZED_BY_EXPLICIT_USER_APPROVAL,
+        "authorized_by": RELEASE_AUTHORIZED_BY_EXPLICIT_USER_AUTHORIZATION,
         "authorized_max_training_steps": 1,
         "bound_config_hash": HASH_A,
         "release_scope_description": "scope",
@@ -498,7 +498,7 @@ def test_release_rejects_authorized_by_when_not_released() -> None:
             bound_config_hash=HASH_A,
             release_scope_description="scope",
             authorized_max_training_steps=1,
-            authorized_by=RELEASE_AUTHORIZED_BY_EXPLICIT_USER_APPROVAL,
+            authorized_by=RELEASE_AUTHORIZED_BY_EXPLICIT_USER_AUTHORIZATION,
             release_hash=sha256_json(payload),
         )
 
@@ -1101,7 +1101,7 @@ def test_cli_help_lists_new_commands() -> None:
     assert "--input-binding-hash" in plan_output
     assert "--candidate-inventory-path" in plan_output
     assert "--preprocessing-decision" in plan_output
-    assert "awaiting_explicit_user_approval" in plan_output
+    assert "awaiting_explicit_user_authorization" in plan_output
 
     run_help = CliRunner().invoke(app, ["run-phase8-definitive-development-training", "--help"])
     assert run_help.exit_code == 0, run_help.output
@@ -1193,7 +1193,7 @@ def test_cli_successful_synthetic_plan_only_run(tmp_path: Path) -> None:
         ],
     )
     assert result.exit_code == 0, result.output
-    assert "awaiting_explicit_user_approval" in result.output
+    assert "awaiting_explicit_user_authorization" in result.output
     assert "not_released" in result.output
     assert (output_root / "phase8_definitive_training_config.json").is_file()
     assert (output_root / "phase8_definitive_execution_release.json").is_file()

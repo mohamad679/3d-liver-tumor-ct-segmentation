@@ -4,8 +4,8 @@ Status: Phase 10 final scientific package. Phase 9 was skipped by user decision 
 
 ## Artifact Provenance
 
-- P10-A inventory hash: `67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9`
-- P10-B outputs manifest hash: `bce7894adbb3d059e6ee6367e7f90f49a30f32652e220d3aeb5b6298f2408035`
+- P10-A inventory hash: `f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0`
+- P10-B outputs manifest hash: `f881180c8d6c760adcc2360860b297e329f682baacfcd564da92fe95224d1951`
 - Report values are rendered from machine-readable Phase 10 JSON/CSV artifacts.
 - No model training, inference, prediction regeneration, external tuning, or checkpoint reselection is part of this report build.
 
@@ -47,7 +47,7 @@ Durable machine-readable performance artifacts for several earlier planned repor
 
 | scope | description | reason | value_kind |
 | --- | --- | --- | --- |
-| docs/phase8/SUPERVISOR_HANDOFF.md (Substage 3, blocked v1 run) | Checkpoint at phase8_substage3_tiny_real_v1/checkpoints/phase8_tiny_real_verification_checkpoint.pt reflects pre-fix buggy liver-vs-background training and has no accompanying JSON artifact (run never reached the publication step). | No JSON summary/config/metadata artifact was ever published for this run; only the stray checkpoint file exists. Must not be used or reported as a scientific result. | unavailable |
+| Phase 8 historical pilot run (blocked v1) | Checkpoint at phase8_substage3_tiny_real_v1/checkpoints/phase8_tiny_real_verification_checkpoint.pt reflects pre-fix buggy liver-vs-background training and has no accompanying JSON artifact (run never reached the publication step). | No JSON summary/config/metadata artifact was ever published for this run; only the stray checkpoint file exists. Must not be used or reported as a scientific result. | unavailable |
 | Gate 3 (ACCEPTANCE_CHECKLIST.md) | Gate 3 checkboxes for CPU shape smoke tests, tiny-subset overfit tests, deterministic metric JSON from saved predictions, Git-visible-artifact absence check, full local quality checks, GitHub-hosted CI, and Gate 3 close-out documentation are unchecked. | No Gate 3 close-out evidence block or backing artifact exists in the repository or on the external drive for these specific items; the checklist itself records them as not yet done (pre-existing repo state, not a Phase 10 blocker). | unavailable |
 | Phase 10 baseline-performance table scope | Phase 3 nnU-Net v2 and MONAI SegResNet baseline-performance metric rows. | No persistent machine-readable baseline-performance artifact was located in the repository or under /Volumes/Lexar/ProtoEM-CT/runs; Gate 3 remains partly unchecked and must not be reported as completed scientific baseline performance. | unavailable |
 | ACCEPTANCE_CHECKLIST.md Gate 5 | Gate 5 status/criteria. | Gate 5 is recorded as 'Pending definition' with no criteria and no backing artifact. | unavailable |
@@ -56,7 +56,7 @@ Durable machine-readable performance artifacts for several earlier planned repor
 | docs/PHASE_PLAN.md / ACCEPTANCE_CHECKLIST.md Gate 4 | Phase 4 few-shot protocol support manifests, adaptation configs, and protocol-table artifacts (K x replicate x adaptation-mode). | Gate 4 evidence was produced from a synthetic publication run using test fixtures into an ephemeral external temporary output root; no persistent Phase 4 artifact directory was found under /Volumes/Lexar/ProtoEM-CT/runs. Only the counts/hashes recorded in ACCEPTANCE_CHECKLIST.md and docs/LEAKAGE_AUDIT.md are available as provenance, not independently re-verified raw files this session. | unavailable |
 | ACCEPTANCE_CHECKLIST.md Gate 6 | Phase 6 / ProtoEM-CT ablation-comparison, objective-trace, and publication artifacts (ablation_comparison.json, objective_trace.json, run_summary.json, etc.). | Gate 6 evidence was produced from two independent synthetic runs into mktemp directories (ROOT_A/ROOT_B) that were not persisted; no Phase 6 output directory was found under /Volumes/Lexar/ProtoEM-CT/runs. Only the values quoted in ACCEPTANCE_CHECKLIST.md are available. | unavailable |
 | docs/LEAKAGE_AUDIT.md Phase 7 section | Phase 7 robustness/uncertainty evaluation artifacts (calibration, risk-coverage, degradation, lesion-subgroup reports). | Phase 7 CLI is documented as 'synthetic_mode_only: true' with no real-data execution; no Phase 7 output directory exists under /Volumes/Lexar/ProtoEM-CT/runs. Robustness/uncertainty is explicitly 'not_included' in the Wave 4 statistical policy for Phase 8 as well. | unavailable |
-| docs/phase8/FINAL_REPORT.md section Q | Git commit 51638ca662510bf4cb031b2aec29778bf26bba26 (comparison provenance fix) and f1d4e1be7b6f7aa3657792cae9125c825affdded / f264ce79dd68039256d140f03c468baed8ecea07 (Package C execution/capture). | Not re-verified in this P10-A session (out of this agent's Git-log scope); FINAL_REPORT.md section S already records these as independently re-verified in the Phase 8 closure session. Flagged here as inherited, not re-checked, provenance. | unavailable |
+| docs/phase8/FINAL_REPORT.md section Q | Git commit 51638ca662510bf4cb031b2aec29778bf26bba26 (comparison provenance fix) and f1d4e1be7b6f7aa3657792cae9125c825affdded / f264ce79dd68039256d140f03c468baed8ecea07 (Package C execution/capture). | Not re-verified in this P10-A session (outside Phase 10 inventory scope); FINAL_REPORT.md section S already records these as independently re-verified in the Phase 8 closure session. Flagged here as inherited, not re-checked, provenance. | unavailable |
 
 ## External Validation
 

@@ -1967,7 +1967,7 @@ def test_geometry_validation_rejects_out_of_domain_label_value(tmp_path: Path) -
     """A raw label value outside {0,1,2} must fail closed before training.
 
     This is the exact defect class documented in
-    docs/phase8/SUPERVISOR_HANDOFF.md's Substage 3 incident (a three-valued
+    the historical Phase 8 Substage 3 incident (a three-valued
     LiTS/MSD label misread as binary); the reconstructed test file omitted
     direct coverage of this rejection despite implementing the geometry
     tests around it.

@@ -11,7 +11,7 @@ public API in this session:
 
 * :func:`build_phase8_definitive_training_config` can only ever produce a
   :class:`Phase8DefinitiveTrainingConfig` whose ``execution_release_state``
-  equals ``"awaiting_explicit_user_approval"``.
+  equals ``"awaiting_explicit_user_authorization"``.
 * :func:`build_unreleased_definitive_execution_release` can only ever produce
   a :class:`Phase8DefinitiveExecutionRelease` whose ``release_state`` equals
   ``"not_released"``. No function reachable from this module's public API
@@ -110,18 +110,17 @@ REQUIRED_DEVICE_TYPE: Final[str] = "cpu"
 REQUIRED_THRESHOLD_POLICY_TYPE: Final[str] = "fixed_constant"
 REQUIRED_THRESHOLD_VALUE: Final[float] = 0.5
 REQUIRED_SUPPORT_POLICY_TYPE: Final[str] = "no_support"
-AWAITING_EXPLICIT_USER_APPROVAL: Final[str] = "awaiting_explicit_user_approval"
+AWAITING_EXPLICIT_USER_AUTHORIZATION: Final[str] = "awaiting_explicit_user_authorization"
 RELEASE_STATE_NOT_RELEASED: Final[str] = "not_released"
 RELEASE_STATE_RELEASED: Final[str] = "released"
-RELEASE_AUTHORIZED_BY_EXPLICIT_USER_APPROVAL: Final[str] = "explicit_user_approval"
+RELEASE_AUTHORIZED_BY_EXPLICIT_USER_AUTHORIZATION: Final[str] = "explicit_user_authorization"
 SELECTION_STATUS_SINGLE_CANDIDATE_PREREGISTERED: Final[str] = "single_candidate_preregistered"
 PRIMARY_METRIC_TUMOR_DICE: Final[str] = "tumor_dice"
 
 # Deterministic tie-break rule identifiers for this module's single-candidate
 # selection publisher. This order intentionally differs from the general
-# multi-candidate order recorded in
-# docs/phase8/INTERNAL_EVIDENCE_REMEDIATION_PLAN.md (which starts with
-# validation tumor Dice descending); this module's fixed tuple is exactly:
+# multi-candidate order considered during Phase 8 internal-evidence planning
+# (which starts with validation tumor Dice descending); this module's fixed tuple is exactly:
 # lesion F1 descending, then HD95 ascending when defined, then false-positive
 # lesions per scan ascending, then trainable parameter count ascending, then
 # candidate ID lexicographic.
@@ -237,9 +236,9 @@ class Phase8DefinitiveTrainingConfig:
         _require_false(self.amp_enabled, field_name="amp_enabled")
         _require_true(self.no_external_data, field_name="no_external_data")
         _require_true(self.internal_test_excluded, field_name="internal_test_excluded")
-        if self.execution_release_state != AWAITING_EXPLICIT_USER_APPROVAL:
+        if self.execution_release_state != AWAITING_EXPLICIT_USER_AUTHORIZATION:
             raise Phase8DefinitiveTrainingValidationError(
-                f"execution_release_state must equal {AWAITING_EXPLICIT_USER_APPROVAL!r}."
+                f"execution_release_state must equal {AWAITING_EXPLICIT_USER_AUTHORIZATION!r}."
             )
         _require_self_hash(
             self.config_hash,
@@ -440,7 +439,7 @@ def build_phase8_definitive_training_config(
     other than ``"cpu"``, ``amp_enabled`` to ``True``, the threshold policy to
     anything other than the fixed 0.5 constant, the support policy to
     anything other than ``no_support``, or ``execution_release_state`` to
-    anything other than ``"awaiting_explicit_user_approval"``.
+    anything other than ``"awaiting_explicit_user_authorization"``.
     """
 
     fixed_seeds_tuple = tuple(fixed_seeds)
@@ -460,7 +459,7 @@ def build_phase8_definitive_training_config(
         amp_enabled=False,
         no_external_data=True,
         internal_test_excluded=True,
-        execution_release_state=AWAITING_EXPLICIT_USER_APPROVAL,
+        execution_release_state=AWAITING_EXPLICIT_USER_AUTHORIZATION,
     )
     return Phase8DefinitiveTrainingConfig(
         schema_name=PHASE8_DEFINITIVE_TRAINING_CONFIG_SCHEMA_NAME,
@@ -478,7 +477,7 @@ def build_phase8_definitive_training_config(
         amp_enabled=False,
         no_external_data=True,
         internal_test_excluded=True,
-        execution_release_state=AWAITING_EXPLICIT_USER_APPROVAL,
+        execution_release_state=AWAITING_EXPLICIT_USER_AUTHORIZATION,
         config_hash=sha256_json(payload),
     )
 
@@ -518,10 +517,10 @@ class Phase8DefinitiveExecutionRelease:
             self.authorized_max_training_steps, field_name="authorized_max_training_steps"
         )
         if self.release_state == RELEASE_STATE_RELEASED:
-            if self.authorized_by != RELEASE_AUTHORIZED_BY_EXPLICIT_USER_APPROVAL:
+            if self.authorized_by != RELEASE_AUTHORIZED_BY_EXPLICIT_USER_AUTHORIZATION:
                 raise Phase8DefinitiveTrainingValidationError(
                     "released release requires "
-                    f"authorized_by={RELEASE_AUTHORIZED_BY_EXPLICIT_USER_APPROVAL!r}."
+                    f"authorized_by={RELEASE_AUTHORIZED_BY_EXPLICIT_USER_AUTHORIZATION!r}."
                 )
         elif self.authorized_by is not None:
             raise Phase8DefinitiveTrainingValidationError(
@@ -1389,7 +1388,7 @@ def _expect_int_tuple(value: object, *, field_name: str) -> tuple[int, ...]:
 
 
 __all__ = [
-    "AWAITING_EXPLICIT_USER_APPROVAL",
+    "AWAITING_EXPLICIT_USER_AUTHORIZATION",
     "DEFINITIVE_TIE_BREAK_ORDER",
     "PHASE8_DEFINITIVE_CHECKPOINT_METADATA_FILENAME",
     "PHASE8_DEFINITIVE_EXECUTION_RELEASE_FILENAME",
@@ -1403,7 +1402,7 @@ __all__ = [
     "PHASE8_DEFINITIVE_TRAINING_SCHEMA_VERSION",
     "PHASE8_DEFINITIVE_VALIDATION_EVIDENCE_FILENAME",
     "PRIMARY_METRIC_TUMOR_DICE",
-    "RELEASE_AUTHORIZED_BY_EXPLICIT_USER_APPROVAL",
+    "RELEASE_AUTHORIZED_BY_EXPLICIT_USER_AUTHORIZATION",
     "RELEASE_STATE_NOT_RELEASED",
     "RELEASE_STATE_RELEASED",
     "REQUIRED_CANDIDATE_ID",

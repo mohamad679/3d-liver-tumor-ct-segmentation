@@ -131,7 +131,7 @@ def test_sanitized_environment_allowlist_and_credential_exclusion(tmp_path: Path
         "LANG": "en_US.UTF-8",
         "TMPDIR": "/tmp",
         "AWS_SECRET_ACCESS_KEY": "secret",
-        "OPENAI_API_KEY": "secret",
+        "EXTERNAL_SERVICE_API_KEY": "secret",
     }
     runtime = build_nnunet_v2_runtime_environment(
         raw_root=raw_root,
@@ -150,7 +150,7 @@ def test_sanitized_environment_allowlist_and_credential_exclusion(tmp_path: Path
         }
     )
     assert "AWS_SECRET_ACCESS_KEY" not in runtime.environment
-    assert "OPENAI_API_KEY" not in runtime.environment
+    assert "EXTERNAL_SERVICE_API_KEY" not in runtime.environment
     assert set(runtime.environment).issubset(
         set(NNUNET_ALLOWED_INHERITED_ENVIRONMENT_KEYS)
         | {"nnUNet_raw", "nnUNet_preprocessed", "nnUNet_results"}

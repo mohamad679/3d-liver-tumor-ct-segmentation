@@ -2554,7 +2554,7 @@ def plan_phase8_definitive_development_training_command(
     This command is planning-only: it never opens an image, label,
     prediction, or checkpoint file, and it never trains, infers, or computes
     a real metric. It publishes a ``Phase8DefinitiveTrainingConfig`` whose
-    ``execution_release_state`` is always ``"awaiting_explicit_user_approval"``
+    ``execution_release_state`` is always ``"awaiting_explicit_user_authorization"``
     alongside a ``Phase8DefinitiveExecutionRelease`` whose ``release_state``
     is always ``"not_released"``. No release is issued by this command, and
     there is no flag capable of changing either fixed state.
@@ -2607,7 +2607,7 @@ def plan_phase8_definitive_development_training_command(
         _raise_phase8_definitive_training_plan_cli_error(exc)
 
     typer.echo("Phase 8 definitive-training plan publication complete")
-    typer.echo("execution_release_state: awaiting_explicit_user_approval")
+    typer.echo("execution_release_state: awaiting_explicit_user_authorization")
     typer.echo("release_state: not_released")
     typer.echo("training_executed: false")
     typer.echo("checkpoint_created: false")

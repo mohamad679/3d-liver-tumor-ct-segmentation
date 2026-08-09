@@ -127,8 +127,8 @@
  ],
  "schema_name": "phase10_table",
  "schema_version": "v1",
- "self_hash": "864c00af4b952e08bc45cd7c6a29585a2dccd86dc501a9ead09dc2ade99a1870",
- "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+ "self_hash": "ba7130d678d011757bff2795779f9d1a558c9902724d9ed32824f61f458a476f",
+ "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
  "table_id": "phase10_cohort_data_summary",
  "title": "Phase 10 Cohort Data Summary"
 }

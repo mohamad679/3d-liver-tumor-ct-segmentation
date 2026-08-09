@@ -11,7 +11,7 @@ from protoem_ct.external.artifacts import (
     phase8_decision_freeze_to_json,
 )
 from protoem_ct.external.definitive_training import (
-    AWAITING_EXPLICIT_USER_APPROVAL,
+    AWAITING_EXPLICIT_USER_AUTHORIZATION,
     DEFINITIVE_TIE_BREAK_ORDER,
     PHASE8_DEFINITIVE_EXECUTION_RELEASE_SCHEMA_NAME,
     PHASE8_DEFINITIVE_TRAINING_CONFIG_SCHEMA_NAME,
@@ -482,7 +482,7 @@ __all__ = [
     "validate_frozen_decisions_unchanged",
     "verify_checkpoint_file_identity_values",
     "validate_post_result_decision_lock",
-    "AWAITING_EXPLICIT_USER_APPROVAL",
+    "AWAITING_EXPLICIT_USER_AUTHORIZATION",
     "DEFINITIVE_TIE_BREAK_ORDER",
     "PHASE8_DEFINITIVE_EXECUTION_RELEASE_SCHEMA_NAME",
     "PHASE8_DEFINITIVE_TRAINING_CONFIG_SCHEMA_NAME",

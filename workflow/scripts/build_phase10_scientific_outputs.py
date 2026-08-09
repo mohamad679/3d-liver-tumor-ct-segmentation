@@ -75,6 +75,12 @@ def load_json(path: Path) -> dict[str, Any]:
     return loaded
 
 
+def load_existing_phase10_comparison(reports_root: Path) -> dict[str, Any]:
+    """Load the saved Phase 10 comparison when the drive artifact is unavailable."""
+    fallback = reports_root / "statistics" / "phase10_internal_external_descriptive_comparison.json"
+    return load_json(fallback)
+
+
 def write_json(path: Path, payload: dict[str, Any]) -> str:
     """Write deterministic JSON with a self-hash and return that hash."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -88,7 +94,9 @@ def write_csv(path: Path, columns: list[str], rows: list[dict[str, Any]]) -> Non
     """Write deterministic CSV rows."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=columns, extrasaction="ignore")
+        writer = csv.DictWriter(
+            handle, fieldnames=columns, extrasaction="ignore", lineterminator="\n"
+        )
         writer.writeheader()
         for row in rows:
             writer.writerow(row)
@@ -788,7 +796,18 @@ def write_outputs(inventory_path: Path, reports_root: Path) -> dict[str, Any]:
         / "phase8_external_evaluation_v1"
         / "phase8_internal_external_comparison_corrected_v1.json"
     )
-    comparison = load_json(comparison_path)
+    if comparison_path.exists():
+        comparison = load_json(comparison_path)
+        comparison_source = str(comparison_path)
+        comparison_sha256 = sha256_file(comparison_path)
+    else:
+        comparison = load_existing_phase10_comparison(reports_root)
+        comparison_source = str(
+            reports_root / "statistics" / "phase10_internal_external_descriptive_comparison.json"
+        )
+        comparison_sha256 = sha256_file(
+            reports_root / "statistics" / "phase10_internal_external_descriptive_comparison.json"
+        )
     tables = write_table_outputs(inventory, comparison, reports_root)
     figures = write_figure_outputs(inventory, comparison, reports_root)
     statistics = write_statistics_outputs(inventory, comparison, reports_root)
@@ -797,8 +816,8 @@ def write_outputs(inventory_path: Path, reports_root: Path) -> dict[str, Any]:
         "schema_version": SCHEMA_VERSION,
         "source_inventory_path": str(inventory_path),
         "source_inventory_hash": inventory["self_hash"],
-        "source_comparison_artifact": str(comparison_path),
-        "source_comparison_artifact_sha256": sha256_file(comparison_path),
+        "source_comparison_artifact": comparison_source,
+        "source_comparison_artifact_sha256": comparison_sha256,
         "tables": tables,
         "figures": figures,
         "statistics": statistics,

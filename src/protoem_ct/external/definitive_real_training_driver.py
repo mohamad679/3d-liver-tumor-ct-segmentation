@@ -13,7 +13,7 @@ orchestration/watchdog wiring -- mirroring the established pattern in
 :mod:`protoem_ct.external.real_development_runner`.
 
 Hard, non-negotiable contract for a real run (see
-``docs/phase8/SUPERVISOR_HANDOFF.md`` and ``docs/DECISIONS.md`` entry
+the Phase 8 closure provenance records and ``docs/DECISIONS.md`` entry
 ``PHASE8-DEFINITIVE-TRAIN-SPACING-V1``):
 
 * The development manifest and development split JSON files must byte-hash

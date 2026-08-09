@@ -48,7 +48,7 @@ def _reference(
         if source_artifact_hash is None
         else source_artifact_hash,
         rationale_code=f"{category}_freeze",
-        provenance_reference="docs.phase8.supervisor_handoff",
+        provenance_reference="docs.phase8.provenance_record",
         frozen=True,
         freeze_state="frozen",
     )

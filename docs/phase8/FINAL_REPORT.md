@@ -102,7 +102,7 @@ case-insensitively starts with `livertumor`; the `liver` (liver-context) folder 
 folders, `LABELLED_DICOM.zip`, `MESHES_VTK.zip`, and `liver_*.jpg` files were never opened. The
 mapping/eligibility policy is the same, unmodified Wave 3 policy frozen in Package D
 (`label_mapping_policy_reference` artifact hash
-`2781c3d7eadfafc1b384d34dab0e077528816e0c47ebeda3016c028f5ed00ced`).
+`3fa990dcaf8922e31d9ceb8fe99ad87da53301c08469ec1a77729eef24143f3d`).
 
 ## M. External metrics (all 9, as computed and published in Package G — not recomputed here)
 
@@ -220,9 +220,8 @@ generalization claim in either direction.
   `tests/unit/test_phase8_definitive_training_pilot.py`) was addressed by reconstruction and a
   documented remediation/recovery audit (pre-remediation 41 COVERED / 16 WEAK / 36 MISSING of 93
   requirements; reduced to a small residual afterward), plus a separately fixed checkpoint-reload
-  defect. This incident is historical, remains documented in `docs/phase8/SUPERVISOR_HANDOFF.md`,
-  and is **not** described here as fully or perfectly recovered — only as remediated to a
-  documented, audited residual state.
+  defect. This incident is historical and is **not** described here as fully or perfectly recovered
+  -- only as remediated to a documented, audited residual state.
 - The original Package G comparison artifact (`phase8_internal_external_comparison.json`) contains
   the known provenance-field defect described in section Q and is superseded for final reporting by
   the explicitly corrected artifact; the original is preserved unmodified as the historical record.
