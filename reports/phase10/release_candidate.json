@@ -69,7 +69,7 @@
  "final_report_manifest_hash": "d6fdc2e46ef8f44ee6e69f4ec4d4ed4e8de5bc4cf71ec302ed51fe411c62101f",
  "gate8_status": "pass_final_report_generated_from_machine_readable_artifacts",
  "git_branch": "phase/10-final-scientific-package",
- "git_commit": "4995909f643bffc2ca2c99173927e1db974ddcf0",
+ "git_commit": "2cf24f00f7059433058a67b6dd88ec9e501ccb23",
  "inference_rerun": false,
  "lits_msd_policy": "single_lits_derived_development_source",
  "phase10_b_outputs_manifest_hash": "bce7894adbb3d059e6ee6367e7f90f49a30f32652e220d3aeb5b6298f2408035",
@@ -80,6 +80,6 @@
  "schema_name": "phase10_release_candidate",
  "schema_version": "v1",
  "secrets_committed": false,
- "self_hash": "2a8b7019fd5f4f81c66dfc91c24f88e8e68448a7d6a35ca911b371291cf1fd41",
+ "self_hash": "6d376898355e0bdbe74dcce687e8fffb2a2e5a16382e09e7a2767e701b6d3e9e",
  "training_rerun": false
 }
