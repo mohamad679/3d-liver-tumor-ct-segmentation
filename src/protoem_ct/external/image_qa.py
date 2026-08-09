@@ -736,8 +736,7 @@ def load_patient_dicom_zip_volume(patient_dicom_zip: Path) -> Phase8ImageVolumeL
     volume, volume_reasons = _build_hu_volume(slices)
     if volume is None or volume_reasons:
         raise Phase8ImageVolumeLoadError(
-            "image volume could not be built: "
-            f"{sorted(code.value for code in volume_reasons)!r}"
+            f"image volume could not be built: {sorted(code.value for code in volume_reasons)!r}"
         )
     voxel_spacing = _voxel_spacing(slices)
     if voxel_spacing is None:

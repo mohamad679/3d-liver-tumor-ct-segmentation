@@ -119,10 +119,7 @@ def _build_ircadb_root(
         case_dir.mkdir()
         _write_patient_zip(
             case_dir / "PATIENT_DICOM.zip",
-            [
-                _dicom_slice(index, rows=rows, columns=columns)
-                for index in range(slices_per_case)
-            ],
+            [_dicom_slice(index, rows=rows, columns=columns) for index in range(slices_per_case)],
         )
         # Adversarial: prohibited label-bearing files present with garbage content. Inference
         # must never open these; garbage content must not raise any error.
@@ -377,8 +374,7 @@ def test_load_and_preprocess_never_reads_prohibited_label_files(tmp_path: Path) 
     assert preprocessed.anonymous_case_id == "ext-ircadb-001"
     # Frozen preprocessing was applied: RAS-oriented, resampled to the frozen target spacing.
     resampled_spacing = tuple(
-        float(v)
-        for v in np.sqrt(np.sum(preprocessed.resampled_affine_mm[:3, :3] ** 2, axis=0))
+        float(v) for v in np.sqrt(np.sum(preprocessed.resampled_affine_mm[:3, :3] ** 2, axis=0))
     )
     for observed, expected in zip(resampled_spacing, REQUIRED_TARGET_SPACING_XYZ_MM, strict=True):
         assert observed == pytest.approx(expected, abs=1e-6)
@@ -618,9 +614,7 @@ def test_end_to_end_tiny_run_publishes_lock_and_fails_on_second_run(tmp_path: Pa
             "preregistration_hash"
         ],
     }
-    original_values = {
-        name: getattr(target, name) for name in monkeypatch_targets
-    }
+    original_values = {name: getattr(target, name) for name in monkeypatch_targets}
     for name, value in monkeypatch_targets.items():
         setattr(target, name, value)
     try:

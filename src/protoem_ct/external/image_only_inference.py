@@ -967,9 +967,7 @@ def run_phase8_external_image_only_inference(
         "no_metric_computed": True,
         "no_tuning": True,
         "observed_image_case_count": len(records),
-        "per_case_elapsed_seconds": {
-            case_id: elapsed for case_id, elapsed in per_case_elapsed
-        },
+        "per_case_elapsed_seconds": {case_id: elapsed for case_id, elapsed in per_case_elapsed},
         "preregistration_hash": identities.preregistration_hash,
         "schema_name": "phase8_external_image_only_inference_summary",
         "schema_version": "v1",
