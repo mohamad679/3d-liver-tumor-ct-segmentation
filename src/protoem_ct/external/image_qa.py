@@ -683,3 +683,99 @@ def _intensity_summary(volume: np.ndarray) -> dict[str, float | int]:
         "min_hu": float(np.min(volume)),
         "voxel_count": int(volume.size),
     }
+
+
+class Phase8ImageVolumeLoadError(Phase8ImageQaError):
+    """Raised when a full-resolution image-only volume cannot be safely loaded."""
+
+
+@dataclass(frozen=True, slots=True)
+class Phase8ImageVolumeLoadResult:
+    """Full-resolution HU volume and DICOM-convention (LPS) affine for one image archive.
+
+    Image-only: reads only the supplied ``PATIENT_DICOM.zip``. Never discovers or opens sibling
+    mask/label/mesh files. The affine is expressed in DICOM's native LPS world convention (mm); it
+    is the caller's responsibility to convert to RAS+ before reusing RAS-oriented preprocessing
+    contracts.
+    """
+
+    volume_hu: np.ndarray
+    affine_lps_mm: np.ndarray
+    voxel_spacing_row_col_slice_mm: tuple[float, float, float]
+    image_archive_sha256: str
+
+
+def load_patient_dicom_zip_volume(patient_dicom_zip: Path) -> Phase8ImageVolumeLoadResult:
+    """Load the full-resolution HU volume and LPS affine for one ``PATIENT_DICOM.zip``.
+
+    Reuses exactly the same DICOM parsing and geometry-consistency checks as
+    :func:`run_patient_dicom_zip_image_qa`; raises :class:`Phase8ImageVolumeLoadError` fail-closed
+    for any of the same defects that function reports via ``qa_status='failed'``. Never discovers,
+    opens, or reads mask/label/mesh archives.
+    """
+
+    archive_hash = _sha256_regular_file(patient_dicom_zip)
+    try:
+        with zipfile.ZipFile(patient_dicom_zip, "r") as archive:
+            members = _safe_zip_members(archive)
+            slices = tuple(_read_dicom_slice(archive.read(member), member) for member in members)
+    except (OSError, zipfile.BadZipFile, zipfile.LargeZipFile) as exc:
+        raise Phase8ImageVolumeLoadError("image archive could not be read.") from exc
+    except Phase8ImageQaError as exc:
+        raise Phase8ImageVolumeLoadError(
+            "image archive DICOM content could not be parsed."
+        ) from exc
+    if not slices:
+        raise Phase8ImageVolumeLoadError("image archive contains no DICOM slices.")
+
+    reason_codes = _evaluate_header_consistency(slices)
+    if reason_codes:
+        raise Phase8ImageVolumeLoadError(
+            f"image geometry QA failed: {sorted(code.value for code in reason_codes)!r}"
+        )
+    volume, volume_reasons = _build_hu_volume(slices)
+    if volume is None or volume_reasons:
+        raise Phase8ImageVolumeLoadError(
+            "image volume could not be built: "
+            f"{sorted(code.value for code in volume_reasons)!r}"
+        )
+    voxel_spacing = _voxel_spacing(slices)
+    if voxel_spacing is None:
+        raise Phase8ImageVolumeLoadError("voxel spacing could not be determined.")
+    ordered_slices = tuple(sorted(slices, key=_slice_sort_key))
+    affine = _build_lps_affine(ordered_slices, voxel_spacing=voxel_spacing)
+    return Phase8ImageVolumeLoadResult(
+        volume_hu=volume,
+        affine_lps_mm=affine,
+        voxel_spacing_row_col_slice_mm=voxel_spacing,
+        image_archive_sha256=archive_hash,
+    )
+
+
+def _build_lps_affine(
+    ordered_slices: tuple[Phase8DicomSlice, ...],
+    *,
+    voxel_spacing: tuple[float, float, float],
+) -> np.ndarray:
+    first = ordered_slices[0]
+    orientation = first.image_orientation_patient
+    position = first.image_position_patient
+    if orientation is None or position is None:
+        raise Phase8ImageVolumeLoadError(
+            "DICOM orientation/position is required to build an affine."
+        )
+    column_direction = np.asarray(orientation[:3], dtype=np.float64)
+    row_direction = np.asarray(orientation[3:], dtype=np.float64)
+    normal = np.cross(column_direction, row_direction)
+    norm = float(np.linalg.norm(normal))
+    if norm == 0.0:
+        raise Phase8ImageVolumeLoadError("DICOM orientation vectors are degenerate.")
+    normal = normal / norm
+    row_spacing_mm, column_spacing_mm, slice_spacing_mm = voxel_spacing
+    affine = np.zeros((4, 4), dtype=np.float64)
+    affine[:3, 0] = normal * slice_spacing_mm
+    affine[:3, 1] = row_direction * row_spacing_mm
+    affine[:3, 2] = column_direction * column_spacing_mm
+    affine[:3, 3] = np.asarray(position, dtype=np.float64)
+    affine[3, 3] = 1.0
+    return affine
