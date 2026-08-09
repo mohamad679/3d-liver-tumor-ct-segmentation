@@ -939,3 +939,96 @@
   access 3D-IRCADb-01 labels, does not perform external evaluation, and does not compute any metric --
   external label access and evaluation against these already-locked predictions remain the next,
   separately authorized Phase 8 stage.
+
+### 2026-08-09: Publish Package G Phase 8 External Label Evaluation
+
+- Status: accepted
+- Authorization: the user, acting as Phase 8 Master Supervisor in this session, explicitly directed
+  execution of "PACKAGE G -- EXTERNAL LABEL EVALUATION" against the completed, reviewed Package F
+  prediction lock recorded in the immediately preceding entry above, explicitly authorizing this module
+  to open real 3D-IRCADb-01 tumor labels for the first time, strictly to evaluate the already-frozen,
+  already-locked predictions -- never to regenerate, adjust, or influence them.
+- Decision: A new module `src/protoem_ct/external/label_evaluation.py` was implemented and
+  synthetically tested (17 tests in `tests/unit/test_phase8_label_evaluation.py`, covering
+  prediction-lock/identity hash-mismatch fail-closed behavior, no mutation of locked predictions,
+  missing-tumor-source and geometry-inconsistency fail-closed paths, nearest-neighbor resampling
+  producing no fractional values, all 9 metrics coming from the existing
+  `protoem_ct.baselines.metrics.compute_baseline_case_metrics` verbatim, bootstrap determinism/config,
+  no performance-based exclusion, and output-root overwrite rejection), independently reviewed, and
+  committed (`955dc78`, `feat(phase8): add external label evaluation driver (Package G wiring)`) before
+  any real label was opened. It re-verifies the freeze artifact SHA-256, preregistration hash, and
+  prediction lock (reconstructing `Phase8ExternalPredictionLock`/`Phase8ExternalPredictionRecord`
+  directly so their own `__post_init__` hash checks apply), and re-recomputes every locked `.npy`
+  file's SHA-256 against the lock at evaluation time (defense in depth). It opens only
+  `MASKS_DICOM.zip` per case, and within it only role folders whose name case-insensitively starts with
+  `livertumor` (never `liver`, `LABELLED_DICOM.zip`, `MESHES_VTK.zip`, or `liver_*.jpg`), aligns the
+  union of those folders onto the locked prediction grid using only already-committed frozen primitives
+  (`image_qa._build_lps_affine`, `image_only_inference._lps_affine_to_ras`,
+  `definitive_pipeline.reorient_volume_to_ras`, `definitive_pipeline.resample_volume_to_spacing` with
+  `is_label=True`, i.e. `scipy.ndimage.zoom(order=0)`), and applies
+  `label_mapping.build_default_phase8_label_mapping_policy()` unmodified. Eligibility exclusions are
+  driven only by `protoem_ct.external.eligibility`'s preregistered fail-closed reason codes (never by a
+  case's metric values). No model/inference code (`torch`, `monai`, checkpoint loading) is imported.
+
+  Run once, definitively, against dataset root
+  `/Volumes/Lexar/ProtoEM-CT/datasets/external/3D-IRCADb-01/raw/3Dircadb1` and the Package F prediction
+  lock, at Git HEAD `955dc78f95cfc85d19219dce59be95baf311e042` (Package G wiring commit). Of the 20
+  cases, 5 had no
+  `livertumor*` folder in `MASKS_DICOM.zip` at all (`ext-ircadb-005`, `ext-ircadb-007`,
+  `ext-ircadb-011`, `ext-ircadb-014`, `ext-ircadb-020`) and were excluded fail-closed with
+  `label_compatibility_status="incompatible"`, reason `tumor_target_absent` -- not for any metric
+  reason. The remaining 15 cases were geometry-compatible and evaluated. Headline results (macro /
+  pooled point estimates; case-level bootstrap 95% percentile CI, seed `1729`, `10000` resamples, over
+  the 15 eligible cases): `tumor_dice` macro `0.014115733440605011` (CI `[0.004341547521318757,
+  0.02501302650455788]`), pooled `0.021955736330271848`; `tumor_iou` macro `0.007215381213910843`
+  (CI `[0.002208283278991875, 0.012793720568727924]`), pooled `0.011099719421616427`;
+  `tumor_normalized_surface_dice` macro `0.0033014104480338863`
+  (CI `[0.0008695378349168014, 0.0061626388043957]`); `tumor_hd95` macro `176.6259570403819` mm over
+  15 defined cases (CI `[159.32400767790955, 194.301561440465]`); `lesion_wise_recall` macro
+  `0.15886788048552752` (CI `[0.04815359477124183, 0.31025676937441643]`); `lesion_wise_precision`
+  macro `0.0004170230872244496` (CI `[0.00019535650440340803, 0.0006562260559801865]`); `lesion_f1`
+  macro `0.0008293785379380446` (CI `[0.00038875182666259906, 0.001304960931868939]`);
+  `false_positive_lesions_per_scan` mean `2358.4` (CI `[1893.32, 2872.075]`); `tumor_volume_error`
+  mean signed `-30.97904055175781` mL (CI `[-96.51345051441191, 18.267631285171493]`), mean absolute
+  `73.1784307937622` mL (CI `[36.18556097774507, 126.89318989557269]`), macro relative
+  `2.833886301727687` (CI `[0.7546956418899935, 5.484524303515011]`). This is consistent with (not
+  contradicted by) the thin internal validation evidence
+  (`phase8_definitive_training_v1/phase8_definitive_checkpoint_selection_evidence.json`:
+  `mean_tumor_dice_step_500=0.01579295321113191`, single frozen scalar, no CI, `internal_test_used`
+  and `external_data_used` both false) -- an honest, non-tuned, low-performing result on both cohorts,
+  not a bug signature by itself.
+
+  Published, reject-on-overwrite, to `/Volumes/Lexar/ProtoEM-CT/runs/phase8_external_evaluation_v1`:
+  `phase8_external_eligibility_accounting.json`, `phase8_external_case_metrics.json` (plus one file per
+  case under `case_metrics/`), `phase8_external_metric_report.json` (`artifact_hash`
+  `a6dbdd3998e2c55d82e725cba20fbfebf685378f0e719547df5d008eeae0b2da`), `phase8_external_bootstrap_ci.json`,
+  `phase8_external_domain_shift_record.json` (`domain_shift_record_hash`
+  `04665b449d8b3d7838a28e3045cdd57b67c9fccf6e1f091b7f5f1abd5963da0b`, rebuilt fresh, image-only,
+  `labels_accessed=false`, consistent with the pre-freeze Wave 3 artifact), a non-medical
+  `phase8_external_qualitative_index.json` (all 15 eligible cases, anonymous IDs and hashes only, no
+  pixel data), `phase8_internal_external_comparison.json`, and
+  `phase8_external_evaluation_summary.json`.
+- Independent review: one read-only self-review pass re-verified all 20 locked prediction files'
+  SHA-256 against the lock (zero mismatches, zero byte/mtime changes), confirmed no `torch`/`monai`
+  import or write-mode access to the predictions directory anywhere in `label_evaluation.py`, confirmed
+  the label-mapping policy is used unmodified, confirmed the 5 exclusions match `tumor_target_absent`
+  exactly and nothing else was excluded, confirmed the geometry chain uses only the listed reused frozen
+  functions, confirmed exactly the 9 preregistered metrics appear (`tumor_volume_error` reported as
+  signed/absolute/relative per policy) with no extra metric, confirmed the bootstrap configuration
+  matches exactly, and confirmed the qualitative index includes literally all 15 eligible cases. It
+  found one disclosed, non-scientific defect: `_build_internal_external_comparison` reads the internal
+  checkpoint-selection evidence field under the wrong key (`checkpoint_sha256` instead of the evidence
+  file's actual field `selected_checkpoint_hash`), so the published
+  `phase8_internal_external_comparison.json`'s `internal_checkpoint_sha256` is `null` and
+  `internal_checkpoint_matches_locked_checkpoint` is `false` instead of correctly resolving to
+  `2d7989fd134b1348e82cc52afbcf4738c0ce3c17e9c68df774431f577dede651` / `true`. This affects only that
+  one subsidiary provenance cross-check field in one comparison artifact; it does not affect any
+  prediction, label, metric, aggregate, CI, or eligibility decision, and the reported
+  `internal_value` (`mean_tumor_dice_step_500`) itself is correct. Per explicit supervisor direction,
+  the already-published output root was not touched or regenerated to fix this; it is recorded here as
+  a known limitation of the current `phase8_internal_external_comparison.json` for a future,
+  separately authorized correction pass.
+- Consequences: Phase 8 now has a complete, hash-verified, once-only external label evaluation of the
+  Package F predictions, with an honest low-performance result, a disclosed cosmetic defect in one
+  comparison field, and zero changes to any locked prediction, checkpoint, threshold, preprocessing, or
+  support-policy decision. No inference was rerun and no case was excluded for a performance reason.
