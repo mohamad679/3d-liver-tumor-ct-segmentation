@@ -1470,3 +1470,37 @@ environment has zero failures (78 passed, 0 failed), no critical requirement rem
 MISSING, and independent review passed.
 
 Wave 4 remains `BLOCKED`. Wave 5 remains blocked and unreleased.
+
+## Package H — Final Report, Reproduction Check, and Phase 8 Closure
+
+Status: **CLOSED**, 2026-08-09, with a **negative external-validation result**. This is the final
+entry in this handoff document. See `docs/phase8/FINAL_REPORT.md` for the complete closure report
+and `docs/DECISIONS.md` ("2026-08-09: Package H — Final Report, Reproduction Check, and Phase 8
+Closure") for the full decision record. Summary only, to avoid duplicating those documents:
+
+- The one disclosed non-scientific defect from the immediately preceding Package G entry (wrong
+  dict-key lookup causing `internal_checkpoint_sha256=null` and
+  `internal_checkpoint_matches_locked_checkpoint=false` in `phase8_internal_external_comparison.json`)
+  was fixed minimally in `src/protoem_ct/external/label_evaluation.py`, covered by a focused
+  regression test, and committed (`51638ca662510bf4cb031b2aec29778bf26bba26`) before any corrected
+  artifact was published.
+- A corrected comparison artifact, `phase8_internal_external_comparison_corrected_v1.json`, was
+  published additively under the existing Package G output root; the original
+  `phase8_internal_external_comparison.json` was preserved unmodified.
+- A new small, self-hashed, non-medical closure/reproduction record contract
+  (`src/protoem_ct/external/closure.py`) was added and one instance was published to the Package G
+  output root, recording the verified freeze/preregistration/prediction-lock/metric-report/
+  domain-shift identity chain and the fix commit.
+- `/Volumes/Lexar` was mounted and accessible this session; every hash quoted in
+  `docs/phase8/FINAL_REPORT.md` was independently re-verified against the mounted artifacts rather
+  than only quoted from this handoff's prior text.
+- `ACCEPTANCE_CHECKLIST.md` (Gate 8) and `docs/PHASE_PLAN.md` were updated to reflect closure.
+- A final independent, skeptical review (PASS) confirmed no scientific computation was rerun, the
+  provenance fix touched only the two defective fields, the original artifact is preserved, the
+  corrected artifact preserves every other scientific value, all identities match, no unsupported
+  positive-generalization claim appears anywhere, and LiTS/MSD Task03 Liver is never treated as two
+  independent cohorts.
+
+Phase 8 is closed because the locked, preregistered protocol was executed exactly as designed and
+its result was reported completely and transparently, not because the scientific result is
+favorable. No Phase 9, LLM/VLM track, or any phase beyond Phase 8 has begun.

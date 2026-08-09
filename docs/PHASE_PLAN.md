@@ -19,9 +19,17 @@ Phase 6 implementation and Gate 6 close-out are completed locally on 2026-08-02.
 
 Phase 7 is user-confirmed complete and merged with Gate 7 passed.
 
-Active phase: Phase 8 Wave 0 planning for external validation only. Wave 0 is documentation-only,
-does not access 3D-IRCADb-01 or any external drive, and does not implement source code, tests,
-configs, manifests, preregistration artifacts, predictions, metrics, or generated outputs.
+Phase 8 (external validation against 3D-IRCADb-01) is **CLOSED** as of 2026-08-09, with a
+**negative external-validation result**. The locked, preregistered protocol (preregistration before
+label access; image-only inference and prediction locking before label access; label-only
+evaluation after locking; no external tuning at any stage) was executed exactly as designed and
+reported completely and transparently. External tumor-segmentation performance is very poor across
+all 9 preregistered metric families and must not be reframed as successful generalization. See
+`docs/phase8/FINAL_REPORT.md` for the complete closure report, `docs/phase8/SUPERVISOR_HANDOFF.md`
+for the full package-by-package execution history (Packages A through H), and the "Phase 8 Package H
+— Final Closure" note below for the closure-specific summary.
+
+Active phase: none. No Phase 9, LLM/VLM track, or any phase beyond Phase 8 has begun.
 
 ## Phase 0 Scope
 
@@ -2369,6 +2377,56 @@ draws over the approved case-reference sequence, patch size `[64, 64, 32]`) is u
 model/preprocessing/training hyperparameter, step budget, checkpoint step, validation policy, or
 selection metric changed. No real data was accessed and no definitive training was executed under
 this decision.
+
+### Phase 8 Package H — Final Closure
+
+Status: **CLOSED** locally on 2026-08-09 with a negative external-validation result. Package H
+performed the final, non-scientific closure step after Packages C through G (definitive training,
+freeze, external preregistration, image-only inference/prediction lock, and label evaluation) had
+already produced the frozen, locked, and evaluated result. Package H did not retrain, reinfer, or
+recompute any metric.
+
+Package H work:
+
+1. Fixed one disclosed non-scientific defect in the Package G internal-vs-external comparison
+   artifact: `_build_internal_external_comparison`
+   (`src/protoem_ct/external/label_evaluation.py`) read the internal checkpoint-selection evidence
+   file with the wrong dict key (`"checkpoint_sha256"`, absent from the
+   `phase8_definitive_checkpoint_selection_evidence` schema) instead of the correct key
+   (`"selected_checkpoint_hash"`), which always produced `internal_checkpoint_sha256=null` and
+   `internal_checkpoint_matches_locked_checkpoint=false`. The fix touches only this key lookup and
+   is covered by a focused regression test (commit `51638ca662510bf4cb031b2aec29778bf26bba26`,
+   "fix(phase8): correct comparison checkpoint provenance").
+2. Published a corrected comparison artifact,
+   `phase8_internal_external_comparison_corrected_v1.json`, under the existing Package G output
+   root, without overwriting or deleting the original `phase8_internal_external_comparison.json`.
+   Every scientifically relevant field is verified value-identical between the two; only the two
+   defective provenance fields changed.
+3. Added a small, self-hashed, non-medical closure/reproduction record contract
+   (`src/protoem_ct/external/closure.py`, `Phase8ClosureReproductionRecord`) and published one
+   instance to the Package G output root
+   (`phase8_final_closure_reproduction_record.json`), recording the verified identity chain
+   (freeze/checkpoint/preregistration/prediction-lock/metric-report/domain-shift hashes, the
+   corrected-comparison reference, and the fix commit) with no medical array or PHI.
+4. Wrote the final closure report, `docs/phase8/FINAL_REPORT.md`, covering the frozen
+   configuration, preregistration/lock/evaluation identities, all 9 external metrics with
+   bootstrap CIs, domain-shift and qualitative-output references, the corrected comparison, an
+   explicit no-tuning statement, an explicit negative-result interpretation, and limitations.
+5. Updated `ACCEPTANCE_CHECKLIST.md` (Gate 8) and this file to reflect Phase 8 closure without
+   claiming any result beyond what the artifacts support.
+
+External drive access: `/Volumes/Lexar` was mounted and accessible during this closure session, so
+all hashes quoted in `docs/phase8/FINAL_REPORT.md` were independently re-verified against the
+mounted artifacts (not merely quoted from an earlier record).
+
+Verified local outcomes for the Package H changes:
+
+- `uv run pytest -q tests/unit/test_phase8_label_evaluation.py tests/unit/test_phase8_closure.py`:
+  PASS, `24 passed`
+- `uv run ruff format --check` on changed files: PASS
+- `uv run ruff check` on changed files: PASS
+- `uv run mypy` on changed files: PASS
+- `git diff --check`: PASS
 
 ## Implementation Notes and Command Results
 

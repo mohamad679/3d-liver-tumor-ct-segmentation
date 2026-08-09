@@ -1032,3 +1032,84 @@
   Package F predictions, with an honest low-performance result, a disclosed cosmetic defect in one
   comparison field, and zero changes to any locked prediction, checkpoint, threshold, preprocessing, or
   support-policy decision. No inference was rerun and no case was excluded for a performance reason.
+
+### 2026-08-09: Package H — Final Report, Reproduction Check, and Phase 8 Closure
+
+- Context: the user, acting as Phase 8 Master Supervisor, directed the final Phase 8 task, Package
+  H, to fix the one disclosed non-scientific defect from the immediately preceding entry, publish a
+  corrected comparison artifact, write the final Phase 8 report, perform a non-scientific
+  reproduction/provenance check, update project tracking, and close Phase 8. This entry does not
+  perform, repeat, or authorize any retraining, reinference, or metric recomputation.
+- Decision: the wrong-dict-key defect in `_build_internal_external_comparison`
+  (`src/protoem_ct/external/label_evaluation.py`) was fixed minimally: the lookup key
+  `"checkpoint_sha256"` was corrected to the evidence file's actual field
+  `"selected_checkpoint_hash"`, and the previously inline evidence-file path was lifted to a module
+  constant (`_INTERNAL_CHECKPOINT_EVIDENCE_PATH`) so it can be monkeypatched in tests. No metric
+  calculation, aggregation, bootstrap, label mapping, geometry, eligibility, internal value,
+  external value, checkpoint selection, or prediction was touched. A focused regression test
+  (`tests/unit/test_phase8_label_evaluation.py`) proves: the correct locked checkpoint hash is
+  emitted; `internal_checkpoint_matches_locked_checkpoint=true` when identities match; a genuine
+  mismatch still records `false`; and no metric field changes as a result of the correction.
+  Committed as `51638ca662510bf4cb031b2aec29778bf26bba26`
+  ("fix(phase8): correct comparison checkpoint provenance"), before any corrected artifact was
+  published, per an independent skeptical re-read of the diff (PASS).
+- The original `phase8_internal_external_comparison.json`
+  (raw-file SHA-256 `a082e2588b6aa9f10d64dcd90d89e1f1c8dd9bb855b71c94f3994cbca13cc8dc`) was left
+  untouched under `/Volumes/Lexar/ProtoEM-CT/runs/phase8_external_evaluation_v1`, as required. A
+  separate, additive artifact, `phase8_internal_external_comparison_corrected_v1.json`, was
+  published to the same output root by calling the now-fixed `_build_internal_external_comparison`
+  with the real, already-committed bootstrap CI values (`phase8_external_bootstrap_ci.json`); every
+  field was verified field-by-field equal to the original except the two defective provenance
+  fields, which now read `internal_checkpoint_sha256 =
+  2d7989fd134b1348e82cc52afbcf4738c0ce3c17e9c68df774431f577dede651` and
+  `internal_checkpoint_matches_locked_checkpoint = true`. The corrected artifact embeds a
+  `correction_provenance` block naming the reason, the corrected field paths, the fix commit, and a
+  reference back to the preserved original.
+- A new small, self-hashed, non-medical artifact contract,
+  `Phase8ClosureReproductionRecord` (`src/protoem_ct/external/closure.py`, with tests in
+  `tests/unit/test_phase8_closure.py`), was added to record the verified Phase 8 provenance chain
+  (freeze/checkpoint/preregistration/prediction-lock/metric-report/domain-shift hashes, the
+  corrected-comparison reference, and the fix commit) at closure. One instance was published,
+  reject-on-overwrite, to
+  `/Volumes/Lexar/ProtoEM-CT/runs/phase8_external_evaluation_v1/phase8_final_closure_reproduction_record.json`
+  (`closure_record_hash` `b4b8964dd33d6be3c83ede37600c01fc97a1221b9f5b05f4a22adca18d63b816`).
+- The external drive (`/Volumes/Lexar`) was mounted and accessible throughout this closure session.
+  The freeze artifact's raw-file SHA-256, the checkpoint binary's SHA-256, and the self-hash fields
+  of the preregistration, prediction-lock, metric-report, and domain-shift-record artifacts were all
+  independently re-verified against the mounted artifacts and found to exactly match the values
+  already recorded in this file and in `docs/phase8/SUPERVISOR_HANDOFF.md`. Both Package C
+  provenance commit hashes (`f1d4e1be7b6f7aa3657792cae9125c825affdded` execution-base HEAD and
+  `f264ce79dd68039256d140f03c468baed8ecea07` post-run code-capture commit) were independently
+  re-verified present in this repository's Git history.
+- The final closure report, `docs/phase8/FINAL_REPORT.md`, was written covering the frozen
+  configuration, preregistration/lock/evaluation identities, all 9 external metrics with bootstrap
+  CIs, the domain-shift artifact's aggregate-only, `not_compared` status (no causal domain-shift
+  claim is made), the qualitative-output index reference, the corrected comparison, an explicit
+  no-tuning statement, an explicit negative-result interpretation, and limitations (including the
+  low development-validation Dice, the poor external metrics, the five `tumor_target_absent`
+  exclusions, the LiTS/MSD-Task03-Liver single-cohort caveat, the Package C provenance-commit
+  distinction, the historical pilot-test-recovery incident stated without an unsupported "fully
+  recovered" claim, and the superseded original comparison artifact).
+  `ACCEPTANCE_CHECKLIST.md` (Gate 8) and `docs/PHASE_PLAN.md` were updated to reflect this closure
+  without claiming a result beyond what the artifacts support.
+- A final independent, skeptical review pass (performed as a distinct step after all closure
+  artifacts and docs were prepared) verified: no scientific computation was rerun during closure; the
+  comparison provenance bug was corrected only in the two provenance fields; the original Package G
+  comparison artifact is preserved unmodified; the corrected comparison preserves every other
+  scientific value; the freeze/preregistration/prediction-lock/evaluation identities match; the
+  external results in the final report exactly match the existing artifacts; no unsupported
+  positive-generalization claim is made anywhere in the closure documents; the limitations honestly
+  state the poor internal and external performance; LiTS/MSD Task03 Liver is never treated as two
+  independent cohorts; no internal-test medical data was newly accessed; no external prediction was
+  regenerated; and the acceptance/closure statements match the actual completed work. Verdict: PASS.
+- Verified local outcomes for the Package H changes:
+  `uv run pytest -q tests/unit/test_phase8_label_evaluation.py tests/unit/test_phase8_closure.py`:
+  PASS, `24 passed`; `uv run ruff format --check` and `uv run ruff check` on changed files: PASS;
+  `uv run mypy` on changed files: PASS; `git diff --check`: PASS.
+- Decision: Phase 8 is recorded as **complete and closed** with a **negative external-validation
+  result**. Closure is granted because the locked, preregistered protocol was executed exactly as
+  designed and its result was reported completely and transparently -- not because the scientific
+  result is favorable. External performance must not be reframed as successful generalization.
+- Consequences: Phase 8 is closed. No Phase 9, LLM/VLM track, or any phase beyond Phase 8 has begun.
+  Any future correction, re-evaluation, or extension of Phase 8 evidence requires a new, separately
+  authorized decision entry; this entry does not itself authorize one.
