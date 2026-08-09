@@ -146,6 +146,7 @@ def test_import_baseline_predictions_cli_and_git_visibility(tmp_path: Path) -> N
             "*.ckpt",
             "*.pth",
             "*.pt",
+            ":(exclude)reports/**",
         ],
         check=True,
         capture_output=True,

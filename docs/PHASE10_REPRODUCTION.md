@@ -15,8 +15,8 @@ Raw medical datasets, DICOM/NIfTI arrays, predictions, checkpoints, model weight
 
 The default local Phase 10 inventory command reads saved non-medical JSON/provenance artifacts from the configured run-artifact root. On this workstation the recovered inventory used:
 
-- Inventory hash: `67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9`
-- P10-B manifest hash: `bce7894adbb3d059e6ee6367e7f90f49a30f32652e220d3aeb5b6298f2408035`
+- Inventory hash: `f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0`
+- P10-B manifest hash: `f881180c8d6c760adcc2360860b297e329f682baacfcd564da92fe95224d1951`
 
 Use `--drive-root` on `workflow/scripts/build_phase10_artifact_inventory.py` if your saved artifact root differs.
 

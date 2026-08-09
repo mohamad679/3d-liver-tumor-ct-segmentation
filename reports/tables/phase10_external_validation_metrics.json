@@ -214,8 +214,8 @@
  ],
  "schema_name": "phase10_table",
  "schema_version": "v1",
- "self_hash": "617aa4fa1d4bd29c755c24122ce6a9597e1bbc3882f24ad3b84bbcf54c1d0c10",
- "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+ "self_hash": "378afbd5fd13b821d35558455d0edba74d36f72727345c682950e2e3fb128655",
+ "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
  "table_id": "phase10_external_validation_metrics",
  "title": "Phase 10 External Validation Metrics"
 }

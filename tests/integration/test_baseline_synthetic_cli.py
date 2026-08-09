@@ -173,6 +173,7 @@ def test_no_generated_file_appears_in_git_status(tmp_path: Path) -> None:
             "*.ckpt",
             "*.pth",
             "*.pt",
+            ":(exclude)reports/**",
         ],
         cwd=Path(__file__).resolve().parents[2],
         text=True,

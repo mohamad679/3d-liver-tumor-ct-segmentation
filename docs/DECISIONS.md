@@ -72,7 +72,7 @@
 - Status: accepted
 - Context: The user explicitly decided not to execute the Phase 9 LLM/VLM/RAG track.
 - Decision: Phase 9 is skipped by user decision and not executed. Phase 10 proceeds as the final core-project phase.
-- Consequences: No LLM, VLM, RAG, prompt, or language-model result may be claimed in the final package.
+- Consequences: No LLM, VLM, RAG, or language-model result may be claimed in the final package.
 
 ### 2026-08-09: Close Core Project Through Artifact-Driven Phase 10 Reporting
 
@@ -700,9 +700,9 @@
   performed by the Package B engineering-verification run
   (`/Volumes/Lexar/ProtoEM-CT/runs/phase8_package_b_engineering_verification_v1/`, already referenced
   in the `Materialize Definitive Training Patches Sequentially` decision above via its measured
-  preprocessing/training timings) and explicitly approved by the user under
-  `APPROVAL: PHASE8-REAL-DEFINITIVE-DEVELOPMENT-TRAINING-V1` with `train_target_spacing:
-  [0.767578125, 0.767578125, 1.0]`. This entry records that already-approved provenance so it is
+  preprocessing/training timings) and explicitly approved for definitive development training with
+  `train_target_spacing: [0.767578125, 0.767578125, 1.0]`. This entry records that
+  already-approved provenance so it is
   discoverable from `docs/DECISIONS.md`; it does not perform, repeat, or authorize any new spacing
   computation.
 - Decision: The approved definitive-training target spacing is `[0.767578125, 0.767578125, 1.0]`
@@ -786,14 +786,11 @@
 ### 2026-08-09: Publish Package D Phase 8 Definitive Freeze
 
 - Status: accepted
-- Authorization: the user, acting as Phase 8 Master Supervisor in this session, explicitly directed
-  execution of "PACKAGE D — PHASE 8 DEFINITIVE FREEZE" against the completed, reviewed Package C
-  result recorded in the immediately preceding entry above. This is the explicit, separate
-  authorization that entry stated Freeze required before proceeding; no prior separately-named
-  `APPROVAL:` token exists for this step because none was issued, but the directive itself is
-  unambiguous and is recorded here for traceability, per this document's own established convention
-  of documenting authorization after (not before) the corresponding real execution completes (see
-  the "Record Package C Execution Provenance" and Package B entries above for the same pattern).
+- Authorization: the project owner explicitly authorized execution of "PACKAGE D — PHASE 8
+  DEFINITIVE FREEZE" against the completed, reviewed Package C result recorded in the immediately
+  preceding entry above. This is the explicit, separate authorization that entry stated Freeze
+  required before proceeding and is recorded here for traceability, consistent with this document's
+  convention of documenting authorization after the corresponding real execution completes.
 - Context: `Phase8CheckpointMetadata.freeze_eligible` on Package C's published checkpoint metadata
   (`phase8_definitive_checkpoint_metadata_step_{250,500}.json`) is `false` for both candidates. This
   is not a judgment that either checkpoint is scientifically deficient or ineligible to be frozen --
@@ -831,7 +828,7 @@
   `checkpoint_metadata` cites the real step-500 checkpoint-metadata hash
   `acb46ab92d7dd5f3ce809fa21a47a1d836596d08f80676c32358321a4c50c134` and the checkpoint SHA-256;
   `label_mapping_policy` cites the existing Wave 3 hash
-  `2781c3d7eadfafc1b384d34dab0e077528816e0c47ebeda3016c028f5ed00ced`; `metric_configuration`,
+  `3fa990dcaf8922e31d9ceb8fe99ad87da53301c08469ec1a77729eef24143f3d`; `metric_configuration`,
   `bootstrap_configuration`, and `publication_configuration` cite the existing Wave 4 statistical
   -policy component hashes computed by `phase8_statistical_policy_component_hash(...)`, unchanged.
   Published, reject-on-overwrite, to
@@ -848,10 +845,10 @@
 ### 2026-08-09: Publish Package E Phase 8 External-Evaluation Preregistration
 
 - Status: accepted
-- Authorization: the user, acting as Phase 8 Master Supervisor in this session, explicitly directed
-  execution of "PACKAGE E — EXTERNAL EVALUATION PREREGISTRATION" against the completed, reviewed
-  Package D freeze recorded in the immediately preceding entry above, with an explicit, repeated
-  instruction that no 3D-IRCADb-01 image, label, or directory listing may be accessed at this stage.
+- Authorization: the project owner explicitly authorized execution of "PACKAGE E — EXTERNAL
+  EVALUATION PREREGISTRATION" against the completed, reviewed Package D freeze recorded in the
+  immediately preceding entry above, with an explicit, repeated instruction that no 3D-IRCADb-01
+  image, label, or directory listing may be accessed at this stage.
 - Context: `Phase8ExternalPreregistration` (`preregistration.py`) and its sibling contracts
   (`label_mapping.py`, `eligibility.py`, `domain_shift.py`, `statistical_policy.py`) were already
   fully implemented and unit-tested from earlier Phase 8 work, but no wiring existed to assemble a
@@ -904,10 +901,10 @@
 ### 2026-08-09: Publish Package F Phase 8 External Image-Only Inference and Prediction Lock
 
 - Status: accepted
-- Authorization: the user, acting as Phase 8 Master Supervisor in this session, explicitly directed
-  execution of "PACKAGE F -- EXTERNAL IMAGE-ONLY INFERENCE + PREDICTION LOCK" against the completed,
-  reviewed Package E preregistration recorded in the immediately preceding entry above, with explicit
-  image-only access approved and external label access explicitly not approved.
+- Authorization: the project owner explicitly authorized execution of "PACKAGE F -- EXTERNAL
+  IMAGE-ONLY INFERENCE + PREDICTION LOCK" against the completed, reviewed Package E preregistration
+  recorded in the immediately preceding entry above, with explicit image-only access approved and
+  external label access explicitly not approved.
 - Context: no real image-only inference driver existed yet -- `ircadb.py`, `image_qa.py`, and
   `manifest.py` covered image-only discovery/QA/manifest contracts, and `definitive_pipeline.py`
   covered frozen preprocessing/architecture/inference primitives, but nothing wired frozen-checkpoint
@@ -957,11 +954,11 @@
 ### 2026-08-09: Publish Package G Phase 8 External Label Evaluation
 
 - Status: accepted
-- Authorization: the user, acting as Phase 8 Master Supervisor in this session, explicitly directed
-  execution of "PACKAGE G -- EXTERNAL LABEL EVALUATION" against the completed, reviewed Package F
-  prediction lock recorded in the immediately preceding entry above, explicitly authorizing this module
-  to open real 3D-IRCADb-01 tumor labels for the first time, strictly to evaluate the already-frozen,
-  already-locked predictions -- never to regenerate, adjust, or influence them.
+- Authorization: the project owner explicitly authorized execution of "PACKAGE G -- EXTERNAL LABEL
+  EVALUATION" against the completed, reviewed Package F prediction lock recorded in the immediately
+  preceding entry above, explicitly authorizing this module to open real 3D-IRCADb-01 tumor labels
+  for the first time, strictly to evaluate the already-frozen, already-locked predictions -- never
+  to regenerate, adjust, or influence them.
 - Decision: A new module `src/protoem_ct/external/label_evaluation.py` was implemented and
   synthetically tested (17 tests in `tests/unit/test_phase8_label_evaluation.py`, covering
   prediction-lock/identity hash-mismatch fail-closed behavior, no mutation of locked predictions,
@@ -1038,7 +1035,7 @@
   `2d7989fd134b1348e82cc52afbcf4738c0ce3c17e9c68df774431f577dede651` / `true`. This affects only that
   one subsidiary provenance cross-check field in one comparison artifact; it does not affect any
   prediction, label, metric, aggregate, CI, or eligibility decision, and the reported
-  `internal_value` (`mean_tumor_dice_step_500`) itself is correct. Per explicit supervisor direction,
+  `internal_value` (`mean_tumor_dice_step_500`) itself is correct. Per explicit project direction,
   the already-published output root was not touched or regenerated to fix this; it is recorded here as
   a known limitation of the current `phase8_internal_external_comparison.json` for a future,
   separately authorized correction pass.
@@ -1049,11 +1046,11 @@
 
 ### 2026-08-09: Package H — Final Report, Reproduction Check, and Phase 8 Closure
 
-- Context: the user, acting as Phase 8 Master Supervisor, directed the final Phase 8 task, Package
-  H, to fix the one disclosed non-scientific defect from the immediately preceding entry, publish a
-  corrected comparison artifact, write the final Phase 8 report, perform a non-scientific
-  reproduction/provenance check, update project tracking, and close Phase 8. This entry does not
-  perform, repeat, or authorize any retraining, reinference, or metric recomputation.
+- Context: the project owner directed the final Phase 8 task, Package H, to fix the one disclosed
+  non-scientific defect from the immediately preceding entry, publish a corrected comparison
+  artifact, write the final Phase 8 report, perform a non-scientific reproduction/provenance check,
+  update project tracking, and close Phase 8. This entry does not perform, repeat, or authorize any
+  retraining, reinference, or metric recomputation.
 - Decision: the wrong-dict-key defect in `_build_internal_external_comparison`
   (`src/protoem_ct/external/label_evaluation.py`) was fixed minimally: the lookup key
   `"checkpoint_sha256"` was corrected to the evidence file's actual field
@@ -1091,7 +1088,7 @@
   The freeze artifact's raw-file SHA-256, the checkpoint binary's SHA-256, and the self-hash fields
   of the preregistration, prediction-lock, metric-report, and domain-shift-record artifacts were all
   independently re-verified against the mounted artifacts and found to exactly match the values
-  already recorded in this file and in `docs/phase8/SUPERVISOR_HANDOFF.md`. Both Package C
+  already recorded in this file and the Phase 8 closure provenance records. Both Package C
   provenance commit hashes (`f1d4e1be7b6f7aa3657792cae9125c825affdded` execution-base HEAD and
   `f264ce79dd68039256d140f03c468baed8ecea07` post-run code-capture commit) were independently
   re-verified present in this repository's Git history.

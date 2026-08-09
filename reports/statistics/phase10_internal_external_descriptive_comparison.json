@@ -89,7 +89,7 @@
  },
  "schema_name": "phase10_internal_external_descriptive_comparison",
  "schema_version": "v1",
- "self_hash": "904cbbcf26632ad163c4240e4adcc85bbbd4b13d17a58ada4103feedb9011e40",
+ "self_hash": "4304ceeb26cdb37a69cd008687899c6af2509c23449764a02678dfce386782d8",
  "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
- "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9"
+ "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0"
 }

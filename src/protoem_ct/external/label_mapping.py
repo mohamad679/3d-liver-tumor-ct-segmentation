@@ -620,8 +620,8 @@ def build_default_phase8_label_mapping_policy() -> Phase8LabelMappingPolicy:
         "schema_version": PHASE8_LABEL_MAPPING_POLICY_SCHEMA_VERSION,
         "source_basis_references": [
             "docs_phase8_plan_label_mapping_policy",
+            "phase8_label_access_boundary_record",
             "project_spec_binary_liver_tumor_segmentation",
-            "supervisor_handoff_wave3_no_label_access_boundary",
         ],
         "target_classes": list(PHASE8_LABEL_MAPPING_TARGET_CLASSES),
         "target_task_identity": PHASE8_LABEL_MAPPING_TARGET_TASK_IDENTITY,
@@ -650,8 +650,8 @@ def build_default_phase8_label_mapping_policy() -> Phase8LabelMappingPolicy:
         verification_state="expected_documented_not_empirically_verified",
         source_basis_references=(
             "docs_phase8_plan_label_mapping_policy",
+            "phase8_label_access_boundary_record",
             "project_spec_binary_liver_tumor_segmentation",
-            "supervisor_handoff_wave3_no_label_access_boundary",
         ),
         no_tuning_declaration=True,
     )

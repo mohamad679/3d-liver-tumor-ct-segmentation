@@ -116,8 +116,8 @@
  ],
  "schema_name": "phase10_table",
  "schema_version": "v1",
- "self_hash": "ae2f50c290a1fecf5f8e537f7bf1e2911cef74a265bfdbc8951158b70c57bfaa",
- "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+ "self_hash": "6e7b83f50cdf722db7e7a6412f078729777d49c1fc1f8eee0eba92fdf7e93e22",
+ "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
  "table_id": "phase10_internal_external_descriptive_comparison",
  "title": "Phase 10 Internal-vs-External Descriptive Comparison"
 }

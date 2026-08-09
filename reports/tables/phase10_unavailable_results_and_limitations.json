@@ -12,7 +12,7 @@
   {
    "description": "Checkpoint at phase8_substage3_tiny_real_v1/checkpoints/phase8_tiny_real_verification_checkpoint.pt reflects pre-fix buggy liver-vs-background training and has no accompanying JSON artifact (run never reached the publication step).",
    "reason": "No JSON summary/config/metadata artifact was ever published for this run; only the stray checkpoint file exists. Must not be used or reported as a scientific result.",
-   "scope": "docs/phase8/SUPERVISOR_HANDOFF.md (Substage 3, blocked v1 run)",
+   "scope": "Phase 8 historical pilot run (blocked v1)",
    "value_kind": "unavailable"
   },
   {
@@ -65,15 +65,15 @@
   },
   {
    "description": "Git commit 51638ca662510bf4cb031b2aec29778bf26bba26 (comparison provenance fix) and f1d4e1be7b6f7aa3657792cae9125c825affdded / f264ce79dd68039256d140f03c468baed8ecea07 (Package C execution/capture).",
-   "reason": "Not re-verified in this P10-A session (out of this agent's Git-log scope); FINAL_REPORT.md section S already records these as independently re-verified in the Phase 8 closure session. Flagged here as inherited, not re-checked, provenance.",
+   "reason": "Not re-verified in this P10-A session (outside Phase 10 inventory scope); FINAL_REPORT.md section S already records these as independently re-verified in the Phase 8 closure session. Flagged here as inherited, not re-checked, provenance.",
    "scope": "docs/phase8/FINAL_REPORT.md section Q",
    "value_kind": "unavailable"
   }
  ],
  "schema_name": "phase10_table",
  "schema_version": "v1",
- "self_hash": "ce6a9f9283622cd0af9984ca0e485eaf835d73637af3a13da0a26ad7679b1a22",
- "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+ "self_hash": "fac048856098595b90342c43996522b3b508981f63ab5890531d52509bf0306d",
+ "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
  "table_id": "phase10_unavailable_results_and_limitations",
  "title": "Phase 10 Unavailable Results and Limitations"
 }

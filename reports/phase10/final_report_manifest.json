@@ -14,7 +14,7 @@
     "value": "131",
     "value_kind": "descriptive"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_cohort_data_summary"
   },
   {
@@ -28,7 +28,7 @@
     "value": "91",
     "value_kind": "descriptive"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_cohort_data_summary"
   },
   {
@@ -42,7 +42,7 @@
     "value": "20",
     "value_kind": "descriptive"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_cohort_data_summary"
   },
   {
@@ -56,7 +56,7 @@
     "value": "20",
     "value_kind": "descriptive"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_cohort_data_summary"
   },
   {
@@ -70,7 +70,7 @@
     "value": "131",
     "value_kind": "descriptive"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_cohort_data_summary"
   },
   {
@@ -84,7 +84,7 @@
     "value": "0",
     "value_kind": "descriptive"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_cohort_data_summary"
   },
   {
@@ -98,7 +98,7 @@
     "value": "908",
     "value_kind": "descriptive"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_cohort_data_summary"
   },
   {
@@ -112,7 +112,7 @@
     "value": "20",
     "value_kind": "descriptive"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_cohort_data_summary"
   },
   {
@@ -126,7 +126,7 @@
     "value": "20",
     "value_kind": "descriptive"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_cohort_data_summary"
   },
   {
@@ -140,7 +140,7 @@
     "value": "15",
     "value_kind": "descriptive"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_cohort_data_summary"
   },
   {
@@ -154,7 +154,7 @@
     "value": "5",
     "value_kind": "descriptive"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_cohort_data_summary"
   },
   {
@@ -174,7 +174,7 @@
     "valid_case_count": "15",
     "value_kind": "confirmatory"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_external_validation_metrics"
   },
   {
@@ -194,7 +194,7 @@
     "valid_case_count": "15",
     "value_kind": "confirmatory"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_external_validation_metrics"
   },
   {
@@ -214,7 +214,7 @@
     "valid_case_count": "15",
     "value_kind": "confirmatory"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_external_validation_metrics"
   },
   {
@@ -234,7 +234,7 @@
     "valid_case_count": "15",
     "value_kind": "confirmatory"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_external_validation_metrics"
   },
   {
@@ -254,7 +254,7 @@
     "valid_case_count": "15",
     "value_kind": "confirmatory"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_external_validation_metrics"
   },
   {
@@ -274,7 +274,7 @@
     "valid_case_count": "15",
     "value_kind": "confirmatory"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_external_validation_metrics"
   },
   {
@@ -294,7 +294,7 @@
     "valid_case_count": "15",
     "value_kind": "confirmatory"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_external_validation_metrics"
   },
   {
@@ -314,7 +314,7 @@
     "valid_case_count": "15",
     "value_kind": "confirmatory"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_external_validation_metrics"
   },
   {
@@ -334,7 +334,7 @@
     "valid_case_count": "15",
     "value_kind": "confirmatory"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_external_validation_metrics"
   },
   {
@@ -354,7 +354,7 @@
     "valid_case_count": "15",
     "value_kind": "confirmatory"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_external_validation_metrics"
   },
   {
@@ -374,7 +374,7 @@
     "valid_case_count": "15",
     "value_kind": "confirmatory"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_external_validation_metrics"
   },
   {
@@ -394,7 +394,7 @@
     "valid_case_count": "15",
     "value_kind": "confirmatory"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_external_validation_metrics"
   },
   {
@@ -409,7 +409,7 @@
     "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
     "value_kind": "descriptive"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_internal_external_descriptive_comparison"
   },
   {
@@ -424,7 +424,7 @@
     "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
     "value_kind": "descriptive"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_internal_external_descriptive_comparison"
   },
   {
@@ -439,7 +439,7 @@
     "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
     "value_kind": "descriptive"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_internal_external_descriptive_comparison"
   },
   {
@@ -454,7 +454,7 @@
     "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
     "value_kind": "descriptive"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_internal_external_descriptive_comparison"
   },
   {
@@ -469,7 +469,7 @@
     "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
     "value_kind": "descriptive"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_internal_external_descriptive_comparison"
   },
   {
@@ -484,7 +484,7 @@
     "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
     "value_kind": "descriptive"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_internal_external_descriptive_comparison"
   },
   {
@@ -499,7 +499,7 @@
     "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
     "value_kind": "descriptive"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_internal_external_descriptive_comparison"
   },
   {
@@ -514,7 +514,7 @@
     "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
     "value_kind": "descriptive"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_internal_external_descriptive_comparison"
   },
   {
@@ -529,44 +529,44 @@
     "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
     "value_kind": "descriptive"
    },
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "table_id": "phase10_internal_external_descriptive_comparison"
   },
   {
    "field": "bootstrap_policy.random_seed",
    "source_artifact": "reports/statistics/phase10_statistical_policy.json",
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "statistics_id": "phase10_statistical_policy",
    "value": 1729
   },
   {
    "field": "bootstrap_policy.resample_count",
    "source_artifact": "reports/statistics/phase10_statistical_policy.json",
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "statistics_id": "phase10_statistical_policy",
    "value": 10000
   },
   {
    "field": "bootstrap_policy.confidence_level",
    "source_artifact": "reports/statistics/phase10_statistical_policy.json",
-   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
    "statistics_id": "phase10_statistical_policy",
    "value": 0.95
   }
  ],
  "phase9_status": "skipped_by_user_decision_not_executed",
  "report_html_path": "reports/final_report.html",
- "report_html_sha256": "c7db978eae68e4177e309cc1488dcf4af1195d5edb0614c37b095628f0915dda",
+ "report_html_sha256": "8b2ca79cfa7a33cfbc2ce7e49e5949d5f23f79a7aa691888fde15d3c9352ff28",
  "report_markdown_path": "reports/final_report.md",
- "report_markdown_sha256": "898d54f24921aaafc69d7b6136e5dfc57c847090cc2272257e0b9c27b86443f3",
+ "report_markdown_sha256": "866d809e4e52cc47aed07490dd1431eb62f73116626047e54bd9a65c95e15687",
  "reproduction_readme_path": "docs/PHASE10_REPRODUCTION.md",
- "reproduction_readme_sha256": "6b934187aa94e6e30b19c0ac92cd87e5023aba24476a6c993e5492bb96c01a75",
+ "reproduction_readme_sha256": "aa0bf7a24267977ecb5c07624640f1479a910e731f060368c51817944a3d928a",
  "schema_name": "phase10_final_report_manifest",
  "schema_version": "v1",
- "self_hash": "d6fdc2e46ef8f44ee6e69f4ec4d4ed4e8de5bc4cf71ec302ed51fe411c62101f",
- "source_b_manifest_hash": "bce7894adbb3d059e6ee6367e7f90f49a30f32652e220d3aeb5b6298f2408035",
+ "self_hash": "a65e1bfa9a2fa83a8ec0570a73d5ab53e32c567fffbd1cd847005524dcc1e262",
+ "source_b_manifest_hash": "f881180c8d6c760adcc2360860b297e329f682baacfcd564da92fe95224d1951",
  "source_b_manifest_path": "reports/phase10/phase10_b_outputs_manifest.json",
- "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+ "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0",
  "source_inventory_path": "reports/phase10/artifact_inventory.json",
  "training_rerun": false
 }

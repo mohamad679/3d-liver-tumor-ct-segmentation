@@ -19,7 +19,7 @@ LiTS and MSD Task03 Liver must not be treated as independent cohorts. MSD-style 
 
 All train, validation, test, support, and query selections must be patient-disjoint. Splits must be explicit, reproducible, and auditable.
 
-External validation remains untouched until Phase 8. External labels must never be used for tuning, model selection, threshold selection, early stopping, prompt construction, hyperparameter decisions, or protocol iteration before the external validation phase.
+External validation remains untouched until Phase 8. External labels must never be used for tuning, model selection, threshold selection, early stopping, protocol construction, hyperparameter decisions, or protocol iteration before the external validation phase.
 
 ## Engineering Stack
 

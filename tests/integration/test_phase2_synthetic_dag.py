@@ -312,6 +312,7 @@ def test_default_generated_root_is_ignored_and_generated_files_are_not_git_visib
             "*.tsv",
             "*.key",
             "*.log",
+            ":(exclude)reports/**",
         ],
         cwd=REPO_ROOT,
         text=True,

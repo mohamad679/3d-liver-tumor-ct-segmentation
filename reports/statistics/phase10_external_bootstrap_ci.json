@@ -179,6 +179,6 @@
  ],
  "schema_name": "phase10_external_bootstrap_ci",
  "schema_version": "v1",
- "self_hash": "e03c010036650fd0a502fe9ca5ccba492c15bfc74e8735a13f27db19fc3250f1",
- "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9"
+ "self_hash": "4cc1ec52be44d67ec94d0e3f11a1572709ed759b00c93dda805308b09a0ded07",
+ "source_inventory_hash": "f06337728c6a39144c7e90bf4c59044c46d75eaae6a570249d4303cb14124da0"
 }
