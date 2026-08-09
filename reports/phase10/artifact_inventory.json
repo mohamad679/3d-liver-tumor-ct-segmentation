@@ -1,0 +1,1053 @@
+{
+ "artifacts": [
+  {
+   "path": "/Volumes/Lexar/ProtoEM-CT/runs/phase2_real_lits_v2/manifest.json",
+   "phase": "phase2_data_qa",
+   "raw_file_sha256": null,
+   "raw_file_sha256_reverified_this_session": false,
+   "schema_name": "phase2-dataset-manifest",
+   "schema_version": "2",
+   "self_hash_field": "manifest_hash",
+   "self_hash_value": "c24244951e050050cf25c4b321f67d61c2087fc0c93fdcf9d112e0e488e1384b"
+  },
+  {
+   "path": "/Volumes/Lexar/ProtoEM-CT/runs/phase2_real_lits_v2/split.json",
+   "phase": "phase2_data_qa",
+   "raw_file_sha256": null,
+   "raw_file_sha256_reverified_this_session": false,
+   "schema_name": "phase2-development-split-manifest",
+   "schema_version": "2",
+   "self_hash_field": "split_hash",
+   "self_hash_value": "936376cd7b5e6070397c2fef16e5125c60fd6569ff3188d7e9bb5428a46ffadb"
+  },
+  {
+   "path": "/Volumes/Lexar/ProtoEM-CT/runs/phase2_real_lits_v2/geometry_qa.json",
+   "phase": "phase2_data_qa",
+   "raw_file_sha256": null,
+   "raw_file_sha256_reverified_this_session": false,
+   "schema_name": "geometry_label_qa",
+   "schema_version": "2",
+   "self_hash_field": "qa_artifact_hash",
+   "self_hash_value": "b8e65c558d5f574a1b40f9a5b15a033efbfbd6952006324fae35173940f94ee2"
+  },
+  {
+   "path": "/Volumes/Lexar/ProtoEM-CT/runs/phase2_real_lits_v2/lesion_components.json",
+   "phase": "phase2_data_qa",
+   "raw_file_sha256": null,
+   "raw_file_sha256_reverified_this_session": false,
+   "schema_name": "lesion_components",
+   "schema_version": "2",
+   "self_hash_field": "lesion_artifact_hash",
+   "self_hash_value": "f7ce4874801cc8d5387bf93fd1480d376db4028026a90723dda2c5e2f48fbc60"
+  },
+  {
+   "path": "/Volumes/Lexar/ProtoEM-CT/runs/phase2_real_lits_v2/development_summary.json",
+   "phase": "phase2_data_qa",
+   "raw_file_sha256": null,
+   "raw_file_sha256_reverified_this_session": false,
+   "schema_name": "development_data_summary",
+   "schema_version": "2",
+   "self_hash_field": "summary_artifact_hash",
+   "self_hash_value": "9b721e10232a08c9a5dd5361a11d7595abab04c071058d584e5895087b91951c"
+  },
+  {
+   "path": "/Volumes/Lexar/ProtoEM-CT/runs/phase2_real_lits_v2/development_qa_report.json",
+   "phase": "phase2_data_qa",
+   "raw_file_sha256": null,
+   "raw_file_sha256_reverified_this_session": false,
+   "schema_name": "phase2-development-qa",
+   "schema_version": "2",
+   "self_hash_field": "qa_artifact_hash",
+   "self_hash_value": "3f816db6227a1d2a8b349e248a9654eb4eed1e57760b48d32a6a275e1deca4f1"
+  },
+  {
+   "path": "/Volumes/Lexar/ProtoEM-CT/runs/phase2_real_lits_v2/leakage_audit.json",
+   "phase": "phase2_data_qa",
+   "raw_file_sha256": null,
+   "raw_file_sha256_reverified_this_session": false,
+   "schema_name": "phase2-leakage-audit",
+   "schema_version": "2",
+   "self_hash_field": "audit_hash",
+   "self_hash_value": "a32da3ac9d5689ec055c3875076ddc2075ca585219160c2d4200ca36484bf199"
+  },
+  {
+   "path": "/Volumes/Lexar/ProtoEM-CT/runs/phase8_definitive_training_v1/checkpoints/phase8_definitive_checkpoint_step_500.pt",
+   "phase": "phase8_external_validation",
+   "raw_file_sha256": "2d7989fd134b1348e82cc52afbcf4738c0ce3c17e9c68df774431f577dede651",
+   "raw_file_sha256_reverified_this_session": true,
+   "schema_name": "torch_state_dict",
+   "schema_version": null,
+   "self_hash_field": null,
+   "self_hash_value": null
+  },
+  {
+   "path": "phase8_definitive_freeze_v1/phase8_decision_freeze.json",
+   "phase": "phase8_external_validation",
+   "raw_file_sha256": null,
+   "raw_file_sha256_reverified_this_session": false,
+   "schema_name": "phase8_decision_freeze",
+   "schema_version": "v1",
+   "self_hash_field": "freeze_inventory_hash",
+   "self_hash_value": "efca32a42d435db05b171ae5f064d38c36eeaf1352e6c86df76fa1a8d94ac145"
+  },
+  {
+   "path": "phase8_definitive_training_v1/phase8_definitive_checkpoint_metadata_step_250.json",
+   "phase": "phase8_external_validation",
+   "raw_file_sha256": null,
+   "raw_file_sha256_reverified_this_session": false,
+   "schema_name": "phase8_checkpoint_metadata",
+   "schema_version": "v1",
+   "self_hash_field": "checkpoint_metadata_hash",
+   "self_hash_value": "ad156200249401f55fddfe2d6a64d4f420aa3dd27a9d7c65d35ed0bf1d64840d"
+  },
+  {
+   "path": "phase8_definitive_training_v1/phase8_definitive_checkpoint_metadata_step_500.json",
+   "phase": "phase8_external_validation",
+   "raw_file_sha256": null,
+   "raw_file_sha256_reverified_this_session": false,
+   "schema_name": "phase8_checkpoint_metadata",
+   "schema_version": "v1",
+   "self_hash_field": "checkpoint_metadata_hash",
+   "self_hash_value": "acb46ab92d7dd5f3ce809fa21a47a1d836596d08f80676c32358321a4c50c134"
+  },
+  {
+   "path": "phase8_definitive_training_v1/phase8_definitive_checkpoint_selection_evidence.json",
+   "phase": "phase8_external_validation",
+   "raw_file_sha256": null,
+   "raw_file_sha256_reverified_this_session": false,
+   "schema_name": "phase8_definitive_checkpoint_selection_evidence",
+   "schema_version": "v1",
+   "self_hash_field": "evidence_hash",
+   "self_hash_value": "81be6e4f7e6a56d21f07bc101b21d19ac18b0580c74548e9490bf295382c8bc8"
+  },
+  {
+   "path": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+   "phase": "phase8_external_validation",
+   "raw_file_sha256": null,
+   "raw_file_sha256_reverified_this_session": false,
+   "schema_name": null,
+   "schema_version": null,
+   "self_hash_field": "artifact_hash",
+   "self_hash_value": "a6dbdd3998e2c55d82e725cba20fbfebf685378f0e719547df5d008eeae0b2da"
+  },
+  {
+   "path": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "phase": "phase8_external_validation",
+   "raw_file_sha256": null,
+   "raw_file_sha256_reverified_this_session": false,
+   "schema_name": "phase8_external_bootstrap_ci",
+   "schema_version": "v1",
+   "self_hash_field": null,
+   "self_hash_value": null
+  },
+  {
+   "path": "phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json",
+   "phase": "phase8_external_validation",
+   "raw_file_sha256": null,
+   "raw_file_sha256_reverified_this_session": false,
+   "schema_name": "phase8_eligibility_accounting",
+   "schema_version": "v1",
+   "self_hash_field": "accounting_hash",
+   "self_hash_value": "670e9dc3e128a538c784804f4d23ebc1d4c7459943f08e4f2af5020c474a0af2"
+  },
+  {
+   "path": "phase8_external_evaluation_v1/phase8_external_domain_shift_record.json",
+   "phase": "phase8_external_validation",
+   "raw_file_sha256": null,
+   "raw_file_sha256_reverified_this_session": false,
+   "schema_name": "phase8_domain_shift_record",
+   "schema_version": "v1",
+   "self_hash_field": "domain_shift_record_hash",
+   "self_hash_value": "04665b449d8b3d7838a28e3045cdd57b67c9fccf6e1f091b7f5f1abd5963da0b"
+  },
+  {
+   "path": "phase8_external_evaluation_v1/phase8_internal_external_comparison.json",
+   "phase": "phase8_external_validation",
+   "raw_file_sha256": null,
+   "raw_file_sha256_reverified_this_session": false,
+   "schema_name": "phase8_internal_external_comparison",
+   "schema_version": "v1",
+   "self_hash_field": null,
+   "self_hash_value": null
+  },
+  {
+   "path": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+   "phase": "phase8_external_validation",
+   "raw_file_sha256": null,
+   "raw_file_sha256_reverified_this_session": false,
+   "schema_name": "phase8_internal_external_comparison",
+   "schema_version": "v1",
+   "self_hash_field": null,
+   "self_hash_value": null
+  },
+  {
+   "path": "phase8_external_evaluation_v1/phase8_final_closure_reproduction_record.json",
+   "phase": "phase8_external_validation",
+   "raw_file_sha256": null,
+   "raw_file_sha256_reverified_this_session": false,
+   "schema_name": "phase8_final_closure_reproduction_record",
+   "schema_version": "v1",
+   "self_hash_field": "closure_record_hash",
+   "self_hash_value": "b4b8964dd33d6be3c83ede37600c01fc97a1221b9f5b05f4a22adca18d63b816"
+  },
+  {
+   "path": "phase8_external_evaluation_v1/phase8_external_evaluation_summary.json",
+   "phase": "phase8_external_validation",
+   "raw_file_sha256": null,
+   "raw_file_sha256_reverified_this_session": false,
+   "schema_name": "phase8_external_label_evaluation_summary",
+   "schema_version": "v1",
+   "self_hash_field": "preregistration_hash",
+   "self_hash_value": "75d287ade45d2a778153885838d8635606ba5ae739ed88dbf0580671258db291"
+  },
+  {
+   "path": "phase8_external_image_inference_v1/phase8_external_prediction_lock.json",
+   "phase": "phase8_external_validation",
+   "raw_file_sha256": null,
+   "raw_file_sha256_reverified_this_session": false,
+   "schema_name": "phase8_external_prediction_lock",
+   "schema_version": "v1",
+   "self_hash_field": "lock_hash",
+   "self_hash_value": "190532a6abb7c3308de9abe7dc7455f4fafae464d51347ea2273874d13afdc94"
+  },
+  {
+   "path": "phase8_external_preregistration_v1/phase8_external_preregistration.json",
+   "phase": "phase8_external_validation",
+   "raw_file_sha256": null,
+   "raw_file_sha256_reverified_this_session": false,
+   "schema_name": "phase8_external_preregistration",
+   "schema_version": "v1",
+   "self_hash_field": "preregistration_hash",
+   "self_hash_value": "75d287ade45d2a778153885838d8635606ba5ae739ed88dbf0580671258db291"
+  },
+  {
+   "path": "phase8_package_b_engineering_verification_v1/phase8_package_b_engineering_report.json",
+   "phase": "phase8_external_validation",
+   "raw_file_sha256": null,
+   "raw_file_sha256_reverified_this_session": false,
+   "schema_name": null,
+   "schema_version": null,
+   "self_hash_field": null,
+   "self_hash_value": null
+  }
+ ],
+ "conflicts": [],
+ "drive_available_this_session": true,
+ "drive_root": "/Volumes/Lexar/ProtoEM-CT/runs",
+ "hash_checks": [
+  {
+   "actual": "c24244951e050050cf25c4b321f67d61c2087fc0c93fdcf9d112e0e488e1384b",
+   "artifact": "phase2_real_lits_v2/manifest.json",
+   "expected": "c24244951e050050cf25c4b321f67d61c2087fc0c93fdcf9d112e0e488e1384b",
+   "field_or_kind": "manifest_hash",
+   "status": "match"
+  },
+  {
+   "actual": "936376cd7b5e6070397c2fef16e5125c60fd6569ff3188d7e9bb5428a46ffadb",
+   "artifact": "phase2_real_lits_v2/split.json",
+   "expected": "936376cd7b5e6070397c2fef16e5125c60fd6569ff3188d7e9bb5428a46ffadb",
+   "field_or_kind": "split_hash",
+   "status": "match"
+  },
+  {
+   "actual": "a32da3ac9d5689ec055c3875076ddc2075ca585219160c2d4200ca36484bf199",
+   "artifact": "phase2_real_lits_v2/leakage_audit.json",
+   "expected": "a32da3ac9d5689ec055c3875076ddc2075ca585219160c2d4200ca36484bf199",
+   "field_or_kind": "audit_hash",
+   "status": "match"
+  },
+  {
+   "actual": "9b721e10232a08c9a5dd5361a11d7595abab04c071058d584e5895087b91951c",
+   "artifact": "phase2_real_lits_v2/development_summary.json",
+   "expected": "9b721e10232a08c9a5dd5361a11d7595abab04c071058d584e5895087b91951c",
+   "field_or_kind": "summary_artifact_hash",
+   "status": "match"
+  },
+  {
+   "actual": "3f816db6227a1d2a8b349e248a9654eb4eed1e57760b48d32a6a275e1deca4f1",
+   "artifact": "phase2_real_lits_v2/development_qa_report.json",
+   "expected": "3f816db6227a1d2a8b349e248a9654eb4eed1e57760b48d32a6a275e1deca4f1",
+   "field_or_kind": "qa_artifact_hash",
+   "status": "match"
+  },
+  {
+   "actual": "0e21a7d555e20b6011091bc18e462bc150cc23a8f46e522dbd8c01b014a44ae3",
+   "artifact": "phase2_real_lits_v2/manifest.json",
+   "expected": "0e21a7d555e20b6011091bc18e462bc150cc23a8f46e522dbd8c01b014a44ae3",
+   "field_or_kind": "raw_file_sha256",
+   "status": "match"
+  },
+  {
+   "actual": "2d7989fd134b1348e82cc52afbcf4738c0ce3c17e9c68df774431f577dede651",
+   "artifact": "phase8_definitive_training_v1/checkpoints/phase8_definitive_checkpoint_step_500.pt",
+   "expected": "2d7989fd134b1348e82cc52afbcf4738c0ce3c17e9c68df774431f577dede651",
+   "field_or_kind": "raw_file_sha256",
+   "status": "match"
+  },
+  {
+   "actual": "5f7579418996d93caa398266f5dfd1c5489b50f3720b23a6d6d5e49f08bb928b",
+   "artifact": "phase8_definitive_freeze_v1/phase8_decision_freeze.json",
+   "expected": "5f7579418996d93caa398266f5dfd1c5489b50f3720b23a6d6d5e49f08bb928b",
+   "field_or_kind": "raw_file_sha256",
+   "status": "match"
+  },
+  {
+   "actual": "efca32a42d435db05b171ae5f064d38c36eeaf1352e6c86df76fa1a8d94ac145",
+   "artifact": "phase8_definitive_freeze_v1/phase8_decision_freeze.json",
+   "expected": "efca32a42d435db05b171ae5f064d38c36eeaf1352e6c86df76fa1a8d94ac145",
+   "field_or_kind": "freeze_inventory_hash",
+   "status": "match"
+  },
+  {
+   "actual": "75d287ade45d2a778153885838d8635606ba5ae739ed88dbf0580671258db291",
+   "artifact": "phase8_external_preregistration_v1/phase8_external_preregistration.json",
+   "expected": "75d287ade45d2a778153885838d8635606ba5ae739ed88dbf0580671258db291",
+   "field_or_kind": "preregistration_hash",
+   "status": "match"
+  },
+  {
+   "actual": "190532a6abb7c3308de9abe7dc7455f4fafae464d51347ea2273874d13afdc94",
+   "artifact": "phase8_external_image_inference_v1/phase8_external_prediction_lock.json",
+   "expected": "190532a6abb7c3308de9abe7dc7455f4fafae464d51347ea2273874d13afdc94",
+   "field_or_kind": "lock_hash",
+   "status": "match"
+  },
+  {
+   "actual": "a6dbdd3998e2c55d82e725cba20fbfebf685378f0e719547df5d008eeae0b2da",
+   "artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+   "expected": "a6dbdd3998e2c55d82e725cba20fbfebf685378f0e719547df5d008eeae0b2da",
+   "field_or_kind": "artifact_hash",
+   "status": "match"
+  },
+  {
+   "actual": "04665b449d8b3d7838a28e3045cdd57b67c9fccf6e1f091b7f5f1abd5963da0b",
+   "artifact": "phase8_external_evaluation_v1/phase8_external_domain_shift_record.json",
+   "expected": "04665b449d8b3d7838a28e3045cdd57b67c9fccf6e1f091b7f5f1abd5963da0b",
+   "field_or_kind": "domain_shift_record_hash",
+   "status": "match"
+  },
+  {
+   "actual": "a082e2588b6aa9f10d64dcd90d89e1f1c8dd9bb855b71c94f3994cbca13cc8dc",
+   "artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison.json (original, unchanged)",
+   "expected": "a082e2588b6aa9f10d64dcd90d89e1f1c8dd9bb855b71c94f3994cbca13cc8dc",
+   "field_or_kind": "raw_file_sha256",
+   "status": "match"
+  },
+  {
+   "actual": "670e9dc3e128a538c784804f4d23ebc1d4c7459943f08e4f2af5020c474a0af2",
+   "artifact": "phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json",
+   "expected": "670e9dc3e128a538c784804f4d23ebc1d4c7459943f08e4f2af5020c474a0af2",
+   "field_or_kind": "accounting_hash",
+   "status": "match"
+  },
+  {
+   "actual": "b4b8964dd33d6be3c83ede37600c01fc97a1221b9f5b05f4a22adca18d63b816",
+   "artifact": "phase8_external_evaluation_v1/phase8_final_closure_reproduction_record.json",
+   "expected": "b4b8964dd33d6be3c83ede37600c01fc97a1221b9f5b05f4a22adca18d63b816",
+   "field_or_kind": "closure_record_hash",
+   "status": "match"
+  }
+ ],
+ "metrics": [
+  {
+   "name": "development_case_count",
+   "notes": "",
+   "phase": "phase2_data_qa",
+   "source_artifact": "phase2_real_lits_v2/manifest.json",
+   "source_field_path": "case_count",
+   "unit": "cases",
+   "value": 131,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "train_patient_count",
+   "notes": "",
+   "phase": "phase2_data_qa",
+   "source_artifact": "phase2_real_lits_v2/split.json",
+   "source_field_path": "train_patient_count",
+   "unit": "patients",
+   "value": 91,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "validation_patient_count",
+   "notes": "",
+   "phase": "phase2_data_qa",
+   "source_artifact": "phase2_real_lits_v2/split.json",
+   "source_field_path": "validation_patient_count",
+   "unit": "patients",
+   "value": 20,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "internal_test_patient_count",
+   "notes": "",
+   "phase": "phase2_data_qa",
+   "source_artifact": "phase2_real_lits_v2/split.json",
+   "source_field_path": "internal_test_patient_count",
+   "unit": "patients",
+   "value": 20,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "train_case_count",
+   "notes": "",
+   "phase": "phase2_data_qa",
+   "source_artifact": "phase2_real_lits_v2/split.json",
+   "source_field_path": "train_case_count",
+   "unit": "cases",
+   "value": 91,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "validation_case_count",
+   "notes": "",
+   "phase": "phase2_data_qa",
+   "source_artifact": "phase2_real_lits_v2/split.json",
+   "source_field_path": "validation_case_count",
+   "unit": "cases",
+   "value": 20,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "internal_test_case_count",
+   "notes": "",
+   "phase": "phase2_data_qa",
+   "source_artifact": "phase2_real_lits_v2/split.json",
+   "source_field_path": "internal_test_case_count",
+   "unit": "cases",
+   "value": 20,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "geometry_qa_passed_case_count",
+   "notes": "",
+   "phase": "phase2_data_qa",
+   "source_artifact": "phase2_real_lits_v2/geometry_qa.json",
+   "source_field_path": "passed_case_count",
+   "unit": "cases",
+   "value": 131,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "geometry_qa_failed_case_count",
+   "notes": "",
+   "phase": "phase2_data_qa",
+   "source_artifact": "phase2_real_lits_v2/geometry_qa.json",
+   "source_field_path": "failed_case_count",
+   "unit": "cases",
+   "value": 0,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "total_lesion_count",
+   "notes": "Recomputed by summing the artifact's own per-case lesion_count field this session; matches the documented value in ACCEPTANCE_CHECKLIST.md (908).",
+   "phase": "phase2_data_qa",
+   "source_artifact": "phase2_real_lits_v2/lesion_components.json",
+   "source_field_path": "sum(case_records[*].lesion_count)",
+   "unit": "lesions",
+   "value": 908,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "aggregate_intensity_mean",
+   "notes": "",
+   "phase": "phase2_data_qa",
+   "source_artifact": "phase2_real_lits_v2/development_summary.json",
+   "source_field_path": "aggregate_intensity_mean",
+   "unit": null,
+   "value": -543.7532124012079,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "aggregate_intensity_std",
+   "notes": "",
+   "phase": "phase2_data_qa",
+   "source_artifact": "phase2_real_lits_v2/development_summary.json",
+   "source_field_path": "aggregate_intensity_std",
+   "unit": null,
+   "value": 530.4038308097652,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "aggregate_intensity_min",
+   "notes": "",
+   "phase": "phase2_data_qa",
+   "source_artifact": "phase2_real_lits_v2/development_summary.json",
+   "source_field_path": "aggregate_intensity_min",
+   "unit": null,
+   "value": -2048.0,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "aggregate_intensity_max",
+   "notes": "",
+   "phase": "phase2_data_qa",
+   "source_artifact": "phase2_real_lits_v2/development_summary.json",
+   "source_field_path": "aggregate_intensity_max",
+   "unit": null,
+   "value": 27572.0,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "lesion_volume_mean_mm3",
+   "notes": "",
+   "phase": "phase2_data_qa",
+   "source_artifact": "phase2_real_lits_v2/development_summary.json",
+   "source_field_path": "lesion_volume_mean_mm3",
+   "unit": null,
+   "value": 11249.171292937193,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "lesion_volume_median_mm3",
+   "notes": "",
+   "phase": "phase2_data_qa",
+   "source_artifact": "phase2_real_lits_v2/development_summary.json",
+   "source_field_path": "lesion_volume_median_mm3",
+   "unit": null,
+   "value": 539.368090150422,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "lesion_volume_min_mm3",
+   "notes": "",
+   "phase": "phase2_data_qa",
+   "source_artifact": "phase2_real_lits_v2/development_summary.json",
+   "source_field_path": "lesion_volume_min_mm3",
+   "unit": null,
+   "value": 0.347994607721148,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "lesion_volume_max_mm3",
+   "notes": "",
+   "phase": "phase2_data_qa",
+   "source_artifact": "phase2_real_lits_v2/development_summary.json",
+   "source_field_path": "lesion_volume_max_mm3",
+   "unit": null,
+   "value": 968636.2090784109,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "macro_dice",
+   "notes": "Preregistered external metric (phase8_external_preregistration.json).",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+   "source_field_path": "aggregate.macro_dice",
+   "unit": null,
+   "value": 0.014115733440605011,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "pooled_dice",
+   "notes": "Preregistered external metric (phase8_external_preregistration.json).",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+   "source_field_path": "aggregate.pooled_dice",
+   "unit": null,
+   "value": 0.021955736330271848,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "macro_iou",
+   "notes": "Preregistered external metric (phase8_external_preregistration.json).",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+   "source_field_path": "aggregate.macro_iou",
+   "unit": null,
+   "value": 0.007215381213910843,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "macro_hd95_mm",
+   "notes": "Preregistered external metric (phase8_external_preregistration.json).",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+   "source_field_path": "aggregate.macro_hd95_mm",
+   "unit": "mm",
+   "value": 176.6259570403819,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "macro_normalized_surface_dice",
+   "notes": "Preregistered external metric (phase8_external_preregistration.json).",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+   "source_field_path": "aggregate.macro_normalized_surface_dice",
+   "unit": null,
+   "value": 0.0033014104480338863,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "macro_lesion_recall",
+   "notes": "Preregistered external metric (phase8_external_preregistration.json).",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+   "source_field_path": "aggregate.macro_lesion_recall",
+   "unit": null,
+   "value": 0.15886788048552752,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "macro_lesion_precision",
+   "notes": "Preregistered external metric (phase8_external_preregistration.json).",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+   "source_field_path": "aggregate.macro_lesion_precision",
+   "unit": null,
+   "value": 0.0004170230872244496,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "macro_lesion_f1",
+   "notes": "Preregistered external metric (phase8_external_preregistration.json).",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+   "source_field_path": "aggregate.macro_lesion_f1",
+   "unit": null,
+   "value": 0.0008293785379380446,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "mean_false_positive_lesions_per_scan",
+   "notes": "Preregistered external metric (phase8_external_preregistration.json).",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+   "source_field_path": "aggregate.mean_false_positive_lesions_per_scan",
+   "unit": "lesions/scan",
+   "value": 2358.4,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "mean_signed_volume_error_ml",
+   "notes": "Preregistered external metric (phase8_external_preregistration.json).",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+   "source_field_path": "aggregate.mean_signed_volume_error_ml",
+   "unit": "mL",
+   "value": -30.97904055175781,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "mean_absolute_volume_error_ml",
+   "notes": "Preregistered external metric (phase8_external_preregistration.json).",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+   "source_field_path": "aggregate.mean_absolute_volume_error_ml",
+   "unit": "mL",
+   "value": 73.1784307937622,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "macro_relative_volume_error",
+   "notes": "Preregistered external metric (phase8_external_preregistration.json).",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+   "source_field_path": "aggregate.macro_relative_volume_error",
+   "unit": null,
+   "value": 2.833886301727687,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "case_count",
+   "notes": "Preregistered external metric (phase8_external_preregistration.json).",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+   "source_field_path": "aggregate.case_count",
+   "unit": "cases",
+   "value": 15,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "false_positive_lesions_per_scan_ci_low",
+   "notes": "10,000 case-level bootstrap resamples, seed 1729, 95% percentile CI.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "source_field_path": "metrics.false_positive_lesions_per_scan.ci_low",
+   "unit": null,
+   "value": 1893.32,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "false_positive_lesions_per_scan_ci_high",
+   "notes": "10,000 case-level bootstrap resamples, seed 1729, 95% percentile CI.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "source_field_path": "metrics.false_positive_lesions_per_scan.ci_high",
+   "unit": null,
+   "value": 2872.075,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "lesion_f1_ci_low",
+   "notes": "10,000 case-level bootstrap resamples, seed 1729, 95% percentile CI.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "source_field_path": "metrics.lesion_f1.ci_low",
+   "unit": null,
+   "value": 0.00038875182666259906,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "lesion_f1_ci_high",
+   "notes": "10,000 case-level bootstrap resamples, seed 1729, 95% percentile CI.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "source_field_path": "metrics.lesion_f1.ci_high",
+   "unit": null,
+   "value": 0.001304960931868939,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "lesion_wise_precision_ci_low",
+   "notes": "10,000 case-level bootstrap resamples, seed 1729, 95% percentile CI.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "source_field_path": "metrics.lesion_wise_precision.ci_low",
+   "unit": null,
+   "value": 0.00019535650440340803,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "lesion_wise_precision_ci_high",
+   "notes": "10,000 case-level bootstrap resamples, seed 1729, 95% percentile CI.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "source_field_path": "metrics.lesion_wise_precision.ci_high",
+   "unit": null,
+   "value": 0.0006562260559801865,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "lesion_wise_recall_ci_low",
+   "notes": "10,000 case-level bootstrap resamples, seed 1729, 95% percentile CI.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "source_field_path": "metrics.lesion_wise_recall.ci_low",
+   "unit": null,
+   "value": 0.04815359477124183,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "lesion_wise_recall_ci_high",
+   "notes": "10,000 case-level bootstrap resamples, seed 1729, 95% percentile CI.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "source_field_path": "metrics.lesion_wise_recall.ci_high",
+   "unit": null,
+   "value": 0.31025676937441643,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "tumor_dice_ci_low",
+   "notes": "10,000 case-level bootstrap resamples, seed 1729, 95% percentile CI.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "source_field_path": "metrics.tumor_dice.ci_low",
+   "unit": null,
+   "value": 0.004341547521318757,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "tumor_dice_ci_high",
+   "notes": "10,000 case-level bootstrap resamples, seed 1729, 95% percentile CI.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "source_field_path": "metrics.tumor_dice.ci_high",
+   "unit": null,
+   "value": 0.02501302650455788,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "tumor_hd95_ci_low",
+   "notes": "10,000 case-level bootstrap resamples, seed 1729, 95% percentile CI.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "source_field_path": "metrics.tumor_hd95.ci_low",
+   "unit": null,
+   "value": 159.32400767790955,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "tumor_hd95_ci_high",
+   "notes": "10,000 case-level bootstrap resamples, seed 1729, 95% percentile CI.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "source_field_path": "metrics.tumor_hd95.ci_high",
+   "unit": null,
+   "value": 194.301561440465,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "tumor_iou_ci_low",
+   "notes": "10,000 case-level bootstrap resamples, seed 1729, 95% percentile CI.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "source_field_path": "metrics.tumor_iou.ci_low",
+   "unit": null,
+   "value": 0.002208283278991875,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "tumor_iou_ci_high",
+   "notes": "10,000 case-level bootstrap resamples, seed 1729, 95% percentile CI.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "source_field_path": "metrics.tumor_iou.ci_high",
+   "unit": null,
+   "value": 0.012793720568727924,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "tumor_normalized_surface_dice_ci_low",
+   "notes": "10,000 case-level bootstrap resamples, seed 1729, 95% percentile CI.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "source_field_path": "metrics.tumor_normalized_surface_dice.ci_low",
+   "unit": null,
+   "value": 0.0008695378349168014,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "tumor_normalized_surface_dice_ci_high",
+   "notes": "10,000 case-level bootstrap resamples, seed 1729, 95% percentile CI.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "source_field_path": "metrics.tumor_normalized_surface_dice.ci_high",
+   "unit": null,
+   "value": 0.0061626388043957,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "tumor_volume_error_absolute_ml_ci_low",
+   "notes": "10,000 case-level bootstrap resamples, seed 1729, 95% percentile CI.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "source_field_path": "metrics.tumor_volume_error_absolute_ml.ci_low",
+   "unit": null,
+   "value": 36.18556097774507,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "tumor_volume_error_absolute_ml_ci_high",
+   "notes": "10,000 case-level bootstrap resamples, seed 1729, 95% percentile CI.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "source_field_path": "metrics.tumor_volume_error_absolute_ml.ci_high",
+   "unit": null,
+   "value": 126.89318989557269,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "tumor_volume_error_relative_ci_low",
+   "notes": "10,000 case-level bootstrap resamples, seed 1729, 95% percentile CI.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "source_field_path": "metrics.tumor_volume_error_relative.ci_low",
+   "unit": null,
+   "value": 0.7546956418899935,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "tumor_volume_error_relative_ci_high",
+   "notes": "10,000 case-level bootstrap resamples, seed 1729, 95% percentile CI.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "source_field_path": "metrics.tumor_volume_error_relative.ci_high",
+   "unit": null,
+   "value": 5.484524303515011,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "tumor_volume_error_signed_ml_ci_low",
+   "notes": "10,000 case-level bootstrap resamples, seed 1729, 95% percentile CI.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "source_field_path": "metrics.tumor_volume_error_signed_ml.ci_low",
+   "unit": null,
+   "value": -96.51345051441191,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "tumor_volume_error_signed_ml_ci_high",
+   "notes": "10,000 case-level bootstrap resamples, seed 1729, 95% percentile CI.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+   "source_field_path": "metrics.tumor_volume_error_signed_ml.ci_high",
+   "unit": null,
+   "value": 18.267631285171493,
+   "value_kind": "confirmatory"
+  },
+  {
+   "name": "external_discovered_count",
+   "notes": "",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json",
+   "source_field_path": "discovered_count",
+   "unit": "cases",
+   "value": 20,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "external_image_readable_count",
+   "notes": "",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json",
+   "source_field_path": "image_readable_count",
+   "unit": "cases",
+   "value": 20,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "external_image_qa_eligible_count",
+   "notes": "",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json",
+   "source_field_path": "image_qa_eligible_count",
+   "unit": "cases",
+   "value": 20,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "external_inference_eligible_count",
+   "notes": "",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json",
+   "source_field_path": "inference_eligible_count",
+   "unit": "cases",
+   "value": 20,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "external_evaluation_eligible_count",
+   "notes": "",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json",
+   "source_field_path": "evaluation_eligible_count",
+   "unit": "cases",
+   "value": 15,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "external_excluded_count",
+   "notes": "",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json",
+   "source_field_path": "excluded_count",
+   "unit": "cases",
+   "value": 5,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "evaluation_eligible_case_count",
+   "notes": "Recomputed this session from per-case records; matches documented 15.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json",
+   "source_field_path": "recomputed(cases[*].excluded==false)",
+   "unit": "cases",
+   "value": 15,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "excluded_case_count",
+   "notes": "Recomputed this session from per-case records; matches documented 5.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json",
+   "source_field_path": "recomputed(cases[*].excluded==true)",
+   "unit": "cases",
+   "value": 5,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "mean_tumor_dice_step_250",
+   "notes": "Development-validation model-selection comparison (pre-external-access).",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_definitive_training_v1/phase8_definitive_checkpoint_selection_evidence.json",
+   "source_field_path": "mean_tumor_dice_step_250",
+   "unit": null,
+   "value": 0.0016380082094079678,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "mean_tumor_dice_step_500",
+   "notes": "Development-validation model-selection comparison (pre-external-access).",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_definitive_training_v1/phase8_definitive_checkpoint_selection_evidence.json",
+   "source_field_path": "mean_tumor_dice_step_500",
+   "unit": null,
+   "value": 0.01579295321113191,
+   "value_kind": "descriptive"
+  },
+  {
+   "name": "derived_median_spacing_xyz_mm",
+   "notes": "Derived exclusively from 91 train-partition cases; frozen target spacing.",
+   "phase": "phase8_external_validation",
+   "source_artifact": "phase8_package_b_engineering_verification_v1/phase8_package_b_engineering_report.json",
+   "source_field_path": "derived_median_spacing",
+   "unit": "mm",
+   "value": [
+    0.767578125,
+    0.767578125,
+    1.0
+   ],
+   "value_kind": "descriptive"
+  }
+ ],
+ "repo_root": "/Users/mohsenshamsijazeb/Projects/protoem-ct",
+ "schema_name": "phase10_artifact_inventory",
+ "schema_version": "v1",
+ "self_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+ "unavailable": [
+  {
+   "description": "Checkpoint at phase8_substage3_tiny_real_v1/checkpoints/phase8_tiny_real_verification_checkpoint.pt reflects pre-fix buggy liver-vs-background training and has no accompanying JSON artifact (run never reached the publication step).",
+   "reason": "No JSON summary/config/metadata artifact was ever published for this run; only the stray checkpoint file exists. Must not be used or reported as a scientific result.",
+   "referenced_in": "docs/phase8/SUPERVISOR_HANDOFF.md (Substage 3, blocked v1 run)"
+  },
+  {
+   "description": "Gate 3 checkboxes for CPU shape smoke tests, tiny-subset overfit tests, deterministic metric JSON from saved predictions, Git-visible-artifact absence check, full local quality checks, GitHub-hosted CI, and Gate 3 close-out documentation are unchecked.",
+   "reason": "No Gate 3 close-out evidence block or backing artifact exists in the repository or on the external drive for these specific items; the checklist itself records them as not yet done (pre-existing repo state, not a Phase 10 blocker).",
+   "referenced_in": "Gate 3 (ACCEPTANCE_CHECKLIST.md)"
+  },
+  {
+   "description": "Phase 3 nnU-Net v2 and MONAI SegResNet baseline-performance metric rows.",
+   "reason": "No persistent machine-readable baseline-performance artifact was located in the repository or under /Volumes/Lexar/ProtoEM-CT/runs; Gate 3 remains partly unchecked and must not be reported as completed scientific baseline performance.",
+   "referenced_in": "Phase 10 baseline-performance table scope"
+  },
+  {
+   "description": "Gate 5 status/criteria.",
+   "reason": "Gate 5 is recorded as 'Pending definition' with no criteria and no backing artifact.",
+   "referenced_in": "ACCEPTANCE_CHECKLIST.md Gate 5"
+  },
+  {
+   "description": "Phase 5 retrieval, prototype, and foundation-baseline performance rows.",
+   "reason": "No durable Phase 5 publication artifact directory or Gate 5 acceptance evidence was located; Gate 5 is pending definition. These values are therefore unavailable and must not be inferred from code or prose.",
+   "referenced_in": "Phase 10 retrieval/prototype/foundation-baseline scope"
+  },
+  {
+   "description": "Gate 7 status/criteria.",
+   "reason": "Gate 7 is recorded as 'Pending definition' with no criteria and no backing artifact, despite docs/LEAKAGE_AUDIT.md describing a Phase 7 leakage/scope verification pass.",
+   "referenced_in": "ACCEPTANCE_CHECKLIST.md Gate 7"
+  },
+  {
+   "description": "Phase 4 few-shot protocol support manifests, adaptation configs, and protocol-table artifacts (K x replicate x adaptation-mode).",
+   "reason": "Gate 4 evidence was produced from a synthetic publication run using test fixtures into an ephemeral external temporary output root; no persistent Phase 4 artifact directory was found under /Volumes/Lexar/ProtoEM-CT/runs. Only the counts/hashes recorded in ACCEPTANCE_CHECKLIST.md and docs/LEAKAGE_AUDIT.md are available as provenance, not independently re-verified raw files this session.",
+   "referenced_in": "docs/PHASE_PLAN.md / ACCEPTANCE_CHECKLIST.md Gate 4"
+  },
+  {
+   "description": "Phase 6 / ProtoEM-CT ablation-comparison, objective-trace, and publication artifacts (ablation_comparison.json, objective_trace.json, run_summary.json, etc.).",
+   "reason": "Gate 6 evidence was produced from two independent synthetic runs into mktemp directories (ROOT_A/ROOT_B) that were not persisted; no Phase 6 output directory was found under /Volumes/Lexar/ProtoEM-CT/runs. Only the values quoted in ACCEPTANCE_CHECKLIST.md are available.",
+   "referenced_in": "ACCEPTANCE_CHECKLIST.md Gate 6"
+  },
+  {
+   "description": "Phase 7 robustness/uncertainty evaluation artifacts (calibration, risk-coverage, degradation, lesion-subgroup reports).",
+   "reason": "Phase 7 CLI is documented as 'synthetic_mode_only: true' with no real-data execution; no Phase 7 output directory exists under /Volumes/Lexar/ProtoEM-CT/runs. Robustness/uncertainty is explicitly 'not_included' in the Wave 4 statistical policy for Phase 8 as well.",
+   "referenced_in": "docs/LEAKAGE_AUDIT.md Phase 7 section"
+  },
+  {
+   "description": "Git commit 51638ca662510bf4cb031b2aec29778bf26bba26 (comparison provenance fix) and f1d4e1be7b6f7aa3657792cae9125c825affdded / f264ce79dd68039256d140f03c468baed8ecea07 (Package C execution/capture).",
+   "reason": "Not re-verified in this P10-A session (out of this agent's Git-log scope); FINAL_REPORT.md section S already records these as independently re-verified in the Phase 8 closure session. Flagged here as inherited, not re-checked, provenance.",
+   "referenced_in": "docs/phase8/FINAL_REPORT.md section Q"
+  }
+ ]
+}

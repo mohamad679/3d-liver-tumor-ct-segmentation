@@ -1,0 +1,192 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>ProtoEM-CT Final Scientific Package</title><style>body{font-family:Arial,sans-serif;line-height:1.45;margin:32px;max-width:1180px}table{border-collapse:collapse;margin:16px 0;font-size:12px}td,th{border:1px solid #cbd5e1;padding:4px 6px;vertical-align:top}code{background:#eef2f7;padding:1px 3px}</style></head><body><main># ProtoEM-CT Final Scientific Package<br>
+<br>
+Status: Phase 10 final scientific package. Phase 9 was skipped by user decision and was not executed.<br>
+<br>
+## Artifact Provenance<br>
+<br>
+- P10-A inventory hash: `67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9`<br>
+- P10-B outputs manifest hash: `bce7894adbb3d059e6ee6367e7f90f49a30f32652e220d3aeb5b6298f2408035`<br>
+- Report values are rendered from machine-readable Phase 10 JSON/CSV artifacts.<br>
+- No model training, inference, prediction regeneration, external tuning, or checkpoint reselection is part of this report build.<br>
+<br>
+## Scientific Question<br>
+<br>
+ProtoEM-CT studies robust transductive few-shot adaptation for 3D CT liver-tumor segmentation under leakage-safe development and external-validation constraints.<br>
+<br>
+## Cohorts and Dataset Policy<br>
+<br>
+The development source contains 131 LiTS/MSD Task03 Liver cases and is treated as one LiTS-derived source, not independent cohorts.<br>
+The patient-level development split contains 91 train, 20 validation, and 20 immutable internal-test cases.<br>
+The external 3D-IRCADb-01 accounting records 20 discovered cases, 15 evaluation-eligible cases, and 5 excluded cases.<br>
+<br>
+| label | value | unit | valid_case_count | source_metric | source_artifact | source_field | value_kind |<br>
+| --- | --- | --- | --- | --- | --- | --- | --- |<br>
+| Development cases | 131 | cases |  | development_case_count | phase2_real_lits_v2/manifest.json | case_count | descriptive |<br>
+| Development train cases | 91 | cases |  | train_case_count | phase2_real_lits_v2/split.json | train_case_count | descriptive |<br>
+| Development validation cases | 20 | cases |  | validation_case_count | phase2_real_lits_v2/split.json | validation_case_count | descriptive |<br>
+| Immutable internal-test cases | 20 | cases |  | internal_test_case_count | phase2_real_lits_v2/split.json | internal_test_case_count | descriptive |<br>
+| Geometry QA passed cases | 131 | cases |  | geometry_qa_passed_case_count | phase2_real_lits_v2/geometry_qa.json | passed_case_count | descriptive |<br>
+| Geometry QA failed cases | 0 | cases |  | geometry_qa_failed_case_count | phase2_real_lits_v2/geometry_qa.json | failed_case_count | descriptive |<br>
+| Total development lesions | 908 | lesions |  | total_lesion_count | phase2_real_lits_v2/lesion_components.json | sum(case_records[*].lesion_count) | descriptive |<br>
+| External discovered cases | 20 | cases |  | external_discovered_count | phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json | discovered_count | descriptive |<br>
+| External inference-eligible cases | 20 | cases |  | external_inference_eligible_count | phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json | inference_eligible_count | descriptive |<br>
+| External evaluation-eligible cases | 15 | cases |  | external_evaluation_eligible_count | phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json | evaluation_eligible_count | descriptive |<br>
+| External excluded cases | 5 | cases |  | external_excluded_count | phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json | excluded_count | descriptive |<br>
+<br>
+## Leakage Prevention<br>
+<br>
+The project preserves patient-level development splits, treats LiTS/MSD as a single development source, and records that external labels were not used for tuning, model selection, threshold selection, preprocessing decisions, support policy, or protocol iteration.<br>
+<br>
+## Preprocessing and Freeze<br>
+<br>
+The Phase 8 freeze used a fixed development-derived target spacing and fixed threshold/support policies recorded in saved artifacts. These are reported as provenance, not reopened or optimized in Phase 10.<br>
+<br>
+## Baselines, Few-Shot Protocol, Retrieval, ProtoEM-CT, Ablations, Robustness, and Uncertainty<br>
+<br>
+Durable machine-readable performance artifacts for several earlier planned reporting surfaces were not available in the P10-A inventory. Their numeric results are intentionally not reported.<br>
+<br>
+| scope | description | reason | value_kind |<br>
+| --- | --- | --- | --- |<br>
+| docs/phase8/SUPERVISOR_HANDOFF.md (Substage 3, blocked v1 run) | Checkpoint at phase8_substage3_tiny_real_v1/checkpoints/phase8_tiny_real_verification_checkpoint.pt reflects pre-fix buggy liver-vs-background training and has no accompanying JSON artifact (run never reached the publication step). | No JSON summary/config/metadata artifact was ever published for this run; only the stray checkpoint file exists. Must not be used or reported as a scientific result. | unavailable |<br>
+| Gate 3 (ACCEPTANCE_CHECKLIST.md) | Gate 3 checkboxes for CPU shape smoke tests, tiny-subset overfit tests, deterministic metric JSON from saved predictions, Git-visible-artifact absence check, full local quality checks, GitHub-hosted CI, and Gate 3 close-out documentation are unchecked. | No Gate 3 close-out evidence block or backing artifact exists in the repository or on the external drive for these specific items; the checklist itself records them as not yet done (pre-existing repo state, not a Phase 10 blocker). | unavailable |<br>
+| Phase 10 baseline-performance table scope | Phase 3 nnU-Net v2 and MONAI SegResNet baseline-performance metric rows. | No persistent machine-readable baseline-performance artifact was located in the repository or under /Volumes/Lexar/ProtoEM-CT/runs; Gate 3 remains partly unchecked and must not be reported as completed scientific baseline performance. | unavailable |<br>
+| ACCEPTANCE_CHECKLIST.md Gate 5 | Gate 5 status/criteria. | Gate 5 is recorded as &#x27;Pending definition&#x27; with no criteria and no backing artifact. | unavailable |<br>
+| Phase 10 retrieval/prototype/foundation-baseline scope | Phase 5 retrieval, prototype, and foundation-baseline performance rows. | No durable Phase 5 publication artifact directory or Gate 5 acceptance evidence was located; Gate 5 is pending definition. These values are therefore unavailable and must not be inferred from code or prose. | unavailable |<br>
+| ACCEPTANCE_CHECKLIST.md Gate 7 | Gate 7 status/criteria. | Gate 7 is recorded as &#x27;Pending definition&#x27; with no criteria and no backing artifact, despite docs/LEAKAGE_AUDIT.md describing a Phase 7 leakage/scope verification pass. | unavailable |<br>
+| docs/PHASE_PLAN.md / ACCEPTANCE_CHECKLIST.md Gate 4 | Phase 4 few-shot protocol support manifests, adaptation configs, and protocol-table artifacts (K x replicate x adaptation-mode). | Gate 4 evidence was produced from a synthetic publication run using test fixtures into an ephemeral external temporary output root; no persistent Phase 4 artifact directory was found under /Volumes/Lexar/ProtoEM-CT/runs. Only the counts/hashes recorded in ACCEPTANCE_CHECKLIST.md and docs/LEAKAGE_AUDIT.md are available as provenance, not independently re-verified raw files this session. | unavailable |<br>
+| ACCEPTANCE_CHECKLIST.md Gate 6 | Phase 6 / ProtoEM-CT ablation-comparison, objective-trace, and publication artifacts (ablation_comparison.json, objective_trace.json, run_summary.json, etc.). | Gate 6 evidence was produced from two independent synthetic runs into mktemp directories (ROOT_A/ROOT_B) that were not persisted; no Phase 6 output directory was found under /Volumes/Lexar/ProtoEM-CT/runs. Only the values quoted in ACCEPTANCE_CHECKLIST.md are available. | unavailable |<br>
+| docs/LEAKAGE_AUDIT.md Phase 7 section | Phase 7 robustness/uncertainty evaluation artifacts (calibration, risk-coverage, degradation, lesion-subgroup reports). | Phase 7 CLI is documented as &#x27;synthetic_mode_only: true&#x27; with no real-data execution; no Phase 7 output directory exists under /Volumes/Lexar/ProtoEM-CT/runs. Robustness/uncertainty is explicitly &#x27;not_included&#x27; in the Wave 4 statistical policy for Phase 8 as well. | unavailable |<br>
+| docs/phase8/FINAL_REPORT.md section Q | Git commit 51638ca662510bf4cb031b2aec29778bf26bba26 (comparison provenance fix) and f1d4e1be7b6f7aa3657792cae9125c825affdded / f264ce79dd68039256d140f03c468baed8ecea07 (Package C execution/capture). | Not re-verified in this P10-A session (out of this agent&#x27;s Git-log scope); FINAL_REPORT.md section S already records these as independently re-verified in the Phase 8 closure session. Flagged here as inherited, not re-checked, provenance. | unavailable |<br>
+<br>
+## External Validation<br>
+<br>
+External tumor Dice was 0.0141157 with 95% CI [0.00434155, 0.025013].<br>
+External tumor IoU was 0.00721538 with 95% CI [0.00220828, 0.0127937].<br>
+External lesion F1 was 0.000829379 with 95% CI [0.000388752, 0.00130496].<br>
+False-positive lesions per scan were 2358.4 with 95% CI [1893.32, 2872.07].<br>
+<br>
+These are poor external results and do not support a claim of strong external generalization.<br>
+<br>
+| label | point_estimate | ci_low | ci_high | unit | valid_case_count | source_metric | source_artifact | source_field | value_kind | ci_low_source_artifact | ci_low_source_field | ci_high_source_artifact | ci_high_source_field |<br>
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |<br>
+| Tumor Dice (macro) | 0.0141157 | 0.00434155 | 0.025013 |  | 15 | macro_dice | phase8_external_evaluation_v1/phase8_external_metric_report.json | aggregate.macro_dice | confirmatory | phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json | metrics.tumor_dice.ci_low | phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json | metrics.tumor_dice.ci_high |<br>
+| Tumor Dice (pooled) | 0.0219557 | n/a | n/a |  | 15 | pooled_dice | phase8_external_evaluation_v1/phase8_external_metric_report.json | aggregate.pooled_dice | confirmatory | n/a | n/a | n/a | n/a |<br>
+| Tumor IoU (macro) | 0.00721538 | 0.00220828 | 0.0127937 |  | 15 | macro_iou | phase8_external_evaluation_v1/phase8_external_metric_report.json | aggregate.macro_iou | confirmatory | phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json | metrics.tumor_iou.ci_low | phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json | metrics.tumor_iou.ci_high |<br>
+| Tumor HD95 (macro) | 176.626 | 159.324 | 194.302 | mm | 15 | macro_hd95_mm | phase8_external_evaluation_v1/phase8_external_metric_report.json | aggregate.macro_hd95_mm | confirmatory | phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json | metrics.tumor_hd95.ci_low | phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json | metrics.tumor_hd95.ci_high |<br>
+| Tumor NSD | 0.00330141 | 0.000869538 | 0.00616264 |  | 15 | macro_normalized_surface_dice | phase8_external_evaluation_v1/phase8_external_metric_report.json | aggregate.macro_normalized_surface_dice | confirmatory | phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json | metrics.tumor_normalized_surface_dice.ci_low | phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json | metrics.tumor_normalized_surface_dice.ci_high |<br>
+| Lesion recall | 0.158868 | 0.0481536 | 0.310257 |  | 15 | macro_lesion_recall | phase8_external_evaluation_v1/phase8_external_metric_report.json | aggregate.macro_lesion_recall | confirmatory | phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json | metrics.lesion_wise_recall.ci_low | phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json | metrics.lesion_wise_recall.ci_high |<br>
+| Lesion precision | 0.000417023 | 0.000195357 | 0.000656226 |  | 15 | macro_lesion_precision | phase8_external_evaluation_v1/phase8_external_metric_report.json | aggregate.macro_lesion_precision | confirmatory | phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json | metrics.lesion_wise_precision.ci_low | phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json | metrics.lesion_wise_precision.ci_high |<br>
+| Lesion F1 | 0.000829379 | 0.000388752 | 0.00130496 |  | 15 | macro_lesion_f1 | phase8_external_evaluation_v1/phase8_external_metric_report.json | aggregate.macro_lesion_f1 | confirmatory | phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json | metrics.lesion_f1.ci_low | phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json | metrics.lesion_f1.ci_high |<br>
+| False-positive lesions/scan | 2358.4 | 1893.32 | 2872.07 | lesions/scan | 15 | mean_false_positive_lesions_per_scan | phase8_external_evaluation_v1/phase8_external_metric_report.json | aggregate.mean_false_positive_lesions_per_scan | confirmatory | phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json | metrics.false_positive_lesions_per_scan.ci_low | phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json | metrics.false_positive_lesions_per_scan.ci_high |<br>
+| Signed tumor volume error | -30.979 | -96.5135 | 18.2676 | mL | 15 | mean_signed_volume_error_ml | phase8_external_evaluation_v1/phase8_external_metric_report.json | aggregate.mean_signed_volume_error_ml | confirmatory | phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json | metrics.tumor_volume_error_signed_ml.ci_low | phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json | metrics.tumor_volume_error_signed_ml.ci_high |<br>
+| Absolute tumor volume error | 73.1784 | 36.1856 | 126.893 | mL | 15 | mean_absolute_volume_error_ml | phase8_external_evaluation_v1/phase8_external_metric_report.json | aggregate.mean_absolute_volume_error_ml | confirmatory | phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json | metrics.tumor_volume_error_absolute_ml.ci_low | phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json | metrics.tumor_volume_error_absolute_ml.ci_high |<br>
+| Relative tumor volume error | 2.83389 | 0.754696 | 5.48452 |  | 15 | macro_relative_volume_error | phase8_external_evaluation_v1/phase8_external_metric_report.json | aggregate.macro_relative_volume_error | confirmatory | phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json | metrics.tumor_volume_error_relative.ci_low | phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json | metrics.tumor_volume_error_relative.ci_high |<br>
+<br>
+## Internal-vs-External Descriptive Comparison<br>
+<br>
+The internal-vs-external comparison is descriptive only. It does not report superiority, non-inferiority, deployment readiness, or broad generalization.<br>
+<br>
+| metric | internal_value | external_value | external_ci_low | external_ci_high | difference_external_minus_internal | claims_policy | source_artifact | value_kind |<br>
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |<br>
+| false_positive_lesions_per_scan | unavailable | 2358.4 | 1893.32 | 2872.07 | not_materialized_in_source_artifact | descriptive_only_no_superiority_or_generalization_claims | phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json | descriptive |<br>
+| lesion_f1 | unavailable | 0.000829379 | 0.000388752 | 0.00130496 | not_materialized_in_source_artifact | descriptive_only_no_superiority_or_generalization_claims | phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json | descriptive |<br>
+| lesion_wise_precision | unavailable | 0.000417023 | 0.000195357 | 0.000656226 | not_materialized_in_source_artifact | descriptive_only_no_superiority_or_generalization_claims | phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json | descriptive |<br>
+| lesion_wise_recall | unavailable | 0.158868 | 0.0481536 | 0.310257 | not_materialized_in_source_artifact | descriptive_only_no_superiority_or_generalization_claims | phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json | descriptive |<br>
+| tumor_dice | 0.015793 | 0.0141157 | 0.00434155 | 0.025013 | not_materialized_in_source_artifact | descriptive_only_no_superiority_or_generalization_claims | phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json | descriptive |<br>
+| tumor_hd95 | unavailable | 176.626 | 159.324 | 194.302 | not_materialized_in_source_artifact | descriptive_only_no_superiority_or_generalization_claims | phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json | descriptive |<br>
+| tumor_iou | unavailable | 0.00721538 | 0.00220828 | 0.0127937 | not_materialized_in_source_artifact | descriptive_only_no_superiority_or_generalization_claims | phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json | descriptive |<br>
+| tumor_normalized_surface_dice | unavailable | 0.00330141 | 0.000869538 | 0.00616264 | not_materialized_in_source_artifact | descriptive_only_no_superiority_or_generalization_claims | phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json | descriptive |<br>
+| tumor_volume_error_signed_ml | unavailable | -30.979 | -96.5135 | 18.2676 | not_materialized_in_source_artifact | descriptive_only_no_superiority_or_generalization_claims | phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json | descriptive |<br>
+<br>
+## Statistical Comparisons<br>
+<br>
+The saved statistical policy uses case/patient-level bootstrap resampling with seed `1729`, `10000` resamples, `0.95` confidence level, and `percentile` intervals.<br>
+Phase 10 added no new significance tests and reports no new p-values.<br>
+<br>
+## Limitations<br>
+<br>
+- The evaluated external result is negative and must not be reframed as a partial success.<br>
+- External evaluation is limited to the artifact-recorded eligible case count.<br>
+- Unsupported Phase 3-7 numeric results are unavailable in durable Phase-10 inventory and are intentionally omitted.<br>
+- This repository does not commit raw medical data, checkpoints, predictions, model weights, credentials, or secrets.<br>
+<br>
+## Reproducibility<br>
+<br>
+The report is generated from the P10-A inventory, P10-B tables, figures, statistics JSON, and saved Phase 8 comparison artifact. The required Gate 8 command is:<br>
+<br>
+```bash<br>
+uv run snakemake --cores 4 --rerun-incomplete reports/final_report.html<br>
+```<br>
+<br>
+## Final Conclusion<br>
+<br>
+Phase 10 packages the completed evidence without changing the scientific result. External validation remains an honest negative result. The core project is complete only if Gate 8 reproduction and final review pass.<br>
+</main><hr><h2>Figures</h2><section><svg xmlns="http://www.w3.org/2000/svg" width="780" height="364" role="img" aria-label="Phase 10 Cohort Counts">
+<style>text{font-family:Arial,sans-serif;font-size:13px;fill:#1f2933}.title{font-size:18px;font-weight:700}.bar{fill:#357a7f}.neg{fill:#b85c38}.axis{stroke:#6b7280;stroke-width:1}.ci{stroke:#243b53;stroke-width:2}</style>
+<text class="title" x="20" y="30">Phase 10 Cohort Counts</text>
+<line class="axis" x1="220.00" y1="52" x2="220.00" y2="338" />
+<text x="20" y="80">Train</text>
+<rect class="bar" x="220.00" y="64" width="430.00" height="22" />
+<text x="670" y="80">91</text>
+<text x="20" y="126">Validation</text>
+<rect class="bar" x="220.00" y="110" width="94.51" height="22" />
+<text x="670" y="126">20</text>
+<text x="20" y="172">Internal test</text>
+<rect class="bar" x="220.00" y="156" width="94.51" height="22" />
+<text x="670" y="172">20</text>
+<text x="20" y="218">External discovered</text>
+<rect class="bar" x="220.00" y="202" width="94.51" height="22" />
+<text x="670" y="218">20</text>
+<text x="20" y="264">External eligible</text>
+<rect class="bar" x="220.00" y="248" width="70.88" height="22" />
+<text x="670" y="264">15</text>
+<text x="20" y="310">External excluded</text>
+<rect class="bar" x="220.00" y="294" width="23.63" height="22" />
+<text x="670" y="310">5</text>
+</svg>
+</section><section><svg xmlns="http://www.w3.org/2000/svg" width="780" height="272" role="img" aria-label="Phase 10 External Validation Bootstrap CIs">
+<style>text{font-family:Arial,sans-serif;font-size:13px;fill:#1f2933}.title{font-size:18px;font-weight:700}.bar{fill:#357a7f}.neg{fill:#b85c38}.axis{stroke:#6b7280;stroke-width:1}.ci{stroke:#243b53;stroke-width:2}</style>
+<text class="title" x="20" y="30">Phase 10 External Validation Bootstrap CIs</text>
+<line class="axis" x1="220.00" y1="52" x2="220.00" y2="246" />
+<text x="20" y="80">Dice</text>
+<line class="ci" x1="294.64" y1="75" x2="650.00" y2="75" />
+<rect class="bar" x="220.00" y="64" width="242.66" height="22" />
+<text x="670" y="80">0.0141157</text>
+<text x="20" y="126">IoU</text>
+<line class="ci" x1="257.96" y1="121" x2="439.94" y2="121" />
+<rect class="bar" x="220.00" y="110" width="124.04" height="22" />
+<text x="670" y="126">0.00721538</text>
+<text x="20" y="172">NSD</text>
+<line class="ci" x1="234.95" y1="167" x2="325.94" y2="167" />
+<rect class="bar" x="220.00" y="156" width="56.75" height="22" />
+<text x="670" y="172">0.00330141</text>
+<text x="20" y="218">Lesion F1</text>
+<line class="ci" x1="226.68" y1="213" x2="242.43" y2="213" />
+<rect class="bar" x="220.00" y="202" width="14.26" height="22" />
+<text x="670" y="218">0.000829379</text>
+</svg>
+</section><section><svg xmlns="http://www.w3.org/2000/svg" width="780" height="180" role="img" aria-label="Phase 10 Checkpoint Selection Evidence">
+<style>text{font-family:Arial,sans-serif;font-size:13px;fill:#1f2933}.title{font-size:18px;font-weight:700}.bar{fill:#357a7f}.neg{fill:#b85c38}.axis{stroke:#6b7280;stroke-width:1}.ci{stroke:#243b53;stroke-width:2}</style>
+<text class="title" x="20" y="30">Phase 10 Checkpoint Selection Evidence</text>
+<line class="axis" x1="220.00" y1="52" x2="220.00" y2="154" />
+<text x="20" y="80">Step 250</text>
+<rect class="bar" x="220.00" y="64" width="44.60" height="22" />
+<text x="670" y="80">0.00163801</text>
+<text x="20" y="126">Step 500</text>
+<rect class="bar" x="220.00" y="110" width="430.00" height="22" />
+<text x="670" y="126">0.015793</text>
+</svg>
+</section><section><svg xmlns="http://www.w3.org/2000/svg" width="780" height="180" role="img" aria-label="Phase 10 Internal vs External Tumor Dice">
+<style>text{font-family:Arial,sans-serif;font-size:13px;fill:#1f2933}.title{font-size:18px;font-weight:700}.bar{fill:#357a7f}.neg{fill:#b85c38}.axis{stroke:#6b7280;stroke-width:1}.ci{stroke:#243b53;stroke-width:2}</style>
+<text class="title" x="20" y="30">Phase 10 Internal vs External Tumor Dice</text>
+<line class="axis" x1="220.00" y1="52" x2="220.00" y2="154" />
+<text x="20" y="80">Internal validation Dice</text>
+<rect class="bar" x="220.00" y="64" width="271.50" height="22" />
+<text x="670" y="80">0.015793</text>
+<text x="20" y="126">External macro Dice</text>
+<line class="ci" x1="294.64" y1="121" x2="650.00" y2="121" />
+<rect class="bar" x="220.00" y="110" width="242.66" height="22" />
+<text x="670" y="126">0.0141157</text>
+</svg>
+</section></body></html>

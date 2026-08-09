@@ -1,0 +1,30 @@
+{
+ "figure_id": "phase10_internal_external_tumor_dice",
+ "points": [
+  {
+   "ci_high": null,
+   "ci_low": null,
+   "label": "Internal validation Dice",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+   "source_field": "comparisons.tumor_dice.internal_value",
+   "source_metric": "tumor_dice_internal_scalar",
+   "value": 0.01579295321113191,
+   "value_kind": "descriptive"
+  },
+  {
+   "ci_high": 0.02501302650455788,
+   "ci_low": 0.004341547521318757,
+   "label": "External macro Dice",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+   "source_field": "comparisons.tumor_dice.external_point_estimate",
+   "source_metric": "tumor_dice_external_macro",
+   "value": 0.014115733440605011,
+   "value_kind": "descriptive"
+  }
+ ],
+ "schema_name": "phase10_figure",
+ "schema_version": "v1",
+ "self_hash": "89269ff25e3e4361d333a4c3eaaa04176b18782b204f71bd31f666d6f06d13f2",
+ "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+ "title": "Phase 10 Internal vs External Tumor Dice"
+}

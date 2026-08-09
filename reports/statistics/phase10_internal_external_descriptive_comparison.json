@@ -1,0 +1,95 @@
+{
+ "claims_policy": "descriptive_only_no_superiority_or_generalization_claims",
+ "cohort_relationship": "independent_unpaired",
+ "comparisons": {
+  "false_positive_lesions_per_scan": {
+   "external_ci_available": true,
+   "external_ci_high": 2872.075,
+   "external_ci_low": 1893.32,
+   "external_point_estimate": 2358.4,
+   "internal_ci_available": false,
+   "internal_evidence_status": "not_available",
+   "internal_value": null
+  },
+  "lesion_f1": {
+   "external_ci_available": true,
+   "external_ci_high": 0.001304960931868939,
+   "external_ci_low": 0.00038875182666259906,
+   "external_point_estimate": 0.0008293785379380446,
+   "internal_ci_available": false,
+   "internal_evidence_status": "not_available",
+   "internal_value": null
+  },
+  "lesion_wise_precision": {
+   "external_ci_available": true,
+   "external_ci_high": 0.0006562260559801865,
+   "external_ci_low": 0.00019535650440340803,
+   "external_point_estimate": 0.0004170230872244496,
+   "internal_ci_available": false,
+   "internal_evidence_status": "not_available",
+   "internal_value": null
+  },
+  "lesion_wise_recall": {
+   "external_ci_available": true,
+   "external_ci_high": 0.31025676937441643,
+   "external_ci_low": 0.04815359477124183,
+   "external_point_estimate": 0.15886788048552752,
+   "internal_ci_available": false,
+   "internal_evidence_status": "not_available",
+   "internal_value": null
+  },
+  "tumor_dice": {
+   "external_ci_available": true,
+   "external_ci_high": 0.02501302650455788,
+   "external_ci_low": 0.004341547521318757,
+   "external_point_estimate": 0.014115733440605011,
+   "internal_checkpoint_matches_locked_checkpoint": true,
+   "internal_checkpoint_sha256": "2d7989fd134b1348e82cc52afbcf4738c0ce3c17e9c68df774431f577dede651",
+   "internal_ci_available": false,
+   "internal_evidence_status": "single_frozen_scalar_no_ci",
+   "internal_split": "pooled_internal_development_source_lits_and_msd_task03_liver",
+   "internal_value": 0.01579295321113191
+  },
+  "tumor_hd95": {
+   "external_ci_available": true,
+   "external_ci_high": 194.301561440465,
+   "external_ci_low": 159.32400767790955,
+   "external_point_estimate": 176.6259570403819,
+   "internal_ci_available": false,
+   "internal_evidence_status": "not_available",
+   "internal_value": null
+  },
+  "tumor_iou": {
+   "external_ci_available": true,
+   "external_ci_high": 0.012793720568727924,
+   "external_ci_low": 0.002208283278991875,
+   "external_point_estimate": 0.007215381213910843,
+   "internal_ci_available": false,
+   "internal_evidence_status": "not_available",
+   "internal_value": null
+  },
+  "tumor_normalized_surface_dice": {
+   "external_ci_available": true,
+   "external_ci_high": 0.0061626388043957,
+   "external_ci_low": 0.0008695378349168014,
+   "external_point_estimate": 0.0033014104480338863,
+   "internal_ci_available": false,
+   "internal_evidence_status": "not_available",
+   "internal_value": null
+  },
+  "tumor_volume_error_signed_ml": {
+   "external_ci_available": true,
+   "external_ci_high": 18.267631285171493,
+   "external_ci_low": -96.51345051441191,
+   "external_point_estimate": -30.97904055175781,
+   "internal_ci_available": false,
+   "internal_evidence_status": "not_available",
+   "internal_value": null
+  }
+ },
+ "schema_name": "phase10_internal_external_descriptive_comparison",
+ "schema_version": "v1",
+ "self_hash": "904cbbcf26632ad163c4240e4adcc85bbbd4b13d17a58ada4103feedb9011e40",
+ "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+ "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9"
+}

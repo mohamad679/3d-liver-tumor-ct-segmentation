@@ -1,0 +1,572 @@
+{
+ "external_label_tuning": false,
+ "inference_rerun": false,
+ "numeric_statement_source_count": 35,
+ "numeric_statement_sources": [
+  {
+   "row": {
+    "label": "Development cases",
+    "source_artifact": "phase2_real_lits_v2/manifest.json",
+    "source_field": "case_count",
+    "source_metric": "development_case_count",
+    "unit": "cases",
+    "valid_case_count": "",
+    "value": "131",
+    "value_kind": "descriptive"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_cohort_data_summary"
+  },
+  {
+   "row": {
+    "label": "Development train cases",
+    "source_artifact": "phase2_real_lits_v2/split.json",
+    "source_field": "train_case_count",
+    "source_metric": "train_case_count",
+    "unit": "cases",
+    "valid_case_count": "",
+    "value": "91",
+    "value_kind": "descriptive"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_cohort_data_summary"
+  },
+  {
+   "row": {
+    "label": "Development validation cases",
+    "source_artifact": "phase2_real_lits_v2/split.json",
+    "source_field": "validation_case_count",
+    "source_metric": "validation_case_count",
+    "unit": "cases",
+    "valid_case_count": "",
+    "value": "20",
+    "value_kind": "descriptive"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_cohort_data_summary"
+  },
+  {
+   "row": {
+    "label": "Immutable internal-test cases",
+    "source_artifact": "phase2_real_lits_v2/split.json",
+    "source_field": "internal_test_case_count",
+    "source_metric": "internal_test_case_count",
+    "unit": "cases",
+    "valid_case_count": "",
+    "value": "20",
+    "value_kind": "descriptive"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_cohort_data_summary"
+  },
+  {
+   "row": {
+    "label": "Geometry QA passed cases",
+    "source_artifact": "phase2_real_lits_v2/geometry_qa.json",
+    "source_field": "passed_case_count",
+    "source_metric": "geometry_qa_passed_case_count",
+    "unit": "cases",
+    "valid_case_count": "",
+    "value": "131",
+    "value_kind": "descriptive"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_cohort_data_summary"
+  },
+  {
+   "row": {
+    "label": "Geometry QA failed cases",
+    "source_artifact": "phase2_real_lits_v2/geometry_qa.json",
+    "source_field": "failed_case_count",
+    "source_metric": "geometry_qa_failed_case_count",
+    "unit": "cases",
+    "valid_case_count": "",
+    "value": "0",
+    "value_kind": "descriptive"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_cohort_data_summary"
+  },
+  {
+   "row": {
+    "label": "Total development lesions",
+    "source_artifact": "phase2_real_lits_v2/lesion_components.json",
+    "source_field": "sum(case_records[*].lesion_count)",
+    "source_metric": "total_lesion_count",
+    "unit": "lesions",
+    "valid_case_count": "",
+    "value": "908",
+    "value_kind": "descriptive"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_cohort_data_summary"
+  },
+  {
+   "row": {
+    "label": "External discovered cases",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json",
+    "source_field": "discovered_count",
+    "source_metric": "external_discovered_count",
+    "unit": "cases",
+    "valid_case_count": "",
+    "value": "20",
+    "value_kind": "descriptive"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_cohort_data_summary"
+  },
+  {
+   "row": {
+    "label": "External inference-eligible cases",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json",
+    "source_field": "inference_eligible_count",
+    "source_metric": "external_inference_eligible_count",
+    "unit": "cases",
+    "valid_case_count": "",
+    "value": "20",
+    "value_kind": "descriptive"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_cohort_data_summary"
+  },
+  {
+   "row": {
+    "label": "External evaluation-eligible cases",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json",
+    "source_field": "evaluation_eligible_count",
+    "source_metric": "external_evaluation_eligible_count",
+    "unit": "cases",
+    "valid_case_count": "",
+    "value": "15",
+    "value_kind": "descriptive"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_cohort_data_summary"
+  },
+  {
+   "row": {
+    "label": "External excluded cases",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json",
+    "source_field": "excluded_count",
+    "source_metric": "external_excluded_count",
+    "unit": "cases",
+    "valid_case_count": "",
+    "value": "5",
+    "value_kind": "descriptive"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_cohort_data_summary"
+  },
+  {
+   "row": {
+    "ci_high": "0.025013",
+    "ci_high_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+    "ci_high_source_field": "metrics.tumor_dice.ci_high",
+    "ci_low": "0.00434155",
+    "ci_low_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+    "ci_low_source_field": "metrics.tumor_dice.ci_low",
+    "label": "Tumor Dice (macro)",
+    "point_estimate": "0.0141157",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+    "source_field": "aggregate.macro_dice",
+    "source_metric": "macro_dice",
+    "unit": "",
+    "valid_case_count": "15",
+    "value_kind": "confirmatory"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_external_validation_metrics"
+  },
+  {
+   "row": {
+    "ci_high": "n/a",
+    "ci_high_source_artifact": "n/a",
+    "ci_high_source_field": "n/a",
+    "ci_low": "n/a",
+    "ci_low_source_artifact": "n/a",
+    "ci_low_source_field": "n/a",
+    "label": "Tumor Dice (pooled)",
+    "point_estimate": "0.0219557",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+    "source_field": "aggregate.pooled_dice",
+    "source_metric": "pooled_dice",
+    "unit": "",
+    "valid_case_count": "15",
+    "value_kind": "confirmatory"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_external_validation_metrics"
+  },
+  {
+   "row": {
+    "ci_high": "0.0127937",
+    "ci_high_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+    "ci_high_source_field": "metrics.tumor_iou.ci_high",
+    "ci_low": "0.00220828",
+    "ci_low_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+    "ci_low_source_field": "metrics.tumor_iou.ci_low",
+    "label": "Tumor IoU (macro)",
+    "point_estimate": "0.00721538",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+    "source_field": "aggregate.macro_iou",
+    "source_metric": "macro_iou",
+    "unit": "",
+    "valid_case_count": "15",
+    "value_kind": "confirmatory"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_external_validation_metrics"
+  },
+  {
+   "row": {
+    "ci_high": "194.302",
+    "ci_high_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+    "ci_high_source_field": "metrics.tumor_hd95.ci_high",
+    "ci_low": "159.324",
+    "ci_low_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+    "ci_low_source_field": "metrics.tumor_hd95.ci_low",
+    "label": "Tumor HD95 (macro)",
+    "point_estimate": "176.626",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+    "source_field": "aggregate.macro_hd95_mm",
+    "source_metric": "macro_hd95_mm",
+    "unit": "mm",
+    "valid_case_count": "15",
+    "value_kind": "confirmatory"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_external_validation_metrics"
+  },
+  {
+   "row": {
+    "ci_high": "0.00616264",
+    "ci_high_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+    "ci_high_source_field": "metrics.tumor_normalized_surface_dice.ci_high",
+    "ci_low": "0.000869538",
+    "ci_low_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+    "ci_low_source_field": "metrics.tumor_normalized_surface_dice.ci_low",
+    "label": "Tumor NSD",
+    "point_estimate": "0.00330141",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+    "source_field": "aggregate.macro_normalized_surface_dice",
+    "source_metric": "macro_normalized_surface_dice",
+    "unit": "",
+    "valid_case_count": "15",
+    "value_kind": "confirmatory"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_external_validation_metrics"
+  },
+  {
+   "row": {
+    "ci_high": "0.310257",
+    "ci_high_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+    "ci_high_source_field": "metrics.lesion_wise_recall.ci_high",
+    "ci_low": "0.0481536",
+    "ci_low_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+    "ci_low_source_field": "metrics.lesion_wise_recall.ci_low",
+    "label": "Lesion recall",
+    "point_estimate": "0.158868",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+    "source_field": "aggregate.macro_lesion_recall",
+    "source_metric": "macro_lesion_recall",
+    "unit": "",
+    "valid_case_count": "15",
+    "value_kind": "confirmatory"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_external_validation_metrics"
+  },
+  {
+   "row": {
+    "ci_high": "0.000656226",
+    "ci_high_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+    "ci_high_source_field": "metrics.lesion_wise_precision.ci_high",
+    "ci_low": "0.000195357",
+    "ci_low_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+    "ci_low_source_field": "metrics.lesion_wise_precision.ci_low",
+    "label": "Lesion precision",
+    "point_estimate": "0.000417023",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+    "source_field": "aggregate.macro_lesion_precision",
+    "source_metric": "macro_lesion_precision",
+    "unit": "",
+    "valid_case_count": "15",
+    "value_kind": "confirmatory"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_external_validation_metrics"
+  },
+  {
+   "row": {
+    "ci_high": "0.00130496",
+    "ci_high_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+    "ci_high_source_field": "metrics.lesion_f1.ci_high",
+    "ci_low": "0.000388752",
+    "ci_low_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+    "ci_low_source_field": "metrics.lesion_f1.ci_low",
+    "label": "Lesion F1",
+    "point_estimate": "0.000829379",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+    "source_field": "aggregate.macro_lesion_f1",
+    "source_metric": "macro_lesion_f1",
+    "unit": "",
+    "valid_case_count": "15",
+    "value_kind": "confirmatory"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_external_validation_metrics"
+  },
+  {
+   "row": {
+    "ci_high": "2872.07",
+    "ci_high_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+    "ci_high_source_field": "metrics.false_positive_lesions_per_scan.ci_high",
+    "ci_low": "1893.32",
+    "ci_low_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+    "ci_low_source_field": "metrics.false_positive_lesions_per_scan.ci_low",
+    "label": "False-positive lesions/scan",
+    "point_estimate": "2358.4",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+    "source_field": "aggregate.mean_false_positive_lesions_per_scan",
+    "source_metric": "mean_false_positive_lesions_per_scan",
+    "unit": "lesions/scan",
+    "valid_case_count": "15",
+    "value_kind": "confirmatory"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_external_validation_metrics"
+  },
+  {
+   "row": {
+    "ci_high": "18.2676",
+    "ci_high_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+    "ci_high_source_field": "metrics.tumor_volume_error_signed_ml.ci_high",
+    "ci_low": "-96.5135",
+    "ci_low_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+    "ci_low_source_field": "metrics.tumor_volume_error_signed_ml.ci_low",
+    "label": "Signed tumor volume error",
+    "point_estimate": "-30.979",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+    "source_field": "aggregate.mean_signed_volume_error_ml",
+    "source_metric": "mean_signed_volume_error_ml",
+    "unit": "mL",
+    "valid_case_count": "15",
+    "value_kind": "confirmatory"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_external_validation_metrics"
+  },
+  {
+   "row": {
+    "ci_high": "126.893",
+    "ci_high_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+    "ci_high_source_field": "metrics.tumor_volume_error_absolute_ml.ci_high",
+    "ci_low": "36.1856",
+    "ci_low_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+    "ci_low_source_field": "metrics.tumor_volume_error_absolute_ml.ci_low",
+    "label": "Absolute tumor volume error",
+    "point_estimate": "73.1784",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+    "source_field": "aggregate.mean_absolute_volume_error_ml",
+    "source_metric": "mean_absolute_volume_error_ml",
+    "unit": "mL",
+    "valid_case_count": "15",
+    "value_kind": "confirmatory"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_external_validation_metrics"
+  },
+  {
+   "row": {
+    "ci_high": "5.48452",
+    "ci_high_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+    "ci_high_source_field": "metrics.tumor_volume_error_relative.ci_high",
+    "ci_low": "0.754696",
+    "ci_low_source_artifact": "phase8_external_evaluation_v1/phase8_external_bootstrap_ci.json",
+    "ci_low_source_field": "metrics.tumor_volume_error_relative.ci_low",
+    "label": "Relative tumor volume error",
+    "point_estimate": "2.83389",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_external_metric_report.json",
+    "source_field": "aggregate.macro_relative_volume_error",
+    "source_metric": "macro_relative_volume_error",
+    "unit": "",
+    "valid_case_count": "15",
+    "value_kind": "confirmatory"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_external_validation_metrics"
+  },
+  {
+   "row": {
+    "claims_policy": "descriptive_only_no_superiority_or_generalization_claims",
+    "difference_external_minus_internal": "not_materialized_in_source_artifact",
+    "external_ci_high": "2872.07",
+    "external_ci_low": "1893.32",
+    "external_value": "2358.4",
+    "internal_value": "unavailable",
+    "metric": "false_positive_lesions_per_scan",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+    "value_kind": "descriptive"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_internal_external_descriptive_comparison"
+  },
+  {
+   "row": {
+    "claims_policy": "descriptive_only_no_superiority_or_generalization_claims",
+    "difference_external_minus_internal": "not_materialized_in_source_artifact",
+    "external_ci_high": "0.00130496",
+    "external_ci_low": "0.000388752",
+    "external_value": "0.000829379",
+    "internal_value": "unavailable",
+    "metric": "lesion_f1",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+    "value_kind": "descriptive"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_internal_external_descriptive_comparison"
+  },
+  {
+   "row": {
+    "claims_policy": "descriptive_only_no_superiority_or_generalization_claims",
+    "difference_external_minus_internal": "not_materialized_in_source_artifact",
+    "external_ci_high": "0.000656226",
+    "external_ci_low": "0.000195357",
+    "external_value": "0.000417023",
+    "internal_value": "unavailable",
+    "metric": "lesion_wise_precision",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+    "value_kind": "descriptive"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_internal_external_descriptive_comparison"
+  },
+  {
+   "row": {
+    "claims_policy": "descriptive_only_no_superiority_or_generalization_claims",
+    "difference_external_minus_internal": "not_materialized_in_source_artifact",
+    "external_ci_high": "0.310257",
+    "external_ci_low": "0.0481536",
+    "external_value": "0.158868",
+    "internal_value": "unavailable",
+    "metric": "lesion_wise_recall",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+    "value_kind": "descriptive"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_internal_external_descriptive_comparison"
+  },
+  {
+   "row": {
+    "claims_policy": "descriptive_only_no_superiority_or_generalization_claims",
+    "difference_external_minus_internal": "not_materialized_in_source_artifact",
+    "external_ci_high": "0.025013",
+    "external_ci_low": "0.00434155",
+    "external_value": "0.0141157",
+    "internal_value": "0.015793",
+    "metric": "tumor_dice",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+    "value_kind": "descriptive"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_internal_external_descriptive_comparison"
+  },
+  {
+   "row": {
+    "claims_policy": "descriptive_only_no_superiority_or_generalization_claims",
+    "difference_external_minus_internal": "not_materialized_in_source_artifact",
+    "external_ci_high": "194.302",
+    "external_ci_low": "159.324",
+    "external_value": "176.626",
+    "internal_value": "unavailable",
+    "metric": "tumor_hd95",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+    "value_kind": "descriptive"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_internal_external_descriptive_comparison"
+  },
+  {
+   "row": {
+    "claims_policy": "descriptive_only_no_superiority_or_generalization_claims",
+    "difference_external_minus_internal": "not_materialized_in_source_artifact",
+    "external_ci_high": "0.0127937",
+    "external_ci_low": "0.00220828",
+    "external_value": "0.00721538",
+    "internal_value": "unavailable",
+    "metric": "tumor_iou",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+    "value_kind": "descriptive"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_internal_external_descriptive_comparison"
+  },
+  {
+   "row": {
+    "claims_policy": "descriptive_only_no_superiority_or_generalization_claims",
+    "difference_external_minus_internal": "not_materialized_in_source_artifact",
+    "external_ci_high": "0.00616264",
+    "external_ci_low": "0.000869538",
+    "external_value": "0.00330141",
+    "internal_value": "unavailable",
+    "metric": "tumor_normalized_surface_dice",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+    "value_kind": "descriptive"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_internal_external_descriptive_comparison"
+  },
+  {
+   "row": {
+    "claims_policy": "descriptive_only_no_superiority_or_generalization_claims",
+    "difference_external_minus_internal": "not_materialized_in_source_artifact",
+    "external_ci_high": "18.2676",
+    "external_ci_low": "-96.5135",
+    "external_value": "-30.979",
+    "internal_value": "unavailable",
+    "metric": "tumor_volume_error_signed_ml",
+    "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+    "value_kind": "descriptive"
+   },
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "table_id": "phase10_internal_external_descriptive_comparison"
+  },
+  {
+   "field": "bootstrap_policy.random_seed",
+   "source_artifact": "reports/statistics/phase10_statistical_policy.json",
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "statistics_id": "phase10_statistical_policy",
+   "value": 1729
+  },
+  {
+   "field": "bootstrap_policy.resample_count",
+   "source_artifact": "reports/statistics/phase10_statistical_policy.json",
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "statistics_id": "phase10_statistical_policy",
+   "value": 10000
+  },
+  {
+   "field": "bootstrap_policy.confidence_level",
+   "source_artifact": "reports/statistics/phase10_statistical_policy.json",
+   "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+   "statistics_id": "phase10_statistical_policy",
+   "value": 0.95
+  }
+ ],
+ "phase9_status": "skipped_by_user_decision_not_executed",
+ "report_html_path": "reports/final_report.html",
+ "report_html_sha256": "c7db978eae68e4177e309cc1488dcf4af1195d5edb0614c37b095628f0915dda",
+ "report_markdown_path": "reports/final_report.md",
+ "report_markdown_sha256": "898d54f24921aaafc69d7b6136e5dfc57c847090cc2272257e0b9c27b86443f3",
+ "reproduction_readme_path": "docs/PHASE10_REPRODUCTION.md",
+ "reproduction_readme_sha256": "6b934187aa94e6e30b19c0ac92cd87e5023aba24476a6c993e5492bb96c01a75",
+ "schema_name": "phase10_final_report_manifest",
+ "schema_version": "v1",
+ "self_hash": "d6fdc2e46ef8f44ee6e69f4ec4d4ed4e8de5bc4cf71ec302ed51fe411c62101f",
+ "source_b_manifest_hash": "bce7894adbb3d059e6ee6367e7f90f49a30f32652e220d3aeb5b6298f2408035",
+ "source_b_manifest_path": "reports/phase10/phase10_b_outputs_manifest.json",
+ "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+ "source_inventory_path": "reports/phase10/artifact_inventory.json",
+ "training_rerun": false
+}

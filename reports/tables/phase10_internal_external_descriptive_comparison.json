@@ -1,0 +1,123 @@
+{
+ "columns": [
+  "metric",
+  "internal_value",
+  "external_value",
+  "external_ci_low",
+  "external_ci_high",
+  "difference_external_minus_internal",
+  "claims_policy",
+  "source_artifact",
+  "value_kind"
+ ],
+ "notes": [
+  "Descriptive only; no superiority or generalization claim."
+ ],
+ "rows": [
+  {
+   "claims_policy": "descriptive_only_no_superiority_or_generalization_claims",
+   "difference_external_minus_internal": "not_materialized_in_source_artifact",
+   "external_ci_high": "2872.07",
+   "external_ci_low": "1893.32",
+   "external_value": "2358.4",
+   "internal_value": "unavailable",
+   "metric": "false_positive_lesions_per_scan",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+   "value_kind": "descriptive"
+  },
+  {
+   "claims_policy": "descriptive_only_no_superiority_or_generalization_claims",
+   "difference_external_minus_internal": "not_materialized_in_source_artifact",
+   "external_ci_high": "0.00130496",
+   "external_ci_low": "0.000388752",
+   "external_value": "0.000829379",
+   "internal_value": "unavailable",
+   "metric": "lesion_f1",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+   "value_kind": "descriptive"
+  },
+  {
+   "claims_policy": "descriptive_only_no_superiority_or_generalization_claims",
+   "difference_external_minus_internal": "not_materialized_in_source_artifact",
+   "external_ci_high": "0.000656226",
+   "external_ci_low": "0.000195357",
+   "external_value": "0.000417023",
+   "internal_value": "unavailable",
+   "metric": "lesion_wise_precision",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+   "value_kind": "descriptive"
+  },
+  {
+   "claims_policy": "descriptive_only_no_superiority_or_generalization_claims",
+   "difference_external_minus_internal": "not_materialized_in_source_artifact",
+   "external_ci_high": "0.310257",
+   "external_ci_low": "0.0481536",
+   "external_value": "0.158868",
+   "internal_value": "unavailable",
+   "metric": "lesion_wise_recall",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+   "value_kind": "descriptive"
+  },
+  {
+   "claims_policy": "descriptive_only_no_superiority_or_generalization_claims",
+   "difference_external_minus_internal": "not_materialized_in_source_artifact",
+   "external_ci_high": "0.025013",
+   "external_ci_low": "0.00434155",
+   "external_value": "0.0141157",
+   "internal_value": "0.015793",
+   "metric": "tumor_dice",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+   "value_kind": "descriptive"
+  },
+  {
+   "claims_policy": "descriptive_only_no_superiority_or_generalization_claims",
+   "difference_external_minus_internal": "not_materialized_in_source_artifact",
+   "external_ci_high": "194.302",
+   "external_ci_low": "159.324",
+   "external_value": "176.626",
+   "internal_value": "unavailable",
+   "metric": "tumor_hd95",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+   "value_kind": "descriptive"
+  },
+  {
+   "claims_policy": "descriptive_only_no_superiority_or_generalization_claims",
+   "difference_external_minus_internal": "not_materialized_in_source_artifact",
+   "external_ci_high": "0.0127937",
+   "external_ci_low": "0.00220828",
+   "external_value": "0.00721538",
+   "internal_value": "unavailable",
+   "metric": "tumor_iou",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+   "value_kind": "descriptive"
+  },
+  {
+   "claims_policy": "descriptive_only_no_superiority_or_generalization_claims",
+   "difference_external_minus_internal": "not_materialized_in_source_artifact",
+   "external_ci_high": "0.00616264",
+   "external_ci_low": "0.000869538",
+   "external_value": "0.00330141",
+   "internal_value": "unavailable",
+   "metric": "tumor_normalized_surface_dice",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+   "value_kind": "descriptive"
+  },
+  {
+   "claims_policy": "descriptive_only_no_superiority_or_generalization_claims",
+   "difference_external_minus_internal": "not_materialized_in_source_artifact",
+   "external_ci_high": "18.2676",
+   "external_ci_low": "-96.5135",
+   "external_value": "-30.979",
+   "internal_value": "unavailable",
+   "metric": "tumor_volume_error_signed_ml",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_internal_external_comparison_corrected_v1.json",
+   "value_kind": "descriptive"
+  }
+ ],
+ "schema_name": "phase10_table",
+ "schema_version": "v1",
+ "self_hash": "ae2f50c290a1fecf5f8e537f7bf1e2911cef74a265bfdbc8951158b70c57bfaa",
+ "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+ "table_id": "phase10_internal_external_descriptive_comparison",
+ "title": "Phase 10 Internal-vs-External Descriptive Comparison"
+}

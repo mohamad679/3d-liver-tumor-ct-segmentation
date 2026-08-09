@@ -1,0 +1,12 @@
+label,value,unit,valid_case_count,source_metric,source_artifact,source_field,value_kind
+Development cases,131,cases,,development_case_count,phase2_real_lits_v2/manifest.json,case_count,descriptive
+Development train cases,91,cases,,train_case_count,phase2_real_lits_v2/split.json,train_case_count,descriptive
+Development validation cases,20,cases,,validation_case_count,phase2_real_lits_v2/split.json,validation_case_count,descriptive
+Immutable internal-test cases,20,cases,,internal_test_case_count,phase2_real_lits_v2/split.json,internal_test_case_count,descriptive
+Geometry QA passed cases,131,cases,,geometry_qa_passed_case_count,phase2_real_lits_v2/geometry_qa.json,passed_case_count,descriptive
+Geometry QA failed cases,0,cases,,geometry_qa_failed_case_count,phase2_real_lits_v2/geometry_qa.json,failed_case_count,descriptive
+Total development lesions,908,lesions,,total_lesion_count,phase2_real_lits_v2/lesion_components.json,sum(case_records[*].lesion_count),descriptive
+External discovered cases,20,cases,,external_discovered_count,phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json,discovered_count,descriptive
+External inference-eligible cases,20,cases,,external_inference_eligible_count,phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json,inference_eligible_count,descriptive
+External evaluation-eligible cases,15,cases,,external_evaluation_eligible_count,phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json,evaluation_eligible_count,descriptive
+External excluded cases,5,cases,,external_excluded_count,phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json,excluded_count,descriptive

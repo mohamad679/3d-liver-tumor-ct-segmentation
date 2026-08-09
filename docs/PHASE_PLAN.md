@@ -29,7 +29,15 @@ all 9 preregistered metric families and must not be reframed as successful gener
 for the full package-by-package execution history (Packages A through H), and the "Phase 8 Package H
 — Final Closure" note below for the closure-specific summary.
 
-Active phase: none. No Phase 9, LLM/VLM track, or any phase beyond Phase 8 has begun.
+Phase 9 is **SKIPPED BY USER DECISION / NOT EXECUTED**. No LLM/VLM/RAG work was implemented.
+
+Phase 10 (final scientific package) is in release-candidate preparation on
+`phase/10-final-scientific-package`. The package generates the final report, tables, figures,
+statistics, model card, data card, application materials, release checklist, and release-candidate
+metadata from saved machine-readable artifacts. Phase 10 is not closed until Gate 8 reproduction,
+final validation commands, and P10-R independent review pass.
+
+Active phase: Phase 10 only.
 
 ## Phase 0 Scope
 

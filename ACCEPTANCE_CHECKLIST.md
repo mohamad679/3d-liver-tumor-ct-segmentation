@@ -342,6 +342,46 @@ Leakage and scope evidence:
 
 ## Gate 8
 
+- [x] Phase 9 skipped by user decision / not executed
+- [x] P10-A artifact inventory generated from saved machine-readable artifacts
+- [x] P10-B final tables generated from artifact-backed inventory values
+- [x] P10-B final figures generated from artifact-backed numeric values
+- [x] P10-B statistical summaries collated from preregistered saved Phase 8 artifacts
+- [x] P10-C technical report generated from P10-A/P10-B machine-readable outputs
+- [x] Reproduction README created
+- [x] MODEL_CARD.md completed without clinical-use or strong-generalization claim
+- [x] DATA_CARD.md completed with LiTS/MSD non-independence and external-label no-tuning policy
+- [x] One-page CV project summary created
+- [x] Motivation-letter evidence paragraph created
+- [x] Release checklist created
+- [x] Release-candidate metadata created
+- [ ] `uv run ruff format --check .` passes
+- [ ] `uv run ruff check .` passes
+- [ ] `uv run mypy src tests` passes
+- [ ] `uv run pytest -q` passes
+- [ ] `make smoke` passes
+- [ ] `uv run snakemake --cores 4 --rerun-incomplete reports/final_report.html` passes
+- [ ] P10-R independent review passes
+- [ ] Gate 8 passes: final report generated entirely from machine-readable artifacts
+
+### Gate 8 Evidence
+
+Gate 8 status: release candidate prepared, final validation pending.
+
+Current artifact identities:
+
+- P10-A inventory: `reports/phase10/artifact_inventory.json`
+- P10-B outputs manifest: `reports/phase10/phase10_b_outputs_manifest.json`
+- Final report manifest: `reports/phase10/final_report_manifest.json`
+- Final HTML report: `reports/final_report.html`
+- Release candidate metadata: `reports/phase10/release_candidate.json`
+
+Phase 10 does not rerun training, inference, prediction generation, checkpoint selection, threshold
+selection, preprocessing changes, or external-label tuning. External validation remains an honest
+negative result, and LiTS/MSD Task03 Liver is treated as one LiTS-derived development source.
+
+## Gate 8
+
 - [x] Preregistration published before any external label access
 - [x] Image-only external inference completed and predictions locked before any external label
       access

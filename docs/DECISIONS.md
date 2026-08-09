@@ -67,6 +67,20 @@
 - Decision: Medical data and generated predictions are excluded from Git.
 - Consequences: Data, model weights, predictions, credentials, API keys, and large generated artifacts must remain untracked.
 
+### 2026-08-09: Skip Phase 9
+
+- Status: accepted
+- Context: The user explicitly decided not to execute the Phase 9 LLM/VLM/RAG track.
+- Decision: Phase 9 is skipped by user decision and not executed. Phase 10 proceeds as the final core-project phase.
+- Consequences: No LLM, VLM, RAG, prompt, or language-model result may be claimed in the final package.
+
+### 2026-08-09: Close Core Project Through Artifact-Driven Phase 10 Reporting
+
+- Status: accepted
+- Context: The final scientific package must report completed evidence without rerunning training, inference, prediction generation, checkpoint selection, threshold selection, preprocessing changes, or external-label tuning.
+- Decision: Generate Phase 10 tables, figures, statistics, report, cards, application materials, release checklist, and release-candidate metadata from saved machine-readable artifacts.
+- Consequences: Unavailable Phase 3-7 numeric results are explicitly omitted or marked unavailable. The negative Phase 8 external-validation result remains negative and must not be reframed as strong external generalization.
+
 ## Phase 0 Close-Out Decisions
 
 ### 2026-08-04: Preregister Phase 8 Statistical and Publication Policies Before Results

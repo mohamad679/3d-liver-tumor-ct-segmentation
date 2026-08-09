@@ -1,0 +1,134 @@
+{
+ "columns": [
+  "label",
+  "value",
+  "unit",
+  "valid_case_count",
+  "source_metric",
+  "source_artifact",
+  "source_field",
+  "value_kind"
+ ],
+ "notes": [
+  "LiTS/MSD Task03 Liver is one LiTS-derived development source.",
+  "External cohort is 3D-IRCADb-01."
+ ],
+ "rows": [
+  {
+   "label": "Development cases",
+   "source_artifact": "phase2_real_lits_v2/manifest.json",
+   "source_field": "case_count",
+   "source_metric": "development_case_count",
+   "unit": "cases",
+   "valid_case_count": "",
+   "value": "131",
+   "value_kind": "descriptive"
+  },
+  {
+   "label": "Development train cases",
+   "source_artifact": "phase2_real_lits_v2/split.json",
+   "source_field": "train_case_count",
+   "source_metric": "train_case_count",
+   "unit": "cases",
+   "valid_case_count": "",
+   "value": "91",
+   "value_kind": "descriptive"
+  },
+  {
+   "label": "Development validation cases",
+   "source_artifact": "phase2_real_lits_v2/split.json",
+   "source_field": "validation_case_count",
+   "source_metric": "validation_case_count",
+   "unit": "cases",
+   "valid_case_count": "",
+   "value": "20",
+   "value_kind": "descriptive"
+  },
+  {
+   "label": "Immutable internal-test cases",
+   "source_artifact": "phase2_real_lits_v2/split.json",
+   "source_field": "internal_test_case_count",
+   "source_metric": "internal_test_case_count",
+   "unit": "cases",
+   "valid_case_count": "",
+   "value": "20",
+   "value_kind": "descriptive"
+  },
+  {
+   "label": "Geometry QA passed cases",
+   "source_artifact": "phase2_real_lits_v2/geometry_qa.json",
+   "source_field": "passed_case_count",
+   "source_metric": "geometry_qa_passed_case_count",
+   "unit": "cases",
+   "valid_case_count": "",
+   "value": "131",
+   "value_kind": "descriptive"
+  },
+  {
+   "label": "Geometry QA failed cases",
+   "source_artifact": "phase2_real_lits_v2/geometry_qa.json",
+   "source_field": "failed_case_count",
+   "source_metric": "geometry_qa_failed_case_count",
+   "unit": "cases",
+   "valid_case_count": "",
+   "value": "0",
+   "value_kind": "descriptive"
+  },
+  {
+   "label": "Total development lesions",
+   "source_artifact": "phase2_real_lits_v2/lesion_components.json",
+   "source_field": "sum(case_records[*].lesion_count)",
+   "source_metric": "total_lesion_count",
+   "unit": "lesions",
+   "valid_case_count": "",
+   "value": "908",
+   "value_kind": "descriptive"
+  },
+  {
+   "label": "External discovered cases",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json",
+   "source_field": "discovered_count",
+   "source_metric": "external_discovered_count",
+   "unit": "cases",
+   "valid_case_count": "",
+   "value": "20",
+   "value_kind": "descriptive"
+  },
+  {
+   "label": "External inference-eligible cases",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json",
+   "source_field": "inference_eligible_count",
+   "source_metric": "external_inference_eligible_count",
+   "unit": "cases",
+   "valid_case_count": "",
+   "value": "20",
+   "value_kind": "descriptive"
+  },
+  {
+   "label": "External evaluation-eligible cases",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json",
+   "source_field": "evaluation_eligible_count",
+   "source_metric": "external_evaluation_eligible_count",
+   "unit": "cases",
+   "valid_case_count": "",
+   "value": "15",
+   "value_kind": "descriptive"
+  },
+  {
+   "label": "External excluded cases",
+   "source_artifact": "phase8_external_evaluation_v1/phase8_external_eligibility_accounting.json",
+   "source_field": "excluded_count",
+   "source_metric": "external_excluded_count",
+   "unit": "cases",
+   "valid_case_count": "",
+   "value": "5",
+   "value_kind": "descriptive"
+  }
+ ],
+ "schema_name": "phase10_table",
+ "schema_version": "v1",
+ "self_hash": "864c00af4b952e08bc45cd7c6a29585a2dccd86dc501a9ead09dc2ade99a1870",
+ "source_inventory_hash": "67da0cadfd3d8127f3bfac55f8c3984bd46e6888aa3d6720ad23e8dcf252dea9",
+ "table_id": "phase10_cohort_data_summary",
+ "title": "Phase 10 Cohort Data Summary"
+}
