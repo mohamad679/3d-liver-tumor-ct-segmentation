@@ -11,6 +11,7 @@ from typing import Any
 import nibabel as nib
 import numpy as np
 import pytest
+from click.utils import strip_ansi  # type: ignore[attr-defined]
 from typer.testing import CliRunner
 
 from protoem_ct.artifacts import (
@@ -748,7 +749,7 @@ def test_cli_help_mentions_verification_only_bounded_and_approval() -> None:
     runner = CliRunner()
     result = runner.invoke(app, ["run-phase8-tiny-real-development-verification", "--help"])
     assert result.exit_code == 0, result.output
-    lowered = result.output.lower()
+    lowered = strip_ansi(result.output).lower()
     assert "verification-only" in lowered or "verification_only" in lowered
     assert "bounded" in lowered
     assert "approve-tiny-real-verification" in lowered

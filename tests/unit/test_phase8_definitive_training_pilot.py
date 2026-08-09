@@ -13,6 +13,7 @@ from typing import Any, cast
 import nibabel as nib
 import numpy as np
 import pytest
+from click.utils import strip_ansi  # type: ignore[attr-defined]
 from typer.testing import CliRunner
 
 from protoem_ct.artifacts import (
@@ -993,7 +994,7 @@ def test_cli_help_mentions_pilot_only_bounded_and_approval() -> None:
     runner = CliRunner()
     result = runner.invoke(app, ["run-phase8-bounded-real-development-pilot", "--help"])
     assert result.exit_code == 0, result.output
-    lowered = result.output.lower()
+    lowered = strip_ansi(result.output).lower()
     assert "pilot" in lowered
     assert "bounded" in lowered
     assert "approve-bounded-pilot" in lowered

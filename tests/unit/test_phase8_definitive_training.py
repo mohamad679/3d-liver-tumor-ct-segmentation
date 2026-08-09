@@ -13,6 +13,7 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
+from click.utils import strip_ansi  # type: ignore[attr-defined]
 from typer.testing import CliRunner
 
 from protoem_ct.artifacts.hashing import sha256_json
@@ -1090,21 +1091,24 @@ def test_plan_publication_rejects_release_config_mismatch(tmp_path: Path) -> Non
 def test_cli_help_lists_new_commands() -> None:
     result = CliRunner().invoke(app, ["--help"])
     assert result.exit_code == 0, result.output
-    assert "plan-phase8-definitive-development-training" in result.output
-    assert "run-phase8-definitive-development-training" in result.output
+    output = strip_ansi(result.output)
+    assert "plan-phase8-definitive-development-training" in output
+    assert "run-phase8-definitive-development-training" in output
 
     plan_help = CliRunner().invoke(app, ["plan-phase8-definitive-development-training", "--help"])
     assert plan_help.exit_code == 0, plan_help.output
-    assert "--input-binding-hash" in plan_help.output
-    assert "--candidate-inventory-path" in plan_help.output
-    assert "--preprocessing-decision" in plan_help.output
-    assert "awaiting_explicit_user_approval" in plan_help.output
+    plan_output = strip_ansi(plan_help.output)
+    assert "--input-binding-hash" in plan_output
+    assert "--candidate-inventory-path" in plan_output
+    assert "--preprocessing-decision" in plan_output
+    assert "awaiting_explicit_user_approval" in plan_output
 
     run_help = CliRunner().invoke(app, ["run-phase8-definitive-development-training", "--help"])
     assert run_help.exit_code == 0, run_help.output
-    assert "--config-path" in run_help.output
-    assert "--release-path" in run_help.output
-    assert "refuses" in run_help.output
+    run_output = strip_ansi(run_help.output)
+    assert "--config-path" in run_output
+    assert "--release-path" in run_output
+    assert "refuses" in run_output
 
 
 def _inventory_mapping(preprocessing_hash: str) -> dict[str, Any]:

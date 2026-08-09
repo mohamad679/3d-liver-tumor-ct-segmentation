@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from click.utils import strip_ansi  # type: ignore[attr-defined]
 from typer.testing import CliRunner
 
 from protoem_ct.artifacts import (
@@ -730,14 +731,16 @@ def test_publication_is_byte_identical_across_two_output_roots(tmp_path: Path) -
 def test_cli_help_lists_new_command() -> None:
     result = CliRunner().invoke(app, ["--help"])
     assert result.exit_code == 0, result.output
-    assert "plan-phase8-real-development-run" in result.output
+    output = strip_ansi(result.output)
+    assert "plan-phase8-real-development-run" in output
 
     command_help = CliRunner().invoke(app, ["plan-phase8-real-development-run", "--help"])
     assert command_help.exit_code == 0, command_help.output
-    assert "--manifest-path" in command_help.output
-    assert "--split-path" in command_help.output
-    assert "--candidate-inventory-path" in command_help.output
-    assert "--preprocessing-decision" in command_help.output
+    command_output = strip_ansi(command_help.output)
+    assert "--manifest-path" in command_output
+    assert "--split-path" in command_output
+    assert "--candidate-inventory-path" in command_output
+    assert "--preprocessing-decision" in command_output
 
 
 def test_cli_successful_synthetic_plan_only_run(tmp_path: Path) -> None:
