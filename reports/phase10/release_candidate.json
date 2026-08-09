@@ -69,7 +69,7 @@
  "final_report_manifest_hash": "d6fdc2e46ef8f44ee6e69f4ec4d4ed4e8de5bc4cf71ec302ed51fe411c62101f",
  "gate8_status": "pass_final_report_generated_from_machine_readable_artifacts",
  "git_branch": "phase/10-final-scientific-package",
- "git_commit": "2cf24f00f7059433058a67b6dd88ec9e501ccb23",
+ "git_commit_identity_policy": "The commit containing this tracked metadata file cannot be embedded inside the same file without changing the commit hash. Resolve the containing commit with release_candidate_containing_commit_resolution.",
  "inference_rerun": false,
  "lits_msd_policy": "single_lits_derived_development_source",
  "phase10_b_outputs_manifest_hash": "bce7894adbb3d059e6ee6367e7f90f49a30f32652e220d3aeb5b6298f2408035",
@@ -77,9 +77,11 @@
  "phase9_status": "skipped_by_user_decision_not_executed",
  "predictions_committed": false,
  "raw_medical_data_committed": false,
+ "release_candidate_containing_commit_resolution": "git log -1 --format=%H -- reports/phase10/release_candidate.json",
  "schema_name": "phase10_release_candidate",
  "schema_version": "v1",
  "secrets_committed": false,
- "self_hash": "6d376898355e0bdbe74dcce687e8fffb2a2e5a16382e09e7a2767e701b6d3e9e",
+ "self_hash": "d7da99904e894ed5456e6fd8a948611b6162b8d916821cfcb0ba31d4387f7213",
+ "source_package_commit": "6fef8d480accc5658f674c6ddb152b9ca09e73b2",
  "training_rerun": false
 }

@@ -73,7 +73,15 @@ def build_release_candidate(output: Path) -> dict[str, Any]:
     payload = {
         "schema_name": "phase10_release_candidate",
         "schema_version": SCHEMA_VERSION,
-        "git_commit": git_output(["rev-parse", "HEAD"]),
+        "source_package_commit": git_output(["rev-parse", "HEAD"]),
+        "release_candidate_containing_commit_resolution": (
+            "git log -1 --format=%H -- reports/phase10/release_candidate.json"
+        ),
+        "git_commit_identity_policy": (
+            "The commit containing this tracked metadata file cannot be embedded inside the "
+            "same file without changing the commit hash. Resolve the containing commit with "
+            "release_candidate_containing_commit_resolution."
+        ),
         "git_branch": git_output(["branch", "--show-current"]),
         "artifact_inventory_hash": inventory["self_hash"],
         "phase10_b_outputs_manifest_hash": b_manifest["self_hash"],
