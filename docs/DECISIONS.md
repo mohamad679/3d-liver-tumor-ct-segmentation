@@ -714,3 +714,57 @@
   `Phase8DefinitiveConfig` (spacing remains a runtime-supplied value, not a config field), and does
   not modify any prior decision's content -- including the historical open-question language
   preserved as-written in `docs/phase8/DEFINITIVE_CONFIG_AUDIT.md`.
+
+### 2026-08-09: Record Package C Execution Provenance
+
+- Context: Package C (real Phase 8 definitive development training) executed successfully. Every
+  boundary condition in `PHASE8-REAL-DEFINITIVE-DEVELOPMENT-TRAINING-V1` was independently verified
+  before and after the run, including by a fresh independent read-only reviewer with no prior
+  context on the run, who returned an overall **PASS** across all checked items (train-pool count,
+  internal-test exclusion, approved spacing, RNG policy, single continuous trajectory, checkpoint
+  identities, identical 20-case validation set for both candidates, correct Dice-based selection
+  arithmetic, no external-data access, no post-result policy change, and `freeze_eligible=false`).
+  This entry records that outcome's provenance transparently, including an intentional wrinkle in
+  how the execution code reached Git: it does not perform, repeat, or authorize any rerun of
+  training, validation, or metric computation, and it does not open any medical image, label, or
+  materialized-patch array.
+- Decision: Package C definitive development training is recorded as **complete**. The run executed
+  with the real-data driver in an intentionally uncommitted working-tree state on top of execution
+  base HEAD `f1d4e1be7b6f7aa3657792cae9125c825affdded`. The exact execution-code files, and their
+  pre-commit SHA-256 hashes (computed from the working tree exactly as it stood when the run
+  executed, before any commit was made), were:
+  - `src/protoem_ct/cli/main.py`:
+    `0a77c1d857f4ce015d8263bfc5a4168e3d167360263c0bdb73dd59751b2c1c2a`
+  - `src/protoem_ct/external/definitive_real_training_driver.py`:
+    `98de618b9e3aae7df7579a12c3f9b54f9fb6eeaf25310c5cc7dc40fcbcc30f1e`
+  - `tests/unit/test_phase8_definitive_real_driver.py`:
+    `895162a46b524e22345551914f2d8449a418dc23c3183264c086ca9f995fd910`
+
+  These three exact file contents were subsequently captured, unmodified, in a **post-run
+  code-capture commit** `f264ce79dd68039256d140f03c468baed8ecea07`
+  (`feat(phase8): add definitive real training driver`), created strictly to preserve the exact
+  bytes that produced the run. All three post-commit file hashes were reverified to be byte-identical
+  to their pre-commit hashes above before this entry was written. **This capture commit must not be
+  misrepresented as the Git HEAD the run started from.** The run's execution base HEAD remains
+  `f1d4e1be7b6f7aa3657792cae9125c825affdded`; the capture commit is a later, separate commit that
+  exists solely to make the already-executed code reviewable and citable in Git history. Where
+  existing Package C checkpoint metadata (`phase8_definitive_checkpoint_metadata_step_{250,500}.json`)
+  records `originating_git_commit: f1d4e1be1...`, that field is correct and unchanged: it documents
+  the execution base HEAD, not the later code-capture commit, and no artifact was rewritten to
+  obscure this distinction.
+
+  Run output root: `/Volumes/Lexar/ProtoEM-CT/runs/phase8_definitive_training_v1`. Selected
+  checkpoint: step `500`, SHA-256 `2d7989fd134b1348e82cc52afbcf4738c0ce3c17e9c68df774431f577dede651`
+  (re-verified byte-identical against the artifact on disk as part of this closure). Selection
+  evidence hash `81be6e4f7e6a56d21f07bc101b21d19ac18b0580c74548e9490bf295382c8bc8` (re-verified).
+  Step-250 mean tumor Dice `0.0016380082094079678`; step-500 mean tumor Dice
+  `0.01579295321113191`. Step 500 was selected because its complete 20-case development-validation
+  mean tumor Dice was higher than step 250's, per the locked `mean_tumor_dice` selection metric with
+  earliest-step tie-break (not a tie here). `internal_test_used=false`, `external_data_used=false`,
+  `external_labels_used=false`; no hyperparameter, preprocessing, or threshold tuning occurred after
+  results were known; the selected checkpoint remains `freeze_eligible=false`. The scientific run
+  itself is not being repeated, rerun, or re-derived by this entry.
+- Consequences: Package C's execution code is now committed and reviewable, closing the provenance
+  gap between "what ran" and "what is in Git," without disturbing the already-completed scientific
+  result. This entry does not begin Freeze, does not access 3D-IRCADb-01, and does not change
+  `freeze_eligible` on any checkpoint. Phase 8 Freeze remains the next, separately authorized stage.
