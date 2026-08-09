@@ -1,6 +1,6 @@
 # Phase 10 Release Checklist
 
-Status: release candidate prepared pending final validation and independent review.
+Status: release candidate prepared; final validation passed; independent P10-R review pending.
 
 ## Scope
 
@@ -43,16 +43,16 @@ Status: release candidate prepared pending final validation and independent revi
 
 These must pass before Phase 10 closure:
 
-- [ ] `uv run ruff format --check .`
-- [ ] `uv run ruff check .`
-- [ ] `uv run mypy src tests`
-- [ ] `uv run pytest -q`
-- [ ] `make smoke`
-- [ ] `uv run snakemake --cores 4 --rerun-incomplete reports/final_report.html`
+- [x] `uv run ruff format --check .`
+- [x] `uv run ruff check .`
+- [x] `uv run mypy src tests`
+- [x] `uv run pytest -q`
+- [x] `make smoke`
+- [x] `uv run snakemake --cores 4 --rerun-incomplete reports/final_report.html`
 
 ## Gate 8
 
-- [ ] Gate 8 PASS: final report generated entirely from machine-readable artifacts.
+- [x] Gate 8 PASS: final report generated entirely from machine-readable artifacts.
 
 ## Final Review
 

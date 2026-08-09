@@ -46,7 +46,7 @@
   },
   {
    "path": "docs/PHASE10_RELEASE_CHECKLIST.md",
-   "sha256": "2082b7758309cc7365a8c4340c52fb17f57f64ff5ae753fb3df75bc22bc88f6e"
+   "sha256": "c9ca2a1119dc656fe1a861aa14e0d57e00d19f1773934989afa99d985e3c2789"
   },
   {
    "path": "README.md",
@@ -54,7 +54,7 @@
   },
   {
    "path": "ACCEPTANCE_CHECKLIST.md",
-   "sha256": "3934cfc821ef08013fd93273dc0b4b556f616d9551743d7664552c834acb289e"
+   "sha256": "23fd9eca45b9e1e9db354071227af184871cf127bd6940bb6c420a92ae30042d"
   },
   {
    "path": "docs/PHASE_PLAN.md",
@@ -67,19 +67,19 @@
  ],
  "final_report_html_sha256": "c7db978eae68e4177e309cc1488dcf4af1195d5edb0614c37b095628f0915dda",
  "final_report_manifest_hash": "d6fdc2e46ef8f44ee6e69f4ec4d4ed4e8de5bc4cf71ec302ed51fe411c62101f",
- "gate8_status": "pending_final_reproduction_command",
+ "gate8_status": "pass_final_report_generated_from_machine_readable_artifacts",
  "git_branch": "phase/10-final-scientific-package",
- "git_commit": "0e214e9988d3d51dc365973ce52911492fb87de2",
+ "git_commit": "4995909f643bffc2ca2c99173927e1db974ddcf0",
  "inference_rerun": false,
  "lits_msd_policy": "single_lits_derived_development_source",
  "phase10_b_outputs_manifest_hash": "bce7894adbb3d059e6ee6367e7f90f49a30f32652e220d3aeb5b6298f2408035",
- "phase10_status": "release_candidate_prepared_pending_final_review",
+ "phase10_status": "release_candidate_prepared_pending_p10r_review",
  "phase9_status": "skipped_by_user_decision_not_executed",
  "predictions_committed": false,
  "raw_medical_data_committed": false,
  "schema_name": "phase10_release_candidate",
  "schema_version": "v1",
  "secrets_committed": false,
- "self_hash": "66dc8633ee877b352a26357664282248126aed7342133629599c644c3823bc5c",
+ "self_hash": "2a8b7019fd5f4f81c66dfc91c24f88e8e68448a7d6a35ca911b371291cf1fd41",
  "training_rerun": false
 }

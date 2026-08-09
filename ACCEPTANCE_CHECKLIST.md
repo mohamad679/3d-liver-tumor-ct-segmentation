@@ -355,18 +355,18 @@ Leakage and scope evidence:
 - [x] Motivation-letter evidence paragraph created
 - [x] Release checklist created
 - [x] Release-candidate metadata created
-- [ ] `uv run ruff format --check .` passes
-- [ ] `uv run ruff check .` passes
-- [ ] `uv run mypy src tests` passes
-- [ ] `uv run pytest -q` passes
-- [ ] `make smoke` passes
-- [ ] `uv run snakemake --cores 4 --rerun-incomplete reports/final_report.html` passes
+- [x] `uv run ruff format --check .` passes
+- [x] `uv run ruff check .` passes
+- [x] `uv run mypy src tests` passes
+- [x] `uv run pytest -q` passes
+- [x] `make smoke` passes
+- [x] `uv run snakemake --cores 4 --rerun-incomplete reports/final_report.html` passes
 - [ ] P10-R independent review passes
-- [ ] Gate 8 passes: final report generated entirely from machine-readable artifacts
+- [x] Gate 8 passes: final report generated entirely from machine-readable artifacts
 
 ### Gate 8 Evidence
 
-Gate 8 status: release candidate prepared, final validation pending.
+Gate 8 status: PASS for artifact-only final-report reproduction; P10-R independent review pending.
 
 Current artifact identities:
 
