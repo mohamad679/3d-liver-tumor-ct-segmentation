@@ -768,3 +768,65 @@
   gap between "what ran" and "what is in Git," without disturbing the already-completed scientific
   result. This entry does not begin Freeze, does not access 3D-IRCADb-01, and does not change
   `freeze_eligible` on any checkpoint. Phase 8 Freeze remains the next, separately authorized stage.
+
+### 2026-08-09: Publish Package D Phase 8 Definitive Freeze
+
+- Status: accepted
+- Authorization: the user, acting as Phase 8 Master Supervisor in this session, explicitly directed
+  execution of "PACKAGE D — PHASE 8 DEFINITIVE FREEZE" against the completed, reviewed Package C
+  result recorded in the immediately preceding entry above. This is the explicit, separate
+  authorization that entry stated Freeze required before proceeding; no prior separately-named
+  `APPROVAL:` token exists for this step because none was issued, but the directive itself is
+  unambiguous and is recorded here for traceability, per this document's own established convention
+  of documenting authorization after (not before) the corresponding real execution completes (see
+  the "Record Package C Execution Provenance" and Package B entries above for the same pattern).
+- Context: `Phase8CheckpointMetadata.freeze_eligible` on Package C's published checkpoint metadata
+  (`phase8_definitive_checkpoint_metadata_step_{250,500}.json`) is `false` for both candidates. This
+  is not a judgment that either checkpoint is scientifically deficient or ineligible to be frozen --
+  it is a hard, unconditional structural property of the publishing function both Package A and
+  Package C reuse unchanged (`build_definitive_checkpoint_metadata` in `definitive_pipeline.py`,
+  lines 1382-1413): that function fails closed if a caller ever passes `freeze_eligible=True`,
+  because "Package A is implementation-only" and was designed to never self-declare freeze
+  eligibility. The authoritative freeze decision was always intended to live in a separate artifact,
+  produced by a later, dedicated freeze step -- this entry and the artifact it records are that step.
+  Consistent with the Package C task's own explicit instruction ("Do NOT rewrite historical
+  checkpoint metadata merely to make `freeze_eligible=true`"), neither Package C checkpoint metadata
+  file was modified by this work; both remain exactly as originally published, `freeze_eligible=false`
+  included.
+- Decision: A new, minimal wiring module `src/protoem_ct/external/definitive_freeze.py` (committed
+  `3b2c5db60c8ae261d9bf8b7f9863720c1437afd6`, reviewed by one independent read-only reviewer, PASS)
+  reuses the pre-existing, unmodified `Phase8DecisionFreeze`/`FrozenDecisionReference` schema
+  (`artifacts.py`) and `Phase8SupportPolicy` schema (`internal_evidence.py`) to assemble and publish
+  the authoritative freeze record, without touching Package C's checkpoint metadata. Support policy:
+  `policy_type="no_support"`, reusing the already-committed, already-locked
+  `REQUIRED_SUPPORT_POLICY_TYPE` constant from `definitive_training.py` (Substage 4A, commit
+  `809edeb`, predating this work) -- confirmed the only support-policy type ever concretely
+  constructed anywhere in this repository, bound to Package C's real
+  `selected_candidate_id="phase8_definitive_segresnet"` and
+  `selected_checkpoint_hash=2d7989fd134b1348e82cc52afbcf4738c0ce3c17e9c68df774431f577dede651`. The
+  published `Phase8DecisionFreeze` inventory (`freeze_state="frozen"`,
+  `frozen_before_external_evaluation=true`) contains exactly the nine required categories, each bound
+  by hash to already-real Package C/Wave 3/Wave 4 evidence: `preprocessing_decision` and
+  `threshold_decision` both cite the real definitive config hash
+  `4e0075e0d499080c4065031d42ea7ff25637cafe154b6757c05edbc14e8c0624` (which encodes RAS orientation,
+  trilinear/nearest interpolation, HU clip `[-1000,1000]`, intensity scale `[-1,1]`, tumor raw label
+  `2`, and the fixed inference threshold `0.5`, unchanged); `preprocessing_decision` additionally
+  cites spacing provenance `286b4a200c147718cfe885850e670254a52e8e1ec5d9683d78fd36af4f293d37`
+  (`PHASE8-DEFINITIVE-TRAIN-SPACING-V1`); `model_selection_decision` cites the real selection
+  evidence hash `81be6e4f7e6a56d21f07bc101b21d19ac18b0580c74548e9490bf295382c8bc8`;
+  `checkpoint_metadata` cites the real step-500 checkpoint-metadata hash
+  `acb46ab92d7dd5f3ce809fa21a47a1d836596d08f80676c32358321a4c50c134` and the checkpoint SHA-256;
+  `label_mapping_policy` cites the existing Wave 3 hash
+  `2781c3d7eadfafc1b384d34dab0e077528816e0c47ebeda3016c028f5ed00ced`; `metric_configuration`,
+  `bootstrap_configuration`, and `publication_configuration` cite the existing Wave 4 statistical
+  -policy component hashes computed by `phase8_statistical_policy_component_hash(...)`, unchanged.
+  Published, reject-on-overwrite, to
+  `/Volumes/Lexar/ProtoEM-CT/runs/phase8_definitive_freeze_v1/phase8_decision_freeze.json` and
+  `phase8_definitive_support_policy.json`. No medical image/label file, no `/Volumes/Lexar/ProtoEM-CT/
+  datasets/external` path, and no internal-test artifact was accessed by this work. No training,
+  validation, or metric was rerun or recomputed.
+- Consequences: Phase 8 now has a single, self-validating, hash-bound freeze inventory citing every
+  required decision category by real evidence hash, without ever rewriting Package C's own
+  checkpoint metadata. This entry does not perform external-evaluation preregistration, does not
+  access 3D-IRCADb-01, and does not perform external inference -- preregistration remains the next,
+  separately authorized Phase 8 stage.
