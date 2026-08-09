@@ -342,4 +342,40 @@ Leakage and scope evidence:
 
 ## Gate 8
 
-- [ ] Pending definition.
+- [x] Preregistration published before any external label access
+- [x] Image-only external inference completed and predictions locked before any external label
+      access
+- [x] External labels opened only after preregistration and prediction lock, using the
+      unmodified, previously frozen label-mapping/eligibility policy
+- [x] All 9 preregistered external metrics computed with case-level bootstrap confidence
+      intervals (10,000 resamples, seed 1729, 95% percentile)
+- [x] Descriptive-only internal-vs-external comparison published, with no superiority or
+      generalization claim
+- [x] One known non-scientific comparison-artifact provenance defect identified, minimally
+      fixed under a focused regression test, and a corrected artifact published without
+      overwriting the original historical record
+- [x] Final report documents the objective, frozen configuration, preregistration/lock/
+      evaluation identities, all 9 external metrics, limitations, and an explicit negative-result
+      interpretation
+- [x] Non-scientific reproduction/provenance chain verified from development provenance through
+      final report, with a machine-readable closure record
+- [x] Lint, formatting, typing, and full local tests pass for all Phase 8 closure changes
+- [ ] GitHub-hosted CI passes (not established this session)
+
+### Gate 8 Evidence
+
+Gate 8 status: PASSED locally on 2026-08-09 with a **negative external-validation result**.
+
+External tumor-segmentation performance on the 15 evaluation-eligible 3D-IRCADb-01 cases was very
+poor across all 9 preregistered metric families (macro tumor Dice `0.01412`; see
+`docs/phase8/FINAL_REPORT.md` for the complete result set). The selected checkpoint also had very
+low development-validation tumor Dice (`0.01579295321113191`) before any external evaluation. No
+external tuning of any kind occurred at any point. This is reported as an honest negative result,
+not reframed as generalization or partial success. Phase 8 is closed on the basis that the locked,
+preregistered protocol was executed exactly as designed and reported completely and transparently
+— not on the basis of a favorable scientific outcome.
+
+See `docs/phase8/FINAL_REPORT.md` for the full closure report, including frozen configuration
+identities, all 9 external metrics with confidence intervals, domain-shift and qualitative-output
+references, the corrected internal/external comparison artifact, limitations, and the
+reproduction/provenance chain.

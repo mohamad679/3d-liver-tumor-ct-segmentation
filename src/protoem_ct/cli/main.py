@@ -11,7 +11,7 @@ import numpy as np
 import typer
 from omegaconf import DictConfig, OmegaConf
 
-from protoem_ct.artifacts import Phase2ArtifactError
+from protoem_ct.artifacts import DatasetManifest, Phase2ArtifactError, phase2_artifact_from_json
 from protoem_ct.artifacts.hashing import JsonValue, canonical_json_bytes, sha256_json
 from protoem_ct.baselines import (
     BASELINE_PREDICTION_MANIFEST_VERSION,
@@ -94,6 +94,54 @@ from protoem_ct.evaluation.risk_coverage import compute_risk_coverage
 from protoem_ct.evaluation.subgroups import (
     LesionSubgroupCase,
     build_phase7_lesion_subgroup_result,
+)
+from protoem_ct.external import (
+    Phase8FreezeError,
+    Phase8Wave2PublicationError,
+    Phase8Wave3PublicationError,
+    run_phase8_wave2_image_inventory,
+    run_phase8_wave3_policy_publication,
+    run_phase8_wave4_readiness_publication,
+)
+from protoem_ct.external.definitive_real_training_driver import (
+    DEFAULT_WALL_CLOCK_LIMIT_SECONDS as DEFAULT_DEFINITIVE_REAL_TRAINING_WALL_CLOCK_LIMIT_SECONDS,
+)
+from protoem_ct.external.definitive_real_training_driver import (
+    Phase8DefinitiveRealTrainingError,
+    run_phase8_definitive_real_training_with_watchdog,
+)
+from protoem_ct.external.definitive_training import (
+    Phase8DefinitiveTrainingError,
+    build_phase8_definitive_training_config,
+    build_unreleased_definitive_execution_release,
+    execute_phase8_definitive_training,
+    phase8_definitive_execution_release_from_mapping,
+    phase8_definitive_training_config_from_mapping,
+    publish_phase8_definitive_training_plan,
+)
+from protoem_ct.external.definitive_training_pilot import (
+    DEFAULT_WALL_CLOCK_LIMIT_SECONDS,
+    Phase8BoundedPilotError,
+    run_phase8_bounded_pilot_with_watchdog,
+)
+from protoem_ct.external.internal_evidence import (
+    PHASE8_CHECKPOINT_METADATA_SCHEMA_NAME,
+    PHASE8_INTERNAL_EVIDENCE_SCHEMA_VERSION,
+    PHASE8_VALIDATION_EVIDENCE_REFERENCE_SCHEMA_NAME,
+    ArtifactReference,
+    phase8_fixed_candidate_inventory_from_mapping,
+    phase8_preprocessing_decision_from_mapping,
+)
+from protoem_ct.external.real_development_runner import (
+    Phase8RealDevelopmentRunnerError,
+    build_phase8_real_development_case_bindings,
+    build_phase8_real_development_input_binding,
+    build_phase8_real_development_run_plan,
+    run_phase8_real_development_plan_publication,
+)
+from protoem_ct.external.tiny_real_verification import (
+    Phase8TinyRealVerificationError,
+    run_phase8_tiny_real_development_verification,
 )
 from protoem_ct.fewshot import (
     FewshotArtifactValidationError,
@@ -324,6 +372,96 @@ def _raise_phase7_cli_error(exc: Exception) -> None:
     """Exit with a concise Phase 7 error without path or synthetic artifact leakage."""
     typer.secho(
         f"Phase 7 robustness/uncertainty error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase8_wave2_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 8 Wave 2 error without path or data leakage."""
+    typer.secho(
+        f"Phase 8 Wave 2 image inventory error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase8_wave3_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 8 Wave 3 error without path or data leakage."""
+    typer.secho(
+        f"Phase 8 Wave 3 policy publication error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase8_wave4_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 8 Wave 4 error without path or data leakage."""
+    typer.secho(
+        f"Phase 8 Wave 4 readiness error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase8_real_development_plan_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 8 real-development plan error without data leakage."""
+    typer.secho(
+        f"Phase 8 real-development plan error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase8_tiny_real_verification_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 8 tiny real-verification error without data leakage."""
+    typer.secho(
+        f"Phase 8 tiny real-development verification error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase8_bounded_pilot_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 8 bounded pilot error without data leakage."""
+    typer.secho(
+        f"Phase 8 bounded pilot error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase8_definitive_training_plan_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 8 definitive-training plan error without data leakage."""
+    typer.secho(
+        f"Phase 8 definitive-training plan error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase8_definitive_training_run_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 8 definitive-training run error without data leakage."""
+    typer.secho(
+        f"Phase 8 definitive-training run error: {type(exc).__name__}",
+        err=True,
+        fg=typer.colors.RED,
+    )
+    raise typer.Exit(code=1) from None
+
+
+def _raise_phase8_definitive_real_training_cli_error(exc: Exception) -> None:
+    """Exit with a concise Phase 8 definitive real-training error without data leakage."""
+    typer.secho(
+        f"Phase 8 definitive real-training error: {type(exc).__name__}",
         err=True,
         fg=typer.colors.RED,
     )
@@ -1489,6 +1627,1039 @@ def run_phase7_robustness_uncertainty_command(
     typer.echo(f"run summary artifact: {result.run_summary_path}")
     typer.echo(f"reused existing output: {str(result.reused_existing_output).lower()}")
     typer.echo(f"output root: {result.output_root}")
+
+
+@app.command("run-phase8-wave2-image-inventory")
+def run_phase8_wave2_image_inventory_command(
+    dataset_root: Annotated[
+        Path,
+        typer.Option(
+            "--dataset-root",
+            help="Explicit absolute extracted 3D-IRCADb-01 3Dircadb1 root.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    dataset_archive: Annotated[
+        Path,
+        typer.Option(
+            "--dataset-archive",
+            help="Explicit absolute outer 3Dircadb1.zip archive path.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help="Explicit absolute external Wave 2 output root outside the repository.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    repository_root: Annotated[
+        Path | None,
+        typer.Option(
+            "--repository-root",
+            help="Explicit absolute repository root used only for output-root rejection.",
+        ),
+    ] = None,
+) -> None:
+    """Run Phase 8 Wave 2 image-only 3D-IRCADb discovery, QA, and manifest publication."""
+
+    try:
+        result = run_phase8_wave2_image_inventory(
+            dataset_root=dataset_root,
+            dataset_archive=dataset_archive,
+            output_root=output_root,
+            repository_root=repository_root or Path.cwd(),
+        )
+    except (Phase8Wave2PublicationError, ValueError, OSError) as exc:
+        _raise_phase8_wave2_cli_error(exc)
+
+    typer.echo("Phase 8 Wave 2 image-only inventory complete")
+    typer.echo(f"case_count: {result.case_count}")
+    typer.echo(f"qa_pass_count: {result.qa_pass_count}")
+    typer.echo(f"qa_fail_count: {result.qa_fail_count}")
+    typer.echo(f"manifest_hash: {result.manifest.manifest_hash}")
+    for anonymous_case_id, reason_codes in result.anonymous_case_reason_codes:
+        typer.echo(f"failed_case: {anonymous_case_id} reason_codes={','.join(reason_codes)}")
+    for relative_name, digest in sorted(result.artifact_hashes.items()):
+        typer.echo(f"artifact: {relative_name} sha256={digest}")
+
+
+@app.command("run-phase8-wave3-policy")
+def run_phase8_wave3_policy_command(
+    wave2_artifact_root: Annotated[
+        Path,
+        typer.Option(
+            "--wave2-artifact-root",
+            help="Explicit absolute corrected Wave 2 image-only artifact root.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help="Explicit absolute external Wave 3 output root outside the repository.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    repository_root: Annotated[
+        Path | None,
+        typer.Option(
+            "--repository-root",
+            help="Explicit absolute repository root used only for output-root rejection.",
+        ),
+    ] = None,
+) -> None:
+    """Run Phase 8 Wave 3 policy, domain-shift, and eligibility publication."""
+
+    try:
+        result = run_phase8_wave3_policy_publication(
+            wave2_artifact_root=wave2_artifact_root,
+            output_root=output_root,
+            repository_root=repository_root or Path.cwd(),
+        )
+    except (Phase8Wave3PublicationError, ValueError, OSError) as exc:
+        _raise_phase8_wave3_cli_error(exc)
+
+    typer.echo("Phase 8 Wave 3 policy publication complete")
+    typer.echo(f"case_count: {result.case_count}")
+    typer.echo(f"image_qa_eligible_count: {result.image_qa_eligible_count}")
+    typer.echo(f"inference_eligible_count: {result.inference_eligible_count}")
+    typer.echo(f"label_compatibility_pending_count: {result.label_compatibility_pending_count}")
+    typer.echo(f"evaluation_eligible_count: {result.evaluation_eligible_count}")
+    typer.echo(f"deferred_count: {result.deferred_count}")
+    typer.echo(f"label_mapping_policy_hash: {result.label_mapping_policy.policy_hash}")
+    typer.echo(f"domain_shift_record_hash: {result.domain_shift_record.domain_shift_record_hash}")
+    typer.echo(f"eligibility_policy_hash: {result.eligibility_policy.policy_hash}")
+    typer.echo(f"cohort_accounting_hash: {result.cohort_accounting.accounting_hash}")
+    for relative_name, digest in sorted(result.artifact_hashes.items()):
+        typer.echo(f"artifact: {relative_name} sha256={digest}")
+
+
+@app.command("run-phase8-wave4-readiness")
+def run_phase8_wave4_readiness_command(
+    wave2_artifact_root: Annotated[
+        Path,
+        typer.Option(
+            "--wave2-artifact-root",
+            help="Explicit absolute corrected Wave 2 image-only artifact root.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    wave3_artifact_root: Annotated[
+        Path,
+        typer.Option(
+            "--wave3-artifact-root",
+            help="Explicit absolute approved Wave 3 policy artifact root.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    internal_artifact_parent: Annotated[
+        Path,
+        typer.Option(
+            "--internal-artifact-parent",
+            help="Explicit absolute parent containing approved internal development artifacts.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help="Explicit absolute external Wave 4 output root outside the repository.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    repository_root: Annotated[
+        Path | None,
+        typer.Option(
+            "--repository-root",
+            help="Explicit absolute repository root used only for output-root rejection.",
+        ),
+    ] = None,
+) -> None:
+    """Run Phase 8 Wave 4 guarded internal-evidence readiness publication."""
+
+    try:
+        result = run_phase8_wave4_readiness_publication(
+            wave2_artifact_root=wave2_artifact_root,
+            wave3_artifact_root=wave3_artifact_root,
+            internal_artifact_parent=internal_artifact_parent,
+            output_root=output_root,
+            repository_root=repository_root or Path.cwd(),
+        )
+    except (Phase8FreezeError, ValueError, OSError) as exc:
+        _raise_phase8_wave4_cli_error(exc)
+
+    typer.echo("Phase 8 Wave 4 readiness publication complete")
+    typer.echo(f"readiness_state: {result.wave4_state}")
+    typer.echo(f"freeze_generated: {str(result.freeze_generated).lower()}")
+    typer.echo(f"preregistration_generated: {str(result.preregistration_generated).lower()}")
+    typer.echo(f"readiness_hash: {result.readiness_hash}")
+    typer.echo(f"summary_hash: {result.summary_hash}")
+    for relative_name, digest in sorted(result.artifact_hashes.items()):
+        typer.echo(f"artifact: {relative_name} sha256={digest}")
+
+
+def _read_json_mapping_strict(path: Path) -> dict[str, object]:
+    resolved_path = path.resolve(strict=True)
+    decoded = json.loads(resolved_path.read_text(encoding="utf-8"))
+    if not isinstance(decoded, dict):
+        raise Phase8RealDevelopmentRunnerError("JSON artifact root must be an object.")
+    return cast(dict[str, object], decoded)
+
+
+@app.command("plan-phase8-real-development-run")
+def plan_phase8_real_development_run_command(
+    manifest_path: Annotated[
+        Path,
+        typer.Option(
+            "--manifest-path",
+            help="Explicit absolute path to an approved Phase 2 dataset manifest JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    split_path: Annotated[
+        Path,
+        typer.Option(
+            "--split-path",
+            help="Explicit absolute path to an approved Phase 2 development split JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    expected_manifest_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-manifest-sha256",
+            help="Caller-declared SHA-256 of the manifest file, verified before parsing.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    expected_split_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-split-sha256",
+            help="Caller-declared SHA-256 of the split file, verified before parsing.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    candidate_inventory_path: Annotated[
+        Path,
+        typer.Option(
+            "--candidate-inventory-path",
+            help="Explicit absolute path to a Phase 8 fixed candidate inventory JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    candidate_id: Annotated[
+        str,
+        typer.Option(
+            "--candidate-id",
+            help="Candidate identifier selected from the fixed candidate inventory.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    preprocessing_decision_path: Annotated[
+        Path,
+        typer.Option(
+            "--preprocessing-decision-path",
+            help="Explicit absolute path to a Phase 8 preprocessing decision JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    approved_development_artifact_set_identity: Annotated[
+        str,
+        typer.Option(
+            "--approved-development-artifact-set-identity",
+            help="Conservative identifier for the approved development artifact set.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help="Explicit absolute scaffold-plan output root outside the repository.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    repository_root: Annotated[
+        Path | None,
+        typer.Option(
+            "--repository-root",
+            help="Explicit absolute repository root used only for output-root rejection.",
+        ),
+    ] = None,
+) -> None:
+    """Plan (never execute) a future real-development MONAI SegResNet run.
+
+    This command is metadata-only: it never opens an image, label, prediction,
+    or checkpoint file, and it never trains, infers, or computes a real metric.
+    It reads exactly the manifest, split, candidate-inventory, and
+    preprocessing-decision JSON files named on the command line and publishes a
+    scaffold-only run plan.
+    """
+
+    try:
+        input_binding = build_phase8_real_development_input_binding(
+            manifest_path=manifest_path,
+            split_path=split_path,
+            expected_manifest_sha256=expected_manifest_sha256,
+            expected_split_sha256=expected_split_sha256,
+            approved_development_artifact_set_identity=(approved_development_artifact_set_identity),
+        )
+        candidate_inventory = phase8_fixed_candidate_inventory_from_mapping(
+            _read_json_mapping_strict(candidate_inventory_path)
+        )
+        preprocessing_decision = phase8_preprocessing_decision_from_mapping(
+            _read_json_mapping_strict(preprocessing_decision_path)
+        )
+        candidate_by_id = {
+            candidate.candidate_id: candidate for candidate in candidate_inventory.candidates
+        }
+        candidate = candidate_by_id.get(candidate_id)
+        if candidate is None:
+            raise Phase8RealDevelopmentRunnerError(
+                f"candidate_id {candidate_id!r} is not present in the fixed candidate inventory."
+            )
+        preprocessing_decision_reference = ArtifactReference(
+            schema_name=preprocessing_decision.schema_name,
+            schema_version=preprocessing_decision.schema_version,
+            artifact_hash=preprocessing_decision.preprocessing_decision_hash,
+            artifact_role="preprocessing_decision",
+        )
+        run_plan = build_phase8_real_development_run_plan(
+            input_binding=input_binding,
+            candidate_inventory=candidate_inventory,
+            candidate_id=candidate_id,
+            training_config_reference=candidate.training_config_reference,
+            preprocessing_decision_reference=preprocessing_decision_reference,
+            fixed_seeds=candidate.fixed_seeds,
+            expected_checkpoint_metadata_schema=(
+                PHASE8_CHECKPOINT_METADATA_SCHEMA_NAME,
+                PHASE8_INTERNAL_EVIDENCE_SCHEMA_VERSION,
+            ),
+            expected_validation_evidence_schema=(
+                PHASE8_VALIDATION_EVIDENCE_REFERENCE_SCHEMA_NAME,
+                PHASE8_INTERNAL_EVIDENCE_SCHEMA_VERSION,
+            ),
+            expected_output_artifact_names=(
+                "checkpoint_metadata",
+                "validation_evidence",
+                "preprocessing_evidence",
+            ),
+        )
+        resolved_manifest_path = manifest_path.resolve(strict=True)
+        manifest = phase2_artifact_from_json(
+            resolved_manifest_path.read_text(encoding="utf-8"), DatasetManifest
+        )
+        case_bindings = build_phase8_real_development_case_bindings(
+            run_plan=run_plan, manifest=manifest
+        )
+        result = run_phase8_real_development_plan_publication(
+            input_binding=input_binding,
+            run_plan=run_plan,
+            case_bindings=case_bindings,
+            output_root=output_root,
+            repository_root=repository_root or Path.cwd(),
+        )
+    except (Phase8RealDevelopmentRunnerError, ValueError, OSError) as exc:
+        _raise_phase8_real_development_plan_cli_error(exc)
+
+    typer.echo("Phase 8 real-development plan publication complete")
+    typer.echo("scaffold_only: true")
+    typer.echo("pixel_access_not_started: true")
+    typer.echo("training_executed: false")
+    typer.echo("checkpoint_created: false")
+    typer.echo("real_metrics_computed: false")
+    typer.echo(f"input_binding_hash: {result.input_binding_hash}")
+    typer.echo(f"run_plan_hash: {result.run_plan_hash}")
+    typer.echo(f"case_binding_collection_hash: {result.case_binding_collection_hash}")
+    typer.echo(f"summary_hash: {result.summary_hash}")
+    for relative_name, digest in sorted(result.artifact_hashes.items()):
+        typer.echo(f"artifact: {relative_name} sha256={digest}")
+
+
+def _parse_tiny_real_package_versions(payload: str) -> dict[str, str]:
+    try:
+        decoded = json.loads(payload)
+    except json.JSONDecodeError as exc:
+        raise Phase8TinyRealVerificationError(
+            "--package-versions-json must be valid JSON."
+        ) from exc
+    if not isinstance(decoded, dict) or not all(
+        isinstance(key, str) and isinstance(value, str) for key, value in decoded.items()
+    ):
+        raise Phase8TinyRealVerificationError(
+            "--package-versions-json must decode to a JSON object of string to string."
+        )
+    return cast(dict[str, str], decoded)
+
+
+@app.command("run-phase8-tiny-real-development-verification")
+def run_phase8_tiny_real_development_verification_command(
+    approve_tiny_real_verification: Annotated[
+        bool,
+        typer.Option(
+            "--approve-tiny-real-verification",
+            help=(
+                "Required explicit approval. Without this flag the command refuses "
+                "before opening any file."
+            ),
+        ),
+    ] = False,
+    manifest_path: Annotated[
+        Path,
+        typer.Option(
+            "--manifest-path",
+            help="Explicit absolute path to an approved Phase 2 dataset manifest JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    split_path: Annotated[
+        Path,
+        typer.Option(
+            "--split-path",
+            help="Explicit absolute path to an approved Phase 2 development split JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    expected_manifest_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-manifest-sha256",
+            help="Caller-declared SHA-256 of the manifest file, verified before parsing.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    expected_split_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-split-sha256",
+            help="Caller-declared SHA-256 of the split file, verified before parsing.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    dataset_root: Annotated[
+        Path,
+        typer.Option(
+            "--dataset-root",
+            help="Explicit absolute, read-only, approved raw dataset root.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help=(
+                "Explicit absolute, nonexistent, non-symlinked output root outside the repository."
+            ),
+        ),
+    ] = ...,  # type: ignore[assignment]
+    approved_development_artifact_set_identity: Annotated[
+        str,
+        typer.Option(
+            "--approved-development-artifact-set-identity",
+            help="Conservative identifier for the approved development artifact set.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    git_commit: Annotated[
+        str,
+        typer.Option(
+            "--git-commit",
+            help="Originating Git commit hash (7-64 lowercase hex characters).",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    package_versions_json: Annotated[
+        str,
+        typer.Option(
+            "--package-versions-json",
+            help='JSON object of package name to version, e.g. {"torch": "2.2.0"}.',
+        ),
+    ] = ...,  # type: ignore[assignment]
+    max_steps: Annotated[
+        int,
+        typer.Option(
+            "--max-steps",
+            help="Bounded optimizer step count; must satisfy 1 <= max_steps <= 2.",
+        ),
+    ] = 2,
+    seed: Annotated[
+        int,
+        typer.Option("--seed", help="Deterministic seed for the bounded verification run."),
+    ] = 1729,
+    repository_root: Annotated[
+        Path | None,
+        typer.Option(
+            "--repository-root",
+            help="Explicit absolute repository root used only for output-root rejection.",
+        ),
+    ] = None,
+) -> None:
+    """Run a bounded, verification-only Phase 8 tiny real-development check.
+
+    This command is a deliberately narrow engineering dry/overfit
+    verification, not a real training run. It opens exactly one real train
+    and one real validation NIfTI image/label pair, is CPU-only with AMP
+    disabled, runs at most two optimizer steps over a single bounded spatial
+    patch, and computes no Dice/IoU/HD95 or other scientific metric. Every
+    published checkpoint is hard-coded not freeze eligible, not selection
+    eligible, and not definitive training. Requires explicit
+    ``--approve-tiny-real-verification``; without it, the command refuses
+    before opening any file.
+    """
+
+    if not approve_tiny_real_verification:
+        typer.secho(
+            "Phase 8 tiny real-development verification requires --approve-tiny-real-verification.",
+            err=True,
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        package_versions = _parse_tiny_real_package_versions(package_versions_json)
+        result = run_phase8_tiny_real_development_verification(
+            manifest_path=manifest_path,
+            split_path=split_path,
+            expected_manifest_sha256=expected_manifest_sha256,
+            expected_split_sha256=expected_split_sha256,
+            dataset_root=dataset_root,
+            output_root=output_root,
+            repository_root=repository_root or Path.cwd(),
+            approved_development_artifact_set_identity=(approved_development_artifact_set_identity),
+            git_commit=git_commit,
+            package_versions=package_versions,
+            max_steps=max_steps,
+            seed=seed,
+        )
+    except (Phase8TinyRealVerificationError, ValueError, OSError) as exc:
+        _raise_phase8_tiny_real_verification_cli_error(exc)
+
+    typer.echo("Phase 8 tiny real-development verification complete")
+    typer.echo("verification_only: true")
+    typer.echo("scientific_metrics_computed: false")
+    typer.echo("freeze_eligible: false")
+    typer.echo("selection_eligible: false")
+    typer.echo("definitive_training: false")
+    typer.echo(f"config_hash: {result.config_hash}")
+    typer.echo(f"access_ledger_hash: {result.access_ledger_hash}")
+    typer.echo(f"checkpoint_metadata_hash: {result.checkpoint_metadata_hash}")
+    typer.echo(f"summary_hash: {result.summary_hash}")
+    for relative_name, digest in sorted(result.artifact_hashes.items()):
+        typer.echo(f"artifact: {relative_name} sha256={digest}")
+
+
+@app.command("run-phase8-definitive-real-training")
+def run_phase8_definitive_real_training_command(
+    approve_definitive_real_training: Annotated[
+        bool,
+        typer.Option(
+            "--approve-definitive-real-training",
+            help=(
+                "Required explicit approval. Without this flag the command refuses "
+                "before opening any file."
+            ),
+        ),
+    ] = False,
+    manifest_path: Annotated[
+        Path,
+        typer.Option(
+            "--manifest-path", help="Explicit absolute path to the approved Phase 2 manifest JSON."
+        ),
+    ] = ...,  # type: ignore[assignment]
+    split_path: Annotated[
+        Path,
+        typer.Option(
+            "--split-path",
+            help="Explicit absolute path to the approved Phase 2 development split JSON.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    lesion_components_path: Annotated[
+        Path,
+        typer.Option(
+            "--lesion-components-path",
+            help="Explicit absolute path to the approved Phase 2 lesion-components JSON.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    expected_lesion_components_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-lesion-components-sha256",
+            help="Caller-declared SHA-256 of the lesion-components file, verified before parsing.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    dataset_root: Annotated[
+        Path,
+        typer.Option(
+            "--dataset-root", help="Explicit absolute, read-only, approved raw dataset root."
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help=(
+                "Explicit absolute, nonexistent, non-symlinked output root outside the repository."
+            ),
+        ),
+    ] = ...,  # type: ignore[assignment]
+    git_commit: Annotated[
+        str,
+        typer.Option(
+            "--git-commit", help="Originating Git commit hash (7-64 lowercase hex characters)."
+        ),
+    ] = ...,  # type: ignore[assignment]
+    package_versions_json: Annotated[
+        str,
+        typer.Option(
+            "--package-versions-json",
+            help='JSON object of package name to version, e.g. {"torch": "2.2.0"}.',
+        ),
+    ] = ...,  # type: ignore[assignment]
+    wall_clock_limit_seconds: Annotated[
+        float,
+        typer.Option(
+            "--wall-clock-limit-seconds",
+            help="Hard wall-clock watchdog limit in seconds (default 36000.0 = 10 hours).",
+        ),
+    ] = DEFAULT_DEFINITIVE_REAL_TRAINING_WALL_CLOCK_LIMIT_SECONDS,
+    repository_root: Annotated[
+        Path | None,
+        typer.Option(
+            "--repository-root",
+            help="Explicit absolute repository root used only for output-root rejection.",
+        ),
+    ] = None,
+) -> None:
+    """Run the real Phase 8 definitive-development training pipeline (Package C).
+
+    Verifies the manifest/split byte-hash against the two locked, approved
+    values before opening any file; derives the 500-step patch schedule from
+    case-ID metadata only; materializes patches sequentially from the 91-case
+    TRAIN partition; runs one continuous 500-step training trajectory with
+    snapshots at steps 250 and 500; publishes both checkpoints
+    (``freeze_eligible=False``); evaluates both on the same 20-case
+    VALIDATION partition; and selects the higher-mean-tumor-Dice checkpoint
+    (tie -> step 250). The entire pipeline runs inside a process-level
+    watchdog with a 10-hour default deadline. Requires explicit
+    ``--approve-definitive-real-training``; without it, the command refuses
+    before opening any file.
+    """
+
+    if not approve_definitive_real_training:
+        typer.secho(
+            "Phase 8 definitive real training requires --approve-definitive-real-training.",
+            err=True,
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        package_versions = _parse_bounded_pilot_package_versions(package_versions_json)
+        result = run_phase8_definitive_real_training_with_watchdog(
+            manifest_path=manifest_path,
+            split_path=split_path,
+            lesion_components_path=lesion_components_path,
+            expected_lesion_components_sha256=expected_lesion_components_sha256,
+            dataset_root=dataset_root,
+            output_root=output_root,
+            repository_root=repository_root or Path.cwd(),
+            git_commit=git_commit,
+            package_versions=package_versions,
+            wall_clock_limit_seconds=wall_clock_limit_seconds,
+        )
+    except (Phase8DefinitiveRealTrainingError, ValueError, OSError) as exc:
+        _raise_phase8_definitive_real_training_cli_error(exc)
+
+    typer.echo("Phase 8 definitive real training complete")
+    typer.echo("freeze_eligible: false")
+    typer.echo(f"config_hash: {result.config_hash}")
+    typer.echo(f"policy_hash: {result.policy_hash}")
+    typer.echo(f"schedule_hash: {result.schedule_hash}")
+    typer.echo(f"mean_tumor_dice_step_250: {result.mean_tumor_dice_step_250}")
+    typer.echo(f"mean_tumor_dice_step_500: {result.mean_tumor_dice_step_500}")
+    typer.echo(f"selected_checkpoint_step: {result.selected_checkpoint_step}")
+    typer.echo(f"selection_evidence_hash: {result.selection_evidence_hash}")
+    typer.echo(f"access_ledger_hash: {result.access_ledger_hash}")
+    typer.echo(f"checkpoint_sha256_step_250: {result.checkpoint_sha256_step_250}")
+    typer.echo(f"checkpoint_sha256_step_500: {result.checkpoint_sha256_step_500}")
+    typer.echo(f"elapsed_seconds: {result.elapsed_seconds}")
+
+
+def _parse_bounded_pilot_package_versions(payload: str) -> dict[str, str]:
+    try:
+        decoded = json.loads(payload)
+    except json.JSONDecodeError as exc:
+        raise Phase8BoundedPilotError("--package-versions-json must be valid JSON.") from exc
+    if not isinstance(decoded, dict) or not all(
+        isinstance(key, str) and isinstance(value, str) for key, value in decoded.items()
+    ):
+        raise Phase8BoundedPilotError(
+            "--package-versions-json must decode to a JSON object of string to string."
+        )
+    return cast(dict[str, str], decoded)
+
+
+@app.command("run-phase8-bounded-real-development-pilot")
+def run_phase8_bounded_real_development_pilot_command(
+    approve_bounded_pilot: Annotated[
+        bool,
+        typer.Option(
+            "--approve-bounded-pilot",
+            help=(
+                "Required explicit approval. Without this flag the command refuses "
+                "before opening any file."
+            ),
+        ),
+    ] = False,
+    manifest_path: Annotated[
+        Path,
+        typer.Option(
+            "--manifest-path", help="Explicit absolute path to an approved Phase 2 manifest JSON."
+        ),
+    ] = ...,  # type: ignore[assignment]
+    split_path: Annotated[
+        Path,
+        typer.Option(
+            "--split-path",
+            help="Explicit absolute path to an approved Phase 2 development split JSON.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    lesion_components_path: Annotated[
+        Path,
+        typer.Option(
+            "--lesion-components-path",
+            help="Explicit absolute path to the approved Phase 2 lesion-components JSON.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    expected_manifest_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-manifest-sha256",
+            help="Caller-declared SHA-256 of the manifest file, verified before parsing.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    expected_split_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-split-sha256",
+            help="Caller-declared SHA-256 of the split file, verified before parsing.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    expected_lesion_components_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-lesion-components-sha256",
+            help="Caller-declared SHA-256 of the lesion-components file, verified before parsing.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    input_binding_path: Annotated[
+        Path,
+        typer.Option(
+            "--input-binding-path",
+            help="Explicit absolute path to the Substage 4B real-development input binding JSON.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    candidate_inventory_path: Annotated[
+        Path,
+        typer.Option(
+            "--candidate-inventory-path",
+            help="Explicit absolute path to the Substage 4B fixed candidate inventory JSON.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    preprocessing_decision_path: Annotated[
+        Path,
+        typer.Option(
+            "--preprocessing-decision-path",
+            help="Explicit absolute path to the Substage 4B preprocessing decision JSON.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    expected_input_binding_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-input-binding-sha256",
+            help="Caller-declared SHA-256 of the input binding file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    expected_candidate_inventory_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-candidate-inventory-sha256",
+            help="Caller-declared SHA-256 of the candidate inventory file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    expected_preprocessing_decision_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-preprocessing-decision-sha256",
+            help="Caller-declared SHA-256 of the preprocessing decision file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    dataset_root: Annotated[
+        Path,
+        typer.Option(
+            "--dataset-root", help="Explicit absolute, read-only, approved raw dataset root."
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help=(
+                "Explicit absolute, nonexistent, non-symlinked output root outside the repository."
+            ),
+        ),
+    ] = ...,  # type: ignore[assignment]
+    git_commit: Annotated[
+        str,
+        typer.Option(
+            "--git-commit", help="Originating Git commit hash (7-64 lowercase hex characters)."
+        ),
+    ] = ...,  # type: ignore[assignment]
+    package_versions_json: Annotated[
+        str,
+        typer.Option(
+            "--package-versions-json",
+            help='JSON object of package name to version, e.g. {"torch": "2.2.0"}.',
+        ),
+    ] = ...,  # type: ignore[assignment]
+    seed: Annotated[
+        int,
+        typer.Option("--seed", help="Deterministic seed for the bounded pilot run."),
+    ] = 1729,
+    wall_clock_limit_seconds: Annotated[
+        float,
+        typer.Option(
+            "--wall-clock-limit-seconds",
+            help="Hard wall-clock watchdog limit in seconds (default 2700.0 = 45 minutes).",
+        ),
+    ] = DEFAULT_WALL_CLOCK_LIMIT_SECONDS,
+    repository_root: Annotated[
+        Path | None,
+        typer.Option(
+            "--repository-root",
+            help="Explicit absolute repository root used only for output-root rejection.",
+        ),
+    ] = None,
+) -> None:
+    """Run a bounded, verification-scale Phase 8 real-data training pilot.
+
+    This is a deliberately bounded, explicitly user-approved, CPU-only,
+    verification-scale real-data training pilot -- not definitive training.
+    It opens exactly two real train NIfTI pairs (one tumor-positive, one
+    empty-target) and one real validation NIfTI pair, runs an exact 10:10
+    foreground-aware patch sampling schedule over 20 optimizer steps, and
+    performs one full-volume sliding-window validation forward pass. It
+    computes no Dice/IoU/HD95/NSD or other scientific metric anywhere. Every
+    published checkpoint is hard-coded not freeze eligible, not selection
+    eligible, not definitive training, and not scientific-metric eligible.
+    A hard 45-minute wall-clock watchdog aborts the run with no partial-
+    success publication. Requires explicit ``--approve-bounded-pilot``;
+    without it, the command refuses before opening any file.
+    """
+
+    if not approve_bounded_pilot:
+        typer.secho(
+            "Phase 8 bounded pilot requires --approve-bounded-pilot.",
+            err=True,
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        package_versions = _parse_bounded_pilot_package_versions(package_versions_json)
+        result = run_phase8_bounded_pilot_with_watchdog(
+            manifest_path=manifest_path,
+            split_path=split_path,
+            lesion_components_path=lesion_components_path,
+            expected_manifest_sha256=expected_manifest_sha256,
+            expected_split_sha256=expected_split_sha256,
+            expected_lesion_components_sha256=expected_lesion_components_sha256,
+            input_binding_path=input_binding_path,
+            candidate_inventory_path=candidate_inventory_path,
+            preprocessing_decision_path=preprocessing_decision_path,
+            expected_input_binding_sha256=expected_input_binding_sha256,
+            expected_candidate_inventory_sha256=expected_candidate_inventory_sha256,
+            expected_preprocessing_decision_sha256=expected_preprocessing_decision_sha256,
+            dataset_root=dataset_root,
+            output_root=output_root,
+            repository_root=repository_root or Path.cwd(),
+            git_commit=git_commit,
+            package_versions=package_versions,
+            seed=seed,
+            wall_clock_limit_seconds=wall_clock_limit_seconds,
+        )
+    except (Phase8BoundedPilotError, ValueError, OSError) as exc:
+        _raise_phase8_bounded_pilot_cli_error(exc)
+
+    typer.echo("Phase 8 bounded real-development pilot complete")
+    typer.echo("pilot_only: true")
+    typer.echo("scientific_metrics_computed: false")
+    typer.echo("freeze_eligible: false")
+    typer.echo("selection_eligible: false")
+    typer.echo("definitive_training: false")
+    typer.echo(f"config_hash: {result.config_hash}")
+    typer.echo(f"access_ledger_hash: {result.access_ledger_hash}")
+    typer.echo(f"checkpoint_metadata_hash: {result.checkpoint_metadata_hash}")
+    typer.echo(f"summary_hash: {result.summary_hash}")
+    for relative_name, digest in sorted(result.artifact_hashes.items()):
+        typer.echo(f"artifact: {relative_name} sha256={digest}")
+
+
+@app.command("plan-phase8-definitive-development-training")
+def plan_phase8_definitive_development_training_command(
+    input_binding_hash: Annotated[
+        str,
+        typer.Option(
+            "--input-binding-hash",
+            help=(
+                "SHA-256 of an already-verified Phase8RealDevelopmentInputBinding "
+                "(Substage 2). No manifest or split file is opened by this command."
+            ),
+        ),
+    ] = ...,  # type: ignore[assignment]
+    candidate_inventory_path: Annotated[
+        Path,
+        typer.Option(
+            "--candidate-inventory-path",
+            help="Explicit absolute path to a Phase 8 fixed candidate inventory JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    candidate_id: Annotated[
+        str,
+        typer.Option(
+            "--candidate-id",
+            help="Candidate identifier; must equal 'monai_segresnet_baseline'.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    preprocessing_decision_path: Annotated[
+        Path,
+        typer.Option(
+            "--preprocessing-decision-path",
+            help="Explicit absolute path to a Phase 8 preprocessing decision JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    release_scope_description: Annotated[
+        str,
+        typer.Option(
+            "--release-scope-description",
+            help="Conservative identifier describing what a future release would authorize.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    authorized_max_training_steps: Annotated[
+        int,
+        typer.Option(
+            "--authorized-max-training-steps",
+            help="Explicit bounded training-step count a future release would authorize.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    output_root: Annotated[
+        Path,
+        typer.Option(
+            "--output-root",
+            help="Explicit absolute definitive-training plan output root outside the repository.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    repository_root: Annotated[
+        Path | None,
+        typer.Option(
+            "--repository-root",
+            help="Explicit absolute repository root used only for output-root rejection.",
+        ),
+    ] = None,
+) -> None:
+    """Plan (never execute) a future definitive MONAI SegResNet training run.
+
+    This command is planning-only: it never opens an image, label,
+    prediction, or checkpoint file, and it never trains, infers, or computes
+    a real metric. It publishes a ``Phase8DefinitiveTrainingConfig`` whose
+    ``execution_release_state`` is always ``"awaiting_explicit_user_approval"``
+    alongside a ``Phase8DefinitiveExecutionRelease`` whose ``release_state``
+    is always ``"not_released"``. No release is issued by this command, and
+    there is no flag capable of changing either fixed state.
+    """
+
+    try:
+        candidate_inventory = phase8_fixed_candidate_inventory_from_mapping(
+            _read_json_mapping_strict(candidate_inventory_path)
+        )
+        preprocessing_decision = phase8_preprocessing_decision_from_mapping(
+            _read_json_mapping_strict(preprocessing_decision_path)
+        )
+        candidate_by_id = {
+            candidate.candidate_id: candidate for candidate in candidate_inventory.candidates
+        }
+        candidate = candidate_by_id.get(candidate_id)
+        if candidate is None:
+            raise Phase8DefinitiveTrainingError(
+                f"candidate_id {candidate_id!r} is not present in the fixed candidate inventory."
+            )
+        if preprocessing_decision.candidate_id != candidate_id:
+            raise Phase8DefinitiveTrainingError(
+                "preprocessing_decision.candidate_id does not match --candidate-id."
+            )
+        preprocessing_decision_reference = ArtifactReference(
+            schema_name=preprocessing_decision.schema_name,
+            schema_version=preprocessing_decision.schema_version,
+            artifact_hash=preprocessing_decision.preprocessing_decision_hash,
+            artifact_role="preprocessing_decision",
+        )
+        config = build_phase8_definitive_training_config(
+            input_binding_hash=input_binding_hash,
+            fixed_candidate_inventory_hash=candidate_inventory.inventory_hash,
+            preprocessing_decision_reference=preprocessing_decision_reference,
+            training_config_reference=candidate.training_config_reference,
+            fixed_seeds=candidate.fixed_seeds,
+        )
+        release = build_unreleased_definitive_execution_release(
+            bound_config_hash=config.config_hash,
+            release_scope_description=release_scope_description,
+            authorized_max_training_steps=authorized_max_training_steps,
+        )
+        result = publish_phase8_definitive_training_plan(
+            config=config,
+            release=release,
+            output_root=output_root,
+            repository_root=repository_root or Path.cwd(),
+        )
+    except (Phase8DefinitiveTrainingError, ValueError, OSError) as exc:
+        _raise_phase8_definitive_training_plan_cli_error(exc)
+
+    typer.echo("Phase 8 definitive-training plan publication complete")
+    typer.echo("execution_release_state: awaiting_explicit_user_approval")
+    typer.echo("release_state: not_released")
+    typer.echo("training_executed: false")
+    typer.echo("checkpoint_created: false")
+    typer.echo("real_metrics_computed: false")
+    typer.echo(f"config_hash: {result.config_hash}")
+    typer.echo(f"release_hash: {result.release_hash}")
+    for relative_name, digest in sorted(result.artifact_hashes.items()):
+        typer.echo(f"artifact: {relative_name} sha256={digest}")
+
+
+@app.command("run-phase8-definitive-development-training")
+def run_phase8_definitive_development_training_command(
+    config_path: Annotated[
+        Path,
+        typer.Option(
+            "--config-path",
+            help="Explicit absolute path to a Phase8DefinitiveTrainingConfig JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+    release_path: Annotated[
+        Path,
+        typer.Option(
+            "--release-path",
+            help="Explicit absolute path to a Phase8DefinitiveExecutionRelease JSON file.",
+        ),
+    ] = ...,  # type: ignore[assignment]
+) -> None:
+    """Run (or, in practice, always refuse to run) definitive development training.
+
+    Real execution requires an explicit ``Phase8DefinitiveExecutionRelease``
+    artifact whose ``release_state`` is ``"released"`` and whose
+    ``bound_config_hash`` matches the supplied config's ``config_hash``. No
+    command or function in this codebase's own tooling can produce such a
+    release; it can only be authorized by a separately released process
+    outside this session. This command therefore refuses to proceed --
+    before opening any manifest, split, or medical file -- whenever the
+    release is absent, invalid, mismatched, or ``not_released``, which is
+    every real invocation in this environment today.
+    """
+
+    try:
+        config = phase8_definitive_training_config_from_mapping(
+            _read_json_mapping_strict(config_path)
+        )
+        release = phase8_definitive_execution_release_from_mapping(
+            _read_json_mapping_strict(release_path)
+        )
+        execute_phase8_definitive_training(config, release)
+    except (Phase8DefinitiveTrainingError, ValueError, OSError) as exc:
+        _raise_phase8_definitive_training_run_cli_error(exc)
+
+    typer.echo("Phase 8 definitive-training run complete")
 
 
 def run_and_publish_phase7_robustness_uncertainty(

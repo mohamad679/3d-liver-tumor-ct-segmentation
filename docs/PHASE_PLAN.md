@@ -17,7 +17,19 @@ planning update does not audit, rerun, verify, or modify any completed Phase 5 i
 
 Phase 6 implementation and Gate 6 close-out are completed locally on 2026-08-02.
 
-Active phase: Phase 7 planning for deterministic robustness and uncertainty assessment only.
+Phase 7 is user-confirmed complete and merged with Gate 7 passed.
+
+Phase 8 (external validation against 3D-IRCADb-01) is **CLOSED** as of 2026-08-09, with a
+**negative external-validation result**. The locked, preregistered protocol (preregistration before
+label access; image-only inference and prediction locking before label access; label-only
+evaluation after locking; no external tuning at any stage) was executed exactly as designed and
+reported completely and transparently. External tumor-segmentation performance is very poor across
+all 9 preregistered metric families and must not be reframed as successful generalization. See
+`docs/phase8/FINAL_REPORT.md` for the complete closure report, `docs/phase8/SUPERVISOR_HANDOFF.md`
+for the full package-by-package execution history (Packages A through H), and the "Phase 8 Package H
+— Final Closure" note below for the closure-specific summary.
+
+Active phase: none. No Phase 9, LLM/VLM track, or any phase beyond Phase 8 has begun.
 
 ## Phase 0 Scope
 
@@ -1699,6 +1711,722 @@ Gate 7 is accepted when:
 | Leakage safety | Leakage tests and audit evidence | Labels only after prediction; no Phase 8 access |
 | Publication | JSON, Markdown, tables, plots | JSON-first derivation, atomic writes, path safety |
 | Gate close-out | Gate 7 evidence | Full checks and two deterministic synthetic executions |
+
+## Phase 8 Scope
+
+Phase 8 is limited to external validation on `3D-IRCADb-01`. It must evaluate a frozen ProtoEM-CT
+workflow without tuning and without beginning Phase 9, Phase 10, or the LLM/VLM track.
+
+Phase 8 includes:
+
+- a frozen-decision inventory before external label access;
+- versioned, self-validating external-evaluation preregistration JSON before real evaluation;
+- approval-gated read-only external-drive discovery for the explicit 3D-IRCADb-01 root;
+- an anonymous external manifest and dataset QA with persisted hashes;
+- a frozen label-mapping policy before labels are read;
+- documentation of scanner/acquisition/domain shift, inclusion/exclusion accounting, missing labels,
+  incompatible cases, and preregistration deviations;
+- one-time real external inference without tuning after freeze and preregistration;
+- immutable prediction inventory outside Git;
+- preregistered segmentation metrics, bootstrap confidence intervals, internal-versus-external
+  comparison tables, qualitative montages, failure analysis, and limitations computed only from
+  persisted artifacts; and
+- independent scientific, engineering, and leakage review before Gate 8 close-out.
+
+Phase 8 excludes:
+
+- any checkpoint, model, threshold, support policy, preprocessing, postprocessing, corruption,
+  uncertainty, or reporting selection based on external labels or external metrics;
+- external superiority, clinical validity, deployment readiness, broad generalization, or
+  state-of-the-art claims unless directly supported by preregistered artifacts;
+- treating LiTS and MSD Task03 Liver as independent cohorts;
+- committing medical data, local paths, source identifiers, external manifests containing PHI,
+  masks, predictions, embeddings, checkpoints, model weights, HMAC keys, reverse identifier maps,
+  credentials, logs, MLflow runs, or large generated artifacts; and
+- any `/Volumes` search or dataset access before Wave 2 approval.
+
+`codex_protoem_ct_blueprint.md` was not present during Wave 0 planning, so no Phase 8 blueprint
+section was available for reconciliation.
+
+## Phase 8 Wave 0 Supervisor Planning
+
+Wave 0 used real delegated subagents for four independent read-only planning tracks:
+
+- `P8-SCIENTIFIC-PLAN`
+- `P8-DATA-BOUNDARY-PLAN`
+- `P8-ENGINEERING-PLAN`
+- `P8-LEAKAGE-PLAN`
+
+All four subagents were instructed not to edit files, not to access `/Volumes`, and not to inspect
+datasets. Their reports were reconciled into this plan.
+
+Wave 0 scientific conflicts and unresolved decisions:
+
+- Existing Phase 8 and Gate 8 definitions were absent before this planning update.
+- Bootstrap CI policy is not implemented yet and must be frozen in Wave 1: CI type, confidence
+  level, replicate count, seed, resampling unit, paired/unpaired rules, and unavailable-value
+  handling.
+- External few-shot support-label use is unresolved. The conservative Wave 0 plan treats external
+  labels as evaluation-only. If external support labels are later proposed, support/query partition,
+  `K`, replicates, adaptation modes, and label-access rules must be frozen in preregistration before
+  any labels are read.
+- The real 3D-IRCADb-01 layout is unknown from repository context. Existing
+  `IrcadbStyleAdapter` is explicitly synthetic-tested and Phase 2-only; Phase 8 must explicitly
+  authorize or replace it for real external discovery.
+- Existing Phase 2 `DatasetManifest` is development-oriented and label-bearing; Phase 8 needs
+  external image-manifest and label-gated manifest contracts rather than reusing it unchanged.
+- External robustness/uncertainty reporting is optional and may be included only if exactly
+  preregistered from Phase 7 contracts before external evaluation.
+- Phase 7 lesion-size subgrouping and Phase 3 lesion metric connectivity may differ by contract;
+  Phase 8 must state the exact rule used for any subgroup reporting.
+
+## Phase 8 Dependency Graph
+
+Every wave must be resumable from repository files and commit hashes on the integration branch
+`phase/8-external-validation`. Use small reviewable commits after approved substages. The persistent
+handoff file is `docs/phase8/SUPERVISOR_HANDOFF.md` and must record current wave, approved commits,
+completed agents, blocked agents, frozen artifact hashes, unresolved blockers, and exact next
+action. No hidden chat state is required.
+
+### Wave 0: Planning and Dependency Graph
+
+- Scope: create this complete implementation plan and the persistent Supervisor handoff.
+- Dependencies: completed and merged Phases 0-7, user-confirmed Gate 7 passed.
+- Allowed files: `docs/PHASE_PLAN.md`, `docs/phase8/SUPERVISOR_HANDOFF.md`.
+- Prohibited files: all source, tests, configs, manifests, preregistration JSON, generated outputs,
+  medical data, predictions, checkpoints, and external paths.
+- Required inputs: project docs, Phase 2-7 code/artifact conventions, four read-only planning
+  subagent reports.
+- Expected outputs: Phase 8 dependency graph, subagent plan, boundaries, risks, Gate 8 criteria,
+  handoff.
+- Tests/commands: `git diff --check`, `git diff --stat`, `git status --short --branch`.
+- Completion criteria: only allowed files changed, real subagents used, no dataset access, no code
+  implementation, no Wave 1 release.
+- External drive: disconnected.
+- External labels: not read.
+- Concurrency: four planning subagents ran concurrently.
+
+### Wave 1: Frozen Contracts, Schemas, and Leakage Controls
+
+Planned subagents:
+
+- `P8-FREEZE-INVENTORY`
+  - Scope: define `phase8_decision_freeze_v1` and frozen-decision inventory.
+  - Dependencies: Wave 0.
+  - Allowed files: `docs/PHASE_PLAN.md`, `docs/DECISIONS.md`,
+    `docs/phase8/SUPERVISOR_HANDOFF.md`, planned source/tests under `src/protoem_ct/external/`,
+    `tests/unit/test_phase8_freeze*.py`.
+  - Prohibited files: real data paths, manifests, predictions, checkpoints, generated artifacts.
+  - Required inputs: Phase 2 manifest/split hashes, Phase 4 support/protocol hashes, Phase 5
+    retrieval/prototype identities, Phase 6 config/inference/stopping/publication contracts, Phase 7
+    publication contracts if used.
+  - Expected outputs: schema and tests for preprocessing hash, support policy, thresholds,
+    checkpoint/model, label mapping policy, metric config, publication config, Git commit, explicit
+    timestamp, and `frozen_before_external_evaluation` status.
+  - Tests: schema validation, self-hash validation, unknown-field rejection, no absolute paths,
+    no NaN/Inf.
+  - Completion criteria: freeze artifact can be created and validated with synthetic fixture
+    hashes.
+  - External drive: no.
+  - External labels: no.
+  - Concurrency: may run with `P8-PREREGISTRATION-SCHEMA` and `P8-LEAKAGE-CONTRACTS`.
+
+- `P8-PREREGISTRATION-SCHEMA`
+  - Scope: define versioned self-validating `phase8_external_preregistration_v1`.
+  - Dependencies: Wave 0.
+  - Allowed files: planned Phase 8 external source/tests/docs only.
+  - Prohibited files: real preregistration artifacts, real dataset paths, predictions.
+  - Required inputs: Wave 0 scientific plan, existing metric and publication conventions.
+  - Expected outputs: schema covering cohort definition, inclusion/exclusion rules, metric plan,
+    bootstrap CI plan, internal-versus-external comparison plan, label-access policy, deviation
+    accounting, and limitations.
+  - Tests: required-field validation, hash stability, missing-policy rejection.
+  - Completion criteria: synthetic preregistration validates and records no real path.
+  - External drive: no.
+  - External labels: no.
+  - Concurrency: may run with other Wave 1 agents.
+
+- `P8-LEAKAGE-CONTRACTS`
+  - Scope: define `external_label_access_ledger_v1`, post-evaluation lock, and leakage tests.
+  - Dependencies: Wave 0.
+  - Allowed files: planned Phase 8 external source/tests/docs only.
+  - Prohibited files: real labels, metrics, prediction outputs, checkpoints.
+  - Required inputs: Phase 6/7 label-isolation tests and Wave 0 leakage report.
+  - Expected outputs: tests proving external labels cannot tune preprocessing, select support
+    policy, choose thresholds, choose checkpoint/model, alter label mapping after freeze, or mutate
+    internal-versus-external reporting.
+  - Tests: targeted leakage unit tests using synthetic fixtures.
+  - Completion criteria: leakage contracts fail closed when freeze or ledger hashes mismatch.
+  - External drive: no.
+  - External labels: no.
+  - Concurrency: may run with other Wave 1 agents.
+
+### Wave 2: External-Drive Discovery and Anonymous Image Inventory
+
+This is the first wave requiring the user to connect the external drive.
+
+Planned subagents:
+
+- `P8-IRCADB-DRYRUN`
+  - Scope: approval-gated, filename-only 3D-IRCADb-01 discovery under one explicit root.
+  - Dependencies: Wave 1 freeze/preregistration/leakage contracts and explicit user approval.
+  - Allowed files: Phase 8 adapter code/tests/docs; external generated output root only for
+    nonidentifying dry-run artifact.
+  - Prohibited files: repository generated outputs, `/Volumes` enumeration, source-data writes,
+    NIfTI/DICOM opening or hashing, labels, predictions.
+  - Required inputs: explicit absolute dataset root from user, explicit absolute output root,
+    approved layout convention draft.
+  - Expected outputs: nonidentifying structural dry-run counts, layout failures, adapter convention
+    candidate hash outside Git.
+  - Tests: synthetic adapter tests for expected archive-like and alternate layouts, missing pairs,
+    duplicate pairs, symlink escape, traversal, unsafe names.
+  - Completion criteria: Supervisor approves exact layout before manifest/QA.
+  - External drive: yes.
+  - External labels: no.
+  - Concurrency: cannot run with label or inference agents; may run with read-only docs review.
+
+- `P8-EXTERNAL-IMAGE-MANIFEST`
+  - Scope: build anonymous image manifest after approved dry run.
+  - Dependencies: `P8-IRCADB-DRYRUN` approval.
+  - Allowed files: Phase 8 manifest code/tests; external output root for anonymous manifest.
+  - Prohibited files: label reads, reverse ID maps in Git, HMAC keys in Git, absolute paths in
+    artifacts.
+  - Required inputs: explicit dataset root, dry-run artifact hash, anonymization policy, output
+    root.
+  - Expected outputs: `phase8_external_image_manifest_v1` with relative paths, image hashes,
+    adapter identity, root fingerprint, manifest hash.
+  - Tests: collision checks, deterministic ordering, path safety, no absolute paths.
+  - Completion criteria: manifest validates, contains no source identifiers or absolute paths.
+  - External drive: yes.
+  - External labels: no.
+  - Concurrency: after dry-run approval, may run before image QA.
+
+- `P8-EXTERNAL-IMAGE-QA`
+  - Scope: image-only QA and domain-shift image summaries.
+  - Dependencies: external image manifest.
+  - Allowed files: Phase 8 QA code/tests; external output root for image-QA artifacts.
+  - Prohibited files: label reads, model selection changes, preprocessing fit changes.
+  - Required inputs: image manifest hash, fixed QA tolerance/config, fixed histogram bins.
+  - Expected outputs: image QA artifact, image-only domain-shift record, inclusion candidates.
+  - Tests: finite values, shape/affine/spacing/orientation, fixed-bin histograms, invalid-case
+    retention.
+  - Completion criteria: image QA status is persisted with frozen rules and no labels.
+  - External drive: yes.
+  - External labels: no.
+  - Concurrency: may run after image manifest; cannot change Wave 4 freeze decisions.
+
+### Wave 3: Label-Mapping Policy, Domain Shift, and Eligibility Accounting
+
+Planned subagents:
+
+- `P8-LABEL-MAPPING-POLICY`
+  - Scope: implement and freeze label-mapping policy from documentation/config, not from labels.
+  - Dependencies: Wave 1 schemas and Wave 2 layout information; no label reading.
+  - Allowed files: Phase 8 label-mapping source/tests/docs and handoff.
+  - Prohibited files: real label files, observed label values, metrics, predictions.
+  - Required inputs: approved adapter convention, task definition binary tumor vs background.
+  - Expected outputs: `phase8_label_mapping_policy_v1` schema/config tests; policy hash to be
+    included in freeze/preregistration.
+  - Tests: nonzero-tumor-to-foreground synthetic mapping, liver/context masks rejected as target,
+    unknown/tampered mapping rejection.
+  - Completion criteria: mapping policy is frozen before external labels are opened.
+  - External drive: optional for layout artifact only; no new drive access preferred.
+  - External labels: no.
+  - Concurrency: may run with eligibility accounting.
+
+- `P8-ELIGIBILITY-ACCOUNTING`
+  - Scope: predeclare inclusion/exclusion accounting and domain-shift documentation fields.
+  - Dependencies: Wave 2 image QA and Wave 1 preregistration schema.
+  - Allowed files: Phase 8 accounting source/tests/docs; external output root for image-only
+    eligibility artifact if approved.
+  - Prohibited files: labels, predictions, metric computation.
+  - Required inputs: image QA artifact, fixed invalid-case rules.
+  - Expected outputs: image-only eligibility and exclusion accounting; domain-shift image summary.
+  - Tests: invalid cases retained with explicit reasons, no silent repair/exclusion.
+  - Completion criteria: eligibility rules frozen before labels and metrics.
+  - External drive: maybe, only for image QA artifact verification.
+  - External labels: no.
+  - Concurrency: may run with label-mapping policy.
+
+### Wave 4: Freeze and Preregistration
+
+Planned subagents:
+
+- `P8-FROZEN-DECISION-PACKAGE`
+  - Scope: freeze preprocessing, support policy, thresholds, checkpoint, model-selection decision,
+    label mapping, metrics, bootstrap, and publication plan.
+  - Dependencies: Waves 1-3 complete.
+  - Allowed files: Phase 8 freeze/preregistration source/tests/docs; external output root for
+    freeze and preregistration JSON.
+  - Prohibited files: external labels, real metric results, prediction artifacts.
+  - Required inputs: upstream artifact hashes, selected checkpoint SHA-256, fixed threshold config,
+    label-mapping policy hash, metric/bootstrap config hash.
+  - Expected outputs: `phase8_decision_freeze_v1` and
+    `phase8_external_preregistration_v1`, both self-validating.
+  - Tests: decision immutability, timestamp/order checks, no multiple candidate checkpoints,
+    no threshold override after freeze.
+  - Completion criteria: preregistration validates before real evaluation.
+  - External drive: not required.
+  - External labels: no.
+  - Concurrency: sequential gate before Wave 5.
+
+- `P8-FREEZE-LEAKAGE-AUDIT`
+  - Scope: read-only audit of the freeze package and preregistration.
+  - Dependencies: `P8-FROZEN-DECISION-PACKAGE`.
+  - Allowed files: docs/handoff and leakage tests if needed.
+  - Prohibited files: external labels, predictions, metrics.
+  - Required inputs: freeze hash, preregistration hash, Wave 1 leakage contracts.
+  - Expected outputs: audit recommendation and blocker list.
+  - Tests: targeted leakage tests from Wave 1.
+  - Completion criteria: zero unresolved critical leakage blockers.
+  - External drive: no.
+  - External labels: no.
+  - Concurrency: sequential after freeze package.
+
+### Wave 5: Synthetic/Dry-Run Pipeline Without Real External Labels
+
+Planned subagents:
+
+- `P8-SYNTHETIC-PIPELINE`
+  - Scope: bounded synthetic external-validation pipeline using synthetic fixtures only.
+  - Dependencies: Wave 4 freeze/preregistration audit.
+  - Allowed files: Phase 8 source/tests/configs; temporary output roots outside Git.
+  - Prohibited files: real 3D-IRCADb data, external labels, real predictions.
+  - Required inputs: synthetic external fixtures, freeze/preregistration JSON, synthetic checkpoint
+    reference or deterministic stub allowed only for contract testing.
+  - Expected outputs: synthetic manifest, synthetic predictions, synthetic publication artifacts
+    outside Git.
+  - Tests: end-to-end integration, deterministic rerun, no labels in inference APIs.
+  - Completion criteria: synthetic dry run passes without real labels and produces deterministic
+    persisted artifacts.
+  - External drive: no.
+  - External labels: no.
+  - Concurrency: may run with `P8-PUBLICATION-CONTRACTS`.
+
+- `P8-PUBLICATION-CONTRACTS`
+  - Scope: deterministic inference/publication contracts.
+  - Dependencies: Wave 4.
+  - Allowed files: Phase 8 publication source/tests/docs.
+  - Prohibited files: real generated reports, real montages, external labels.
+  - Required inputs: freeze/preregistration schemas and existing Phase 6/7 publication conventions.
+  - Expected outputs: JSON-first publication, atomic writes, no-overwrite/idempotent behavior.
+  - Tests: Markdown/tables/plots derived from JSON only, path safety, no generated artifacts in Git.
+  - Completion criteria: two synthetic roots produce byte-identical deterministic JSON/Markdown.
+  - External drive: no.
+  - External labels: no.
+  - Concurrency: may run with synthetic pipeline.
+
+### Wave 6: One-Time Real External Inference
+
+Planned subagents:
+
+- `P8-REAL-INFERENCE`
+  - Scope: one-time inference on real 3D-IRCADb-01 images without tuning.
+  - Dependencies: Wave 5 pass, Wave 4 freeze/preregistration hash, explicit user approval.
+  - Allowed files: none in Git except handoff/doc updates; external output root for predictions and
+    prediction inventory.
+  - Prohibited files: external labels, threshold changes, checkpoint changes, support policy
+    changes, reruns to improve metrics.
+  - Required inputs: explicit dataset root, image manifest, image QA artifact, freeze hash,
+    preregistration hash, checkpoint/model artifact outside Git, output root.
+  - Expected outputs: immutable prediction inventory and prediction hashes outside Git.
+  - Tests: prediction manifest validation, label-free inference path, output-root safety.
+  - Completion criteria: prediction lock exists, validates, and links exactly to freeze and
+    preregistration hashes.
+  - External drive: yes.
+  - External labels: no.
+  - Concurrency: must run alone.
+
+### Wave 7: External Metrics, Bootstrap CIs, and Internal-Versus-External Tables
+
+This is the first point where external labels may be read, and only for evaluation/QA behind the
+frozen label-access ledger.
+
+Planned subagents:
+
+- `P8-LABEL-LEDGER-QA`
+  - Scope: open labels under ledger, build label manifest, validate label QA, and apply frozen
+    mapping.
+  - Dependencies: Wave 6 prediction lock, Wave 4 freeze/preregistration.
+  - Allowed files: external output root for label manifest, label QA, ledger.
+  - Prohibited files: Git artifacts, prediction reruns, decision mutations, checkpoint changes.
+  - Required inputs: freeze hash, preregistration hash, prediction manifest hash, explicit label
+    root/layout from approved adapter convention.
+  - Expected outputs: `external_label_access_ledger_v1`, label manifest, label QA, mapping result.
+  - Tests: ledger required before label reads, mapping hash match, changed labels affect only
+    evaluation artifacts.
+  - Completion criteria: label access is auditable and cannot alter frozen decisions.
+  - External drive: yes.
+  - External labels: yes.
+  - Concurrency: must precede metrics; no concurrent decision agents.
+
+- `P8-EXTERNAL-METRICS`
+  - Scope: compute preregistered external segmentation metrics only from persisted predictions and
+    labels.
+  - Dependencies: `P8-LABEL-LEDGER-QA`.
+  - Allowed files: external output root for metric reports.
+  - Prohibited files: source data writes, prediction changes, threshold/model/support changes.
+  - Required inputs: prediction manifest, label QA/mapping artifact, metric config hash.
+  - Expected outputs: `phase8_external_metric_report_v1` with per-case and aggregate tumor Dice,
+    IoU, HD95, NSD, lesion recall/precision/F1, FP lesions/scan, signed/absolute/relative volume
+    error, unavailable reasons, valid/invalid counts.
+  - Tests: metric artifact validation, empty-mask behavior, undefined values as JSON `null`.
+  - Completion criteria: metrics validate and link to freeze, preregistration, predictions, labels.
+  - External drive: yes, if label files are needed for persisted evaluation input.
+  - External labels: yes.
+  - Concurrency: after label ledger; may run before bootstrap.
+
+- `P8-BOOTSTRAP-CI`
+  - Scope: compute preregistered bootstrap confidence intervals.
+  - Dependencies: external metric report.
+  - Allowed files: external output root for bootstrap artifacts.
+  - Prohibited files: metric-plan changes, new model outputs, label remapping.
+  - Required inputs: metric report hash, bootstrap config hash.
+  - Expected outputs: bootstrap estimates and 95% percentile CIs unless a different approved
+    preregistered policy exists; patient/case-level resampling, deterministic local RNG, fixed seed,
+    replicate count, paired/unpaired status.
+  - Tests: deterministic seed/repeat, unavailable CI handling, no voxel/lesion resampling.
+  - Completion criteria: CI artifacts validate and record unavailable reasons.
+  - External drive: no if metric artifacts persist all inputs.
+  - External labels: no new label reads.
+  - Concurrency: after metrics.
+
+- `P8-INTERNAL-EXTERNAL-COMPARISON`
+  - Scope: compare frozen internal immutable-test results with external results.
+  - Dependencies: external metrics and bootstrap CIs; frozen internal metric artifacts.
+  - Allowed files: external output root for comparison tables.
+  - Prohibited files: internal split changes, checkpoint/model ranking, decision changes.
+  - Required inputs: internal metric report hashes, external metric/CI hashes.
+  - Expected outputs: side-by-side estimates/CIs and external-minus-internal differences where
+    preregistered.
+  - Tests: comparison cannot alter freeze hash; report has no decision parameters.
+  - Completion criteria: comparison tables validate and are clearly descriptive.
+  - External drive: no.
+  - External labels: no new label reads.
+  - Concurrency: after bootstrap.
+
+### Wave 8: Qualitative Montages, Failure Analysis, and Limitations
+
+Planned subagents:
+
+- `P8-QUALITATIVE-MONTAGES`
+  - Scope: anonymous qualitative montages derived from persisted predictions/labels and
+    preregistered selection rules.
+  - Dependencies: Wave 7 metrics and preregistered montage policy.
+  - Allowed files: external output root for generated montages and metadata.
+  - Prohibited files: Git images, source identifiers, cherry-picking based on post-hoc claims.
+  - Required inputs: prediction/label artifacts, selection policy hash, anonymized IDs.
+  - Expected outputs: montage inventory and anonymized montage assets outside Git.
+  - Tests: selection is deterministic, no source IDs or paths, metadata links to artifacts.
+  - Completion criteria: montages reproduce from persisted artifacts and policy.
+  - External drive: no if persisted artifacts suffice; otherwise explicit read-only approval.
+  - External labels: no new label reads beyond persisted artifacts.
+  - Concurrency: may run with failure analysis.
+
+- `P8-FAILURE-LIMITATIONS`
+  - Scope: failure analysis, deviations, limitations, and allowable claims.
+  - Dependencies: Wave 7 artifacts.
+  - Allowed files: publication source/tests/docs and external output root.
+  - Prohibited files: new metrics, tuning, checkpoint ranking, clinical claims.
+  - Required inputs: metrics, CIs, comparison tables, QA failures, deviation ledger.
+  - Expected outputs: limitations and failure-analysis artifacts derived from persisted JSON.
+  - Tests: report values trace to JSON; unsupported claims rejected or flagged.
+  - Completion criteria: limitations state cohort bounds, missing/incompatible cases, and all
+    preregistration deviations.
+  - External drive: no.
+  - External labels: no new label reads.
+  - Concurrency: may run with qualitative montages.
+
+### Wave 9: Independent Reviews, Gate 8 Verification, and Close-Out
+
+Planned subagents:
+
+- `P8-SCIENTIFIC-REVIEW`
+  - Scope: independent read-only scientific review.
+  - Dependencies: Waves 1-8 complete.
+  - Allowed files: docs/handoff only unless approved blocker fix is needed in a later session.
+  - Prohibited files: new data access, reruns, tuning, metrics.
+  - Required inputs: freeze, preregistration, manifest, predictions, metrics, CIs, reports.
+  - Expected outputs: findings, unresolved scientific conflicts, Gate 8 recommendation.
+  - Tests: review artifact links and formulas.
+  - Completion criteria: no unresolved critical scientific blockers.
+  - External drive: no.
+  - External labels: no.
+  - Concurrency: may run with engineering/leakage reviews.
+
+- `P8-ENGINEERING-REVIEW`
+  - Scope: independent read-only engineering review.
+  - Dependencies: Waves 1-8 complete.
+  - Allowed files: docs/handoff only unless approved blocker fix is needed later.
+  - Prohibited files: real data access, generated artifact commits.
+  - Required inputs: code, tests, synthetic outputs, artifact hashes.
+  - Expected outputs: determinism/path-safety/publication/test findings.
+  - Tests: final command set below.
+  - Completion criteria: no unresolved critical engineering blockers.
+  - External drive: no.
+  - External labels: no.
+  - Concurrency: may run with other reviews.
+
+- `P8-LEAKAGE-REVIEW`
+  - Scope: independent read-only leakage review.
+  - Dependencies: Waves 1-8 complete.
+  - Allowed files: docs/handoff and `docs/LEAKAGE_AUDIT.md` close-out only after evidence exists.
+  - Prohibited files: new label reads, tuning, checkpoint selection.
+  - Required inputs: freeze, label ledger, post-evaluation lock, result lineage.
+  - Expected outputs: leakage recommendation and Gate 8 blockers.
+  - Tests: no external labels in preprocessing/support/threshold/checkpoint/model-selection paths;
+    report immutability.
+  - Completion criteria: zero unresolved critical leakage blockers.
+  - External drive: no.
+  - External labels: no.
+  - Concurrency: may run with other reviews.
+
+- `P8-GATE8-CLOSEOUT`
+  - Scope: final verification, documentation close-out, and next-phase prompt.
+  - Dependencies: all reviews pass and blockers resolved.
+  - Allowed files: docs close-out files and acceptance checklist after implementation evidence
+    exists.
+  - Prohibited files: new external evaluation, reruns to improve results, generated artifacts in Git.
+  - Required inputs: all reviewed artifacts and final verification commands.
+  - Expected outputs: Gate 8 evidence, changed files, commands, tests, scientific decisions, risks,
+    gate status, and next-phase prompt.
+  - Tests: final Gate 8 command set.
+  - Completion criteria: Gate 8 accepted only from verified evidence, not plans.
+  - External drive: no for synthetic gate checks; real artifact hash verification only if explicitly
+    approved and required.
+  - External labels: no new label reads.
+  - Concurrency: sequential final gate.
+
+## Phase 8 Artifact and Preregistration Plan
+
+Planned schemas:
+
+- `phase8_decision_freeze_v1`: frozen preprocessing, support policy, thresholds, checkpoint/model,
+  model-selection decision, label-mapping policy, metric config, bootstrap plan, publication config,
+  Git commit, explicit timestamp, and self-hash.
+- `phase8_external_preregistration_v1`: cohort, inclusion/exclusion policy, label-access policy,
+  one-time inference rule, metric hierarchy, bootstrap plan, internal-versus-external comparison,
+  deviations, limitations, and self-hash.
+- `phase8_external_image_manifest_v1`: anonymous external case IDs, relative image paths, image
+  hashes, adapter identity, root fingerprint, no absolute paths, and manifest hash.
+- `phase8_external_label_manifest_v1`: label paths/hashes and label metadata generated only after
+  the label ledger permits evaluation access.
+- `phase8_label_mapping_policy_v1`: frozen mapping from source labels or tumor mask files to binary
+  tumor foreground, with liver/context labels excluded from target foreground.
+- `external_label_access_ledger_v1`: first label-opening operation, freeze hash, preregistration
+  hash, prediction-lock hash, purpose, and rejection rules for mismatch.
+- `phase8_external_prediction_manifest_v1`: immutable prediction records, prediction hashes,
+  geometry metadata, relative output paths, and freeze/preregistration links.
+- `phase8_external_metric_report_v1`: project binary tumor metrics and aggregate reports from
+  persisted predictions and labels.
+- `phase8_bootstrap_ci_v1`: deterministic case/patient-level bootstrap intervals linked to metric
+  reports.
+- `phase8_internal_external_comparison_v1`: descriptive comparison tables linked to frozen internal
+  and external reports.
+- `phase8_publication_summary_v1`: JSON-first report/montage/failure-analysis inventory and
+  limitations.
+
+All schemas must use existing canonical JSON and SHA-256 conventions, reject unknown fields, reject
+NaN and Infinity, avoid absolute paths and machine-specific metadata, validate embedded self-hashes,
+and write generated artifacts only outside Git.
+
+## Phase 8 Planned Files and Tests
+
+Wave 0 changed only planning files. Later waves may add or modify these planned surfaces after
+approval:
+
+- `configs/phase8_external_validation.yaml`
+- `src/protoem_ct/external/__init__.py`
+- `src/protoem_ct/external/artifacts.py`
+- `src/protoem_ct/external/freeze.py`
+- `src/protoem_ct/external/preregistration.py`
+- `src/protoem_ct/external/manifest.py`
+- `src/protoem_ct/external/qa.py`
+- `src/protoem_ct/external/label_mapping.py`
+- `src/protoem_ct/external/ledger.py`
+- `src/protoem_ct/external/inference.py`
+- `src/protoem_ct/external/metrics.py`
+- `src/protoem_ct/external/bootstrap.py`
+- `src/protoem_ct/external/comparison.py`
+- `src/protoem_ct/external/publication.py`
+- `src/protoem_ct/data/adapters/ircadb.py`
+- `src/protoem_ct/data/adapters/base.py`
+- `src/protoem_ct/data/phase2_paths.py`
+- `src/protoem_ct/baselines/metrics.py`
+- `src/protoem_ct/baselines/predictions.py`
+- `src/protoem_ct/protoem/inference.py`
+- `src/protoem_ct/protoem/publication.py`
+- `src/protoem_ct/retrieval/*`
+- `src/protoem_ct/robustness/*` and `src/protoem_ct/uncertainty/*` only if external
+  robustness/uncertainty is preregistered
+- `src/protoem_ct/cli/main.py`
+- `tests/unit/test_phase8_*.py`
+- `tests/integration/test_phase8_*.py`
+- `tests/smoke/test_phase8_external_validation_smoke.py`
+- `docs/DECISIONS.md`
+- `docs/LEAKAGE_AUDIT.md`
+- `ACCEPTANCE_CHECKLIST.md`
+- `docs/phase8/SUPERVISOR_HANDOFF.md`
+
+Planned test categories:
+
+- schema, serialization, self-hash, unknown-field, and no-NaN/Inf tests;
+- path safety and external output-root tests;
+- synthetic 3D-IRCADb adapter/layout tests;
+- anonymization and collision tests;
+- label-mapping freeze and tamper tests;
+- leakage tests for preprocessing, support policy, thresholds, checkpoint/model, label mapping,
+  and reporting;
+- synthetic end-to-end external-validation tests without real data;
+- deterministic two-root publication tests;
+- metric, bootstrap, CI, and internal-versus-external comparison tests;
+- qualitative montage/failure-analysis JSON-first tests; and
+- Gate 8 no-generated-artifact Git hygiene checks.
+
+## Phase 8 Gate 8 Acceptance Criteria
+
+Gate 8 is accepted only when:
+
+- preprocessing, support policy, thresholds, checkpoint, and model-selection decision are frozen
+  before external evaluation;
+- the versioned external-evaluation preregistration JSON exists, self-validates, and predates real
+  label access and real evaluation;
+- real 3D-IRCADb-01 is evaluated without tuning under the frozen protocol;
+- label mapping, scanner/acquisition/domain shift, inclusion/exclusion accounting, missing labels,
+  incompatible cases, and all deviations from preregistration are documented in persisted artifacts;
+- external segmentation metrics and bootstrap CIs are computed only from persisted predictions,
+  labels, preregistration, manifest, and metric artifacts;
+- internal-versus-external tables are descriptive and cannot alter frozen decisions;
+- qualitative montages, failure analysis, and limitations are anonymous and generated only from
+  persisted artifacts;
+- final external report reproduces from frozen preregistration, checkpoint metadata, anonymous
+  manifest, prediction artifact inventory, and metric artifacts;
+- external labels never tune preprocessing, support policy, thresholds, checkpoint/model selection,
+  stopping, postprocessing, report selection, or protocol iteration;
+- no checkpoint selection occurs after external results;
+- label mapping is frozen before evaluation and ledgered before labels are opened;
+- independent scientific, engineering, and leakage reviews have no unresolved critical blockers;
+- repository-wide lint, format, typing, tests, pre-commit, CLI help, synthetic Phase 8 smoke,
+  deterministic synthetic two-root publication checks, and Git hygiene checks pass;
+- no tracked medical data, dataset, local path, masks, predictions, embeddings, checkpoints,
+  weights, credentials, HMAC keys, reverse maps, MLflow runs, or large generated artifacts are
+  Git-visible; and
+- close-out claims do not exceed directly supported evidence.
+
+Planned final Gate 8 commands:
+
+- `git status --short --branch`
+- `uv run ruff check .`
+- `uv run ruff format --check .`
+- `uv run mypy src tests`
+- `uv run pytest -q`
+- `uv run pre-commit run --all-files`
+- `uv run protoem-ct run-phase8-external-validation --help`
+- two independent bounded synthetic Phase 8 executions into explicit external temporary roots;
+- deterministic JSON/Markdown comparison across those roots;
+- `git status --porcelain --untracked-files=all` after synthetic publication; and
+- real external artifact hash verification only when explicitly approved and actually run.
+
+### Phase 8 Definitive Training Orchestration Implementation Note
+
+Status: implementation and synthetic-test completed locally on 2026-08-08 under
+`PHASE8-DEFINITIVE-TRAINING-POLICY-V1` (see `docs/DECISIONS.md`). This substage extended
+`src/protoem_ct/external/definitive_pipeline.py` with a locked training-execution policy (500 fixed
+optimizer steps; checkpoint candidates only at steps 250 and 500; both requiring complete 20-case
+development-validation evaluation; no subset-based checkpoint selection; mean-tumor-Dice checkpoint
+selection with an earliest-step tie-break; no early stopping; no resume; a 10-hour hard watchdog; no
+internal-test, external-data, or external-label use), one continuous single-trajectory
+training-with-snapshot runner, full development-validation orchestration over exactly 20 unique
+cases loaded one at a time with no persistent full-volume cache, checkpoint selection logic, and a
+machine-readable checkpoint-selection-evidence artifact. All work is implementation-only: no
+definitive training was executed, no real checkpoint was selected, no freeze occurred, and no
+`/Volumes` or real dataset access occurred. Wave 4 and Wave 5 remain `BLOCKED`. This is not itself a
+Wave 4/5 readiness release; it prepares orchestration for a future separately approved real
+execution.
+
+### Phase 8 Definitive Patch Materialization Implementation Note
+
+Status: implementation and synthetic-test completed locally on 2026-08-08 under
+`P8-DEFINITIVE-PATCH-MATERIALIZATION-V1` (see `docs/DECISIONS.md`). This substage is an
+execution-efficiency correction only: it prevents the approved 500-step definitive run from
+repeatedly loading and preprocessing complete CT volumes on every optimizer step. It adds a
+deterministic, self-hashed 500-entry patch-request schedule (built before any medical volume is
+loaded, preserving the existing positive-case rotation and negative-case-selection algorithm on a
+dedicated RNG stream, in exact `case_references` order with no internal reordering), sequential
+one-case-at-a-time patch materialization (at most one full preprocessed case live at any point, no
+persistent full-volume cache, anonymous NPZ+JSON patch artifacts with no-overwrite publication
+outside Git), and a training path that consumes materialized patches in exact step order while
+initializing the model, optimizer, and seed exactly once and keeping checkpoint snapshots at
+exactly steps 250 and 500. No scientific policy (architecture, preprocessing, sampling ratio,
+optimizer, loss, device, AMP, seed, step budget, checkpoint candidates, or selection metric)
+changed. No real data was accessed, no real patches were materialized, no definitive training was
+executed, and no checkpoint selection or freeze occurred under this decision.
+
+### Phase 8 Definitive Sampling RNG Closure Implementation Note
+
+Status: implementation and synthetic-test completed locally on 2026-08-08 under
+`P8-DEFINITIVE-SAMPLING-RNG-POLICY-V1` (see `docs/DECISIONS.md`). This is a minimal corrective
+closure of the patch-materialization substage above, not a new substage: it makes the already-used
+decoupled case-selection RNG (`np.random.default_rng(config.seed)`, one draw per step) and
+patch-sampling RNG (`np.random.default_rng([config.seed, step_index, role])`) an explicit,
+hash-bound policy on the schedule (`rng_policy_identifier`/`rng_policy_version`), and documents
+explicitly that this decoupled realization is not claimed to be bit-for-bit identical to the
+earlier shared-stream implementation used before patch materialization existed. The approved
+sampling distribution (seed 1729, 1:1 ratio, positive-case rotation, deterministic-uniform negative
+draws over the approved case-reference sequence, patch size `[64, 64, 32]`) is unchanged, and no
+model/preprocessing/training hyperparameter, step budget, checkpoint step, validation policy, or
+selection metric changed. No real data was accessed and no definitive training was executed under
+this decision.
+
+### Phase 8 Package H — Final Closure
+
+Status: **CLOSED** locally on 2026-08-09 with a negative external-validation result. Package H
+performed the final, non-scientific closure step after Packages C through G (definitive training,
+freeze, external preregistration, image-only inference/prediction lock, and label evaluation) had
+already produced the frozen, locked, and evaluated result. Package H did not retrain, reinfer, or
+recompute any metric.
+
+Package H work:
+
+1. Fixed one disclosed non-scientific defect in the Package G internal-vs-external comparison
+   artifact: `_build_internal_external_comparison`
+   (`src/protoem_ct/external/label_evaluation.py`) read the internal checkpoint-selection evidence
+   file with the wrong dict key (`"checkpoint_sha256"`, absent from the
+   `phase8_definitive_checkpoint_selection_evidence` schema) instead of the correct key
+   (`"selected_checkpoint_hash"`), which always produced `internal_checkpoint_sha256=null` and
+   `internal_checkpoint_matches_locked_checkpoint=false`. The fix touches only this key lookup and
+   is covered by a focused regression test (commit `51638ca662510bf4cb031b2aec29778bf26bba26`,
+   "fix(phase8): correct comparison checkpoint provenance").
+2. Published a corrected comparison artifact,
+   `phase8_internal_external_comparison_corrected_v1.json`, under the existing Package G output
+   root, without overwriting or deleting the original `phase8_internal_external_comparison.json`.
+   Every scientifically relevant field is verified value-identical between the two; only the two
+   defective provenance fields changed.
+3. Added a small, self-hashed, non-medical closure/reproduction record contract
+   (`src/protoem_ct/external/closure.py`, `Phase8ClosureReproductionRecord`) and published one
+   instance to the Package G output root
+   (`phase8_final_closure_reproduction_record.json`), recording the verified identity chain
+   (freeze/checkpoint/preregistration/prediction-lock/metric-report/domain-shift hashes, the
+   corrected-comparison reference, and the fix commit) with no medical array or PHI.
+4. Wrote the final closure report, `docs/phase8/FINAL_REPORT.md`, covering the frozen
+   configuration, preregistration/lock/evaluation identities, all 9 external metrics with
+   bootstrap CIs, domain-shift and qualitative-output references, the corrected comparison, an
+   explicit no-tuning statement, an explicit negative-result interpretation, and limitations.
+5. Updated `ACCEPTANCE_CHECKLIST.md` (Gate 8) and this file to reflect Phase 8 closure without
+   claiming any result beyond what the artifacts support.
+
+External drive access: `/Volumes/Lexar` was mounted and accessible during this closure session, so
+all hashes quoted in `docs/phase8/FINAL_REPORT.md` were independently re-verified against the
+mounted artifacts (not merely quoted from an earlier record).
+
+Verified local outcomes for the Package H changes:
+
+- `uv run pytest -q tests/unit/test_phase8_label_evaluation.py tests/unit/test_phase8_closure.py`:
+  PASS, `24 passed`
+- `uv run ruff format --check` on changed files: PASS
+- `uv run ruff check` on changed files: PASS
+- `uv run mypy` on changed files: PASS
+- `git diff --check`: PASS
 
 ## Implementation Notes and Command Results
 
