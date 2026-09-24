@@ -101,11 +101,7 @@ def _expected_paths(data_root: Path) -> dict[str, tuple[Path, Path]]:
 
 def _verify_transferred_files(data_root: Path) -> list[dict[str, Any]]:
     expected_paths = _expected_paths(data_root)
-    expected_medical_paths = {
-        path.resolve()
-        for pair in expected_paths.values()
-        for path in pair
-    }
+    expected_medical_paths = {path.resolve() for pair in expected_paths.values() for path in pair}
     observed_medical_paths = {
         path.resolve()
         for pattern in ("*.nii", "*.nii.gz")
@@ -113,12 +109,10 @@ def _verify_transferred_files(data_root: Path) -> list[dict[str, Any]]:
         if path.is_file()
     }
     extra = sorted(
-        str(path.relative_to(data_root))
-        for path in observed_medical_paths - expected_medical_paths
+        str(path.relative_to(data_root)) for path in observed_medical_paths - expected_medical_paths
     )
     missing = sorted(
-        str(path.relative_to(data_root))
-        for path in expected_medical_paths - observed_medical_paths
+        str(path.relative_to(data_root)) for path in expected_medical_paths - observed_medical_paths
     )
     if missing:
         raise RuntimeError(f"R2 private transfer is missing expected medical files: {missing}")
