@@ -210,9 +210,7 @@ def reconcile_geometry_mismatches(
         reconciled.append(item)
 
     unresolved = [
-        item
-        for item in reconciled
-        if str(item["resolution_status"]).startswith("unresolved")
+        item for item in reconciled if str(item["resolution_status"]).startswith("unresolved")
     ]
     diagnostics = [
         {
