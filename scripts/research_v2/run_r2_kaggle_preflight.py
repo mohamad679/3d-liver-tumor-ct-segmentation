@@ -112,8 +112,14 @@ def _verify_transferred_files(data_root: Path) -> list[dict[str, Any]]:
         for path in data_root.rglob(pattern)
         if path.is_file()
     }
-    extra = sorted(str(path.relative_to(data_root)) for path in observed_medical_paths - expected_medical_paths)
-    missing = sorted(str(path.relative_to(data_root)) for path in expected_medical_paths - observed_medical_paths)
+    extra = sorted(
+        str(path.relative_to(data_root))
+        for path in observed_medical_paths - expected_medical_paths
+    )
+    missing = sorted(
+        str(path.relative_to(data_root))
+        for path in expected_medical_paths - observed_medical_paths
+    )
     if missing:
         raise RuntimeError(f"R2 private transfer is missing expected medical files: {missing}")
     if extra:
