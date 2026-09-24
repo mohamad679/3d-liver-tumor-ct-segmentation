@@ -40,10 +40,12 @@ def main() -> int:
         if observed_hash != entry["overlay_sha256"]:
             raise RuntimeError(f"overlay hash changed: {overlay.name}")
         while True:
-            answer = input(
-                f"{entry['anonymous_case_id']} ({overlay.name}) aligned in axial/sagittal/coronal? "
+            case_id = entry["anonymous_case_id"]
+            prompt = (
+                f"{case_id} ({overlay.name}) aligned in axial/sagittal/coronal? "
                 "[y/n]: "
-            ).strip().lower()
+            )
+            answer = input(prompt).strip().lower()
             if answer in {"y", "n"}:
                 break
         notes = input("optional note (press Enter for none): ").strip()
