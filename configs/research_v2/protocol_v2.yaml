@@ -28,31 +28,15 @@
     }
   },
   "access_policy": {
-    "fit": [
-      "train"
-    ],
-    "tune": [
-      "train",
-      "validation"
-    ],
-    "fold_planning": [
-      "train"
-    ],
-    "locked_evaluation": [
-      "internal_test"
-    ],
-    "external_confirmation": [
-      "new_external"
-    ],
-    "exploratory_external": [
-      "historical_external"
-    ]
+    "fit": ["train"],
+    "tune": ["train", "validation"],
+    "fold_planning": ["train"],
+    "locked_evaluation": ["internal_test"],
+    "external_confirmation": ["new_external"],
+    "exploratory_external": ["historical_external"]
   },
   "candidate_lock": {
-    "required_for": [
-      "locked_evaluation",
-      "external_confirmation"
-    ]
+    "required_for": ["locked_evaluation", "external_confirmation"]
   },
   "metrics": {
     "primary": "patient_macro_tumor_dice_positive_cases",
@@ -80,11 +64,26 @@
   },
   "budget": {
     "r0_cpu_smoke_required": true,
-    "r0_gpu_smoke_required": true,
+    "r0_gpu_smoke_required": false,
+    "gpu_smoke_required_before_training": true,
     "gpu_hours": null,
     "gpu_model": null,
     "record_vram": true,
     "record_wall_time": true
+  },
+  "gate_policy": {
+    "version": "research_v2_gate_policy.v2",
+    "amendment_reason": "GPU availability does not affect deterministic R0 data/software audit or CPU-only R1 inspection; CUDA evidence remains mandatory before real R2/R3 training.",
+    "r0_research_readiness": {
+      "required_for": ["R1"],
+      "requires_real_data_audit": true,
+      "requires_python311_software_ci": true,
+      "requires_cuda_gpu": false
+    },
+    "gpu_training_readiness": {
+      "required_before": ["R2_training", "R3_training"],
+      "requires_cuda_gpu": true
+    }
   },
   "gate": {
     "require_patient_id_disjointness": true,
