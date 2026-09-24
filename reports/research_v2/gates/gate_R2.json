@@ -2,7 +2,7 @@
   "schema_version": "research_v2_gate.v1",
   "stage": "R2",
   "status": "BLOCKED",
-  "blocker": "BLOCKED_PENDING_REAL_TRAIN_SUBSET_GPU_PREFLIGHT_AND_OVERFIT_EVIDENCE",
+  "blocker": "BLOCKED_PENDING_KAGGLE_TRANSFER_GPU_PREFLIGHT_AND_OVERFIT_EVIDENCE",
   "branch": "research-v2/r2-overfit-real",
   "parent_r1_closed_commit": "998584f7ff8703e9ff6a934a0dc540cf379e31b6",
   "r2_preregistration_commit": "3091010856b416af07aeee7b67644948662000b3",
@@ -28,7 +28,7 @@
     "manifest_or_split_regeneration_allowed": false
   },
   "selection_preregistration": {
-    "status": "PREREGISTERED_PENDING_REAL_SOURCE_HASH_VERIFICATION",
+    "status": "PASS_REAL_SOURCE_AND_LOCAL_STAGING_HASHES_VERIFIED",
     "positive_quantiles": [0.2, 0.5, 0.8],
     "positive_rank_rule": "floor((N_positive-1)*q) after sorting by (tumor_voxel_count, anonymous_case_id)",
     "empty_rule": "lexicographically smallest anonymous_case_id among train cases with tumor_voxel_count == 0",
@@ -56,8 +56,10 @@
         "tumor_voxel_count": 0
       }
     ],
-    "source_image_label_hashes_verified": false,
-    "private_transfer_hashes_verified": false
+    "source_image_label_hashes_verified": true,
+    "local_private_staging_hashes_verified": true,
+    "private_transfer_hashes_verified": false,
+    "evidence_path": "reports/research_v2/evidence/r2_selected_train_cases_verified.json"
   },
   "gpu_environment": {
     "r0_registered_readiness": "PASS",
@@ -106,7 +108,7 @@
     "final_ci": true
   },
   "real_evidence": {
-    "selection_and_source_hash_evidence": "PENDING",
+    "selection_and_source_hash_evidence": "PASS: reports/research_v2/evidence/r2_selected_train_cases_verified.json",
     "kaggle_transfer_hash_evidence": "PENDING",
     "gpu_preflight": "PENDING",
     "training_log": "PENDING",
@@ -121,11 +123,13 @@
     "R2 experiment and Gate thresholds were preregistered before R2 training",
     "R2 deterministic train-only selection rule was preregistered before training",
     "R2 forbids validation, internal-test and external array access",
-    "R2 forbids CPU fallback and does not pool VRAM across two T4 devices"
+    "R2 forbids CPU fallback and does not pool VRAM across two T4 devices",
+    "selected train source image/label SHA-256 values match the locked manifest",
+    "local private staging contains only the eight selected train files with matching SHA-256",
+    "selection/staging script decoded zero medical arrays"
   ],
   "blocking_checks": [
-    "verify selected train image/label SHA-256 values against the locked manifest and actual source files",
-    "if transferring to Kaggle, verify pre/post transfer SHA-256 for only the selected train files",
+    "verify pre/post Kaggle private-transfer SHA-256 for only the selected train files",
     "run fresh frozen-environment R2 CUDA preflight and one complete forward/backward/optimizer step",
     "execute preregistered training budget with real selected train arrays",
     "evaluate patch predictions and full native-volume predictions separately",
