@@ -222,7 +222,7 @@ def threshold_fixture_probability(probability: Array, *, threshold: float) -> Bo
         raise R1MetricInputError(
             "fixture probability values must lie in [0, 1]; logits are rejected"
         )
-    return cast(BoolArray, float_array >= threshold)
+    return float_array >= threshold
 
 
 def affine_spacing_mm(affine: Array) -> tuple[float, float, float]:
