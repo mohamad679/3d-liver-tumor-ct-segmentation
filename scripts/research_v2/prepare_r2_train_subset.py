@@ -158,7 +158,10 @@ def main() -> int:
     dataset_root = (
         args.dataset_root.expanduser().resolve()
         if args.dataset_root is not None
-        else _detect_dataset_root(args.search_root.expanduser().resolve(), first_manifest_case.relative_image_path)
+        else _detect_dataset_root(
+            args.search_root.expanduser().resolve(),
+            first_manifest_case.relative_image_path,
+        )
     )
 
     staging_root = (
@@ -172,8 +175,12 @@ def main() -> int:
     case_evidence: list[dict[str, Any]] = []
     for selected_case in selected:
         manifest_case = manifest_cases[selected_case.anonymous_case_id]
-        image_path = resolve_regular_file_beneath_root(dataset_root, manifest_case.relative_image_path)
-        label_path = resolve_regular_file_beneath_root(dataset_root, manifest_case.relative_label_path)
+        image_path = resolve_regular_file_beneath_root(
+            dataset_root, manifest_case.relative_image_path
+        )
+        label_path = resolve_regular_file_beneath_root(
+            dataset_root, manifest_case.relative_label_path
+        )
         observed_image_sha256 = sha256_file(image_path)
         observed_label_sha256 = sha256_file(label_path)
         if observed_image_sha256 != manifest_case.image_sha256:
@@ -227,7 +234,10 @@ def main() -> int:
         "schema_version": "research_v2_r2_selected_train_cases.v1",
         "status": "PASS",
         "selection_source": "closed R1 sanitized metadata; train partition only",
-        "selection_rule": "positive q20/q50/q80 rank by tumor_voxel_count with case-id tie-break; lexicographically first train-empty case",
+        "selection_rule": (
+            "positive q20/q50/q80 rank by tumor_voxel_count with case-id tie-break; "
+            "lexicographically first train-empty case"
+        ),
         "manifest_artifact_hash": EXPECTED_MANIFEST_HASH,
         "manifest_file_sha256": EXPECTED_MANIFEST_FILE_SHA256,
         "split_artifact_hash": EXPECTED_SPLIT_HASH,
@@ -240,9 +250,15 @@ def main() -> int:
         "external_arrays_opened": 0,
         "private_staging_performed": staging_root is not None,
         "private_staging_file_count": len(case_evidence) * 2 if staging_root is not None else 0,
-        "warning": "Selected images/labels and any private staging directory contain medical data and must not be committed to Git or published.",
+        "warning": (
+            "Selected images/labels and any private staging directory contain medical data and "
+            "must not be committed to Git or published."
+        ),
     }
-    evidence_path.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    evidence_path.write_text(
+        json.dumps(evidence, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     print(json.dumps(evidence, indent=2, sort_keys=True))
     print(f"R2_SELECTION_EVIDENCE={evidence_path}")
     if staging_root is not None:
