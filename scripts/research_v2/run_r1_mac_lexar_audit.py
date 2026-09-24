@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Run the real Research-v2 R1 audit on a Mac with the Lexar development data attached.
 
-The runner is intentionally read-only with respect to manifest, split, images, and labels.  It
-opens arrays only for cases authorized as train/validation by the locked split.  Internal-test and
+The runner is intentionally read-only with respect to manifest, split, images, and labels. It
+opens arrays only for cases authorized as train/validation by the locked split. Internal-test and
 external arrays are never opened.
 """
 
@@ -147,9 +147,7 @@ def _forms_conflict(image: nib.Nifti1Image) -> bool:
     sform, scode = image.get_sform(coded=True)
     if int(qcode) <= 0 or int(scode) <= 0 or qform is None or sform is None:
         return False
-    return not bool(
-        np.allclose(qform, sform, rtol=0.0, atol=R1_AFFINE_ABS_TOLERANCE)
-    )
+    return not bool(np.allclose(qform, sform, rtol=0.0, atol=R1_AFFINE_ABS_TOLERANCE))
 
 
 def _audit_case(case: Any, *, dataset_root: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
@@ -228,9 +226,12 @@ def _audit_case(case: Any, *, dataset_root: Path) -> tuple[dict[str, Any], list[
         image_orientation = ("?", "?", "?")
         label_orientation = ("?", "?", "?")
 
-    if all(np.isfinite(image_spacing)) and all(np.isfinite(label_spacing)):
-        if not np.allclose(image_spacing, label_spacing, rtol=0.0, atol=1e-6):
-            mismatch("image_label_spacing_mismatch")
+    if (
+        all(np.isfinite(image_spacing))
+        and all(np.isfinite(label_spacing))
+        and not np.allclose(image_spacing, label_spacing, rtol=0.0, atol=1e-6)
+    ):
+        mismatch("image_label_spacing_mismatch")
 
     lesion_count = 0
     tumor_voxels = 0
@@ -349,7 +350,11 @@ def _crop_bounds(mask: np.ndarray) -> tuple[tuple[int, int, int], tuple[int, int
 
 
 def _roundtrip_trace(
-    *, image: np.ndarray, tumor: np.ndarray, native_affine: np.ndarray, target_spacing: tuple[float, ...]
+    *,
+    image: np.ndarray,
+    tumor: np.ndarray,
+    native_affine: np.ndarray,
+    target_spacing: tuple[float, ...],
 ) -> tuple[dict[str, Any], np.ndarray]:
     ras_image, ras_affine = reorient_array_to_ras(image, native_affine)
     ras_tumor, ras_tumor_affine = reorient_array_to_ras(tumor.astype(np.uint8), native_affine)
@@ -541,7 +546,7 @@ def main() -> int:
         attempted[case.partition] += 1
         try:
             record, case_mismatches = _audit_case(case, dataset_root=dataset_root)
-        except Exception as exc:  # noqa: BLE001 - real-data audit must persist every case failure.
+        except Exception as exc:  # noqa: BLE001 - persist every real-data case failure.
             mismatches.append(
                 {
                     "anonymous_case_id": case.anonymous_case_id,
@@ -689,7 +694,7 @@ if __name__ == "__main__":
     started = time.time()
     try:
         exit_code = main()
-    except Exception as exc:  # noqa: BLE001 - top-level audit must fail closed with a visible reason.
+    except Exception as exc:  # noqa: BLE001 - top-level audit fails closed with a visible reason.
         print(f"R1_AUDIT_FATAL={type(exc).__name__}:{exc}", file=sys.stderr)
         exit_code = 50
     print(f"R1_AUDIT_RUNTIME_SECONDS={time.time() - started:.3f}")
