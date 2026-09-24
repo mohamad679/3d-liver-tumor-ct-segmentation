@@ -82,9 +82,11 @@ def select_r2_train_cases(records: Sequence[Mapping[str, Any]]) -> tuple[R2Selec
         _require_record(record)
     train = [record for record in records if record["partition"] == "train"]
     if len(train) != R2_EXPECTED_TRAIN_CASES:
-        raise ValueError(
-            f"R2 requires exactly {R2_EXPECTED_TRAIN_CASES} train metadata records; got {len(train)}"
+        message = (
+            f"R2 requires exactly {R2_EXPECTED_TRAIN_CASES} train metadata records; "
+            f"got {len(train)}"
         )
+        raise ValueError(message)
     case_ids = [str(record["anonymous_case_id"]) for record in train]
     patient_ids = [str(record["anonymous_patient_id"]) for record in train]
     if len(case_ids) != len(set(case_ids)):
