@@ -6,7 +6,7 @@
   "branch": "research-v2/r1-pixel-metric-audit",
   "r0_closed_parent_commit": "c0ebb42b7390b687d0d942371ea339c9fc7f3a6b",
   "r1_preregistration_commit": "fc5e8a5cabd00a381739df0e671a4a37e1f3af5a",
-  "metric_contract_commit": "3278fb1dc63c94d21b9c29f3103a8d4b3262d494",
+  "metric_contract_commit": "b7481e78358c7041cb47280383704b634ff09f7f",
   "historical_phase8_immutable": true,
   "data_scope": {
     "locked_manifest_artifact_hash": "c24244951e050050cf25c4b321f67d61c2087fc0c93fdcf9d112e0e488e1384b",
@@ -36,7 +36,7 @@
       2
     ],
     "exact_metric_tolerance": 1e-06,
-    "affine_absolute_tolerance": 1e-05,
+    "affine_absolute_tolerance": 1e-06,
     "surface_distance_space": "native_physical_mm",
     "hd95_definition": "95th percentile of concatenated bidirectional foreground surface distances in native physical spacing",
     "nsd_tolerance_mm": 1.0,
