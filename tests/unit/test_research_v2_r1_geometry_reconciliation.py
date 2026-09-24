@@ -62,10 +62,7 @@ def test_reconciliation_retains_qform_observation_but_resolves_gate_failure() ->
     reconciled, summary = reconcile_geometry_mismatches(records=records, mismatches=mismatches)
 
     assert reconciled[0]["resolution_status"] == "resolved_nonblocking_observation"
-    assert (
-        reconciled[1]["resolution_status"]
-        == "resolved_preexisting_phase2_precision_envelope"
-    )
+    assert reconciled[1]["resolution_status"] == "resolved_preexisting_phase2_precision_envelope"
     assert summary["resolved_qform_sform_observation_case_count"] == 1
     assert summary["resolved_effective_affine_case_count"] == 1
     assert summary["unresolved_mismatch_record_count"] == 0
