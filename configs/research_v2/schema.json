@@ -15,37 +15,22 @@
     "metrics",
     "nnunet",
     "budget",
+    "gate_policy",
     "gate"
   ],
   "properties": {
-    "schema_version": {
-      "const": "research_v2_protocol.v1"
-    },
-    "protocol_id": {
-      "type": "string",
-      "minLength": 1
-    },
-    "base_commit": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{40}$"
-    },
+    "schema_version": {"const": "research_v2_protocol.v1"},
+    "protocol_id": {"type": "string", "minLength": 1},
+    "base_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
     "historical_phase8": {
       "type": "object",
-      "required": [
-        "immutable",
-        "protected_paths"
-      ],
+      "required": ["immutable", "protected_paths"],
       "properties": {
-        "immutable": {
-          "const": true
-        },
+        "immutable": {"const": true},
         "protected_paths": {
           "type": "array",
           "minItems": 1,
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
+          "items": {"type": "string", "minLength": 1},
           "uniqueItems": true
         }
       },
@@ -53,33 +38,17 @@
     },
     "development_data": {
       "type": "object",
-      "required": [
-        "cohort_id",
-        "counts",
-        "existing_split"
-      ],
+      "required": ["cohort_id", "counts", "existing_split"],
       "properties": {
-        "cohort_id": {
-          "const": "lits-msd-task03-unified"
-        },
+        "cohort_id": {"const": "lits-msd-task03-unified"},
         "counts": {
           "type": "object",
           "properties": {
-            "train": {
-              "const": 91
-            },
-            "validation": {
-              "const": 20
-            },
-            "internal_test": {
-              "const": 20
-            }
+            "train": {"const": 91},
+            "validation": {"const": 20},
+            "internal_test": {"const": 20}
           },
-          "required": [
-            "train",
-            "validation",
-            "internal_test"
-          ],
+          "required": ["train", "validation", "internal_test"],
           "additionalProperties": false
         },
         "existing_split": {
@@ -93,79 +62,91 @@
             "replace_existing_split"
           ],
           "properties": {
-            "artifact_required": {
-              "const": true
-            },
-            "manifest_hash": {
-              "oneOf": [
-                {
-                  "type": "null"
-                },
-                {
-                  "type": "string",
-                  "pattern": "^[0-9a-f]{64}$"
-                }
-              ]
-            },
-            "split_hash": {
-              "oneOf": [
-                {
-                  "type": "null"
-                },
-                {
-                  "type": "string",
-                  "pattern": "^[0-9a-f]{64}$"
-                }
-              ]
-            },
-            "replace_existing_split": {
-              "const": false
-            },
-            "manifest_file_sha256": {
-              "oneOf": [
-                {
-                  "type": "null"
-                },
-                {
-                  "type": "string",
-                  "pattern": "^[0-9a-f]{64}$"
-                }
-              ]
-            },
-            "split_file_sha256": {
-              "oneOf": [
-                {
-                  "type": "null"
-                },
-                {
-                  "type": "string",
-                  "pattern": "^[0-9a-f]{64}$"
-                }
-              ]
-            }
+            "artifact_required": {"const": true},
+            "manifest_hash": {"$ref": "#/$defs/nullableSha256"},
+            "split_hash": {"$ref": "#/$defs/nullableSha256"},
+            "manifest_file_sha256": {"$ref": "#/$defs/nullableSha256"},
+            "split_file_sha256": {"$ref": "#/$defs/nullableSha256"},
+            "replace_existing_split": {"const": false}
           },
           "additionalProperties": false
         }
       },
       "additionalProperties": false
     },
-    "access_policy": {
-      "type": "object"
-    },
-    "candidate_lock": {
-      "type": "object"
-    },
-    "metrics": {
-      "type": "object"
-    },
-    "nnunet": {
-      "type": "object"
-    },
+    "access_policy": {"type": "object"},
+    "candidate_lock": {"type": "object"},
+    "metrics": {"type": "object"},
+    "nnunet": {"type": "object"},
     "budget": {
-      "type": "object"
+      "type": "object",
+      "required": [
+        "r0_cpu_smoke_required",
+        "r0_gpu_smoke_required",
+        "gpu_smoke_required_before_training",
+        "gpu_hours",
+        "gpu_model",
+        "record_vram",
+        "record_wall_time"
+      ],
+      "properties": {
+        "r0_cpu_smoke_required": {"const": true},
+        "r0_gpu_smoke_required": {"const": false},
+        "gpu_smoke_required_before_training": {"const": true},
+        "gpu_hours": {"type": ["null", "number"]},
+        "gpu_model": {"type": ["null", "string"]},
+        "record_vram": {"const": true},
+        "record_wall_time": {"const": true}
+      },
+      "additionalProperties": false
     },
-    "gate": {
-      "type": "object"
+    "gate_policy": {
+      "type": "object",
+      "required": [
+        "version",
+        "amendment_reason",
+        "r0_research_readiness",
+        "gpu_training_readiness"
+      ],
+      "properties": {
+        "version": {"const": "research_v2_gate_policy.v2"},
+        "amendment_reason": {"type": "string", "minLength": 20},
+        "r0_research_readiness": {
+          "type": "object",
+          "required": [
+            "required_for",
+            "requires_real_data_audit",
+            "requires_python311_software_ci",
+            "requires_cuda_gpu"
+          ],
+          "properties": {
+            "required_for": {"const": ["R1"]},
+            "requires_real_data_audit": {"const": true},
+            "requires_python311_software_ci": {"const": true},
+            "requires_cuda_gpu": {"const": false}
+          },
+          "additionalProperties": false
+        },
+        "gpu_training_readiness": {
+          "type": "object",
+          "required": ["required_before", "requires_cuda_gpu"],
+          "properties": {
+            "required_before": {"const": ["R2_training", "R3_training"]},
+            "requires_cuda_gpu": {"const": true}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "gate": {"type": "object"}
+  },
+  "$defs": {
+    "nullableSha256": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      ]
     }
   }
 }
