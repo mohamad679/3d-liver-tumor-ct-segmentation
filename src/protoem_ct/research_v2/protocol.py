@@ -383,7 +383,9 @@ def build_nnunet_splits(
     all_cases = {case_id for case_ids in patient_cases.values() for case_id in case_ids}
     folds: list[dict[str, list[str]]] = []
     for val_patients in fold_patients:
-        val_cases = {case_id for patient_id in val_patients for case_id in patient_cases[patient_id]}
+        val_cases: set[str] = set()
+        for patient_id in val_patients:
+            val_cases.update(patient_cases[patient_id])
         train_cases = all_cases - val_cases
         if train_cases & val_cases:
             raise ProtocolValidationError("nnU-Net fold contains overlapping train/val cases")
