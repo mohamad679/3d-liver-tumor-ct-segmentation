@@ -192,8 +192,6 @@ def load_verified_phase2_artifacts(
         split_obj = phase2_artifact_from_json(
             split_path.read_text(encoding="utf-8"), DevelopmentSplitManifest
         )
-        manifest_obj = cast(DatasetManifest, manifest_obj)
-        split_obj = cast(DevelopmentSplitManifest, split_obj)
         manifest_artifact_hash = hash_dataset_manifest(manifest_obj)
         split_artifact_hash = hash_development_split(split_obj)
         manifest_file_sha256 = sha256_file(manifest_path)
