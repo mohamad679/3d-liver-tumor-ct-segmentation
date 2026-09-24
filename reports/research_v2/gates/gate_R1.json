@@ -1,0 +1,104 @@
+{
+  "schema_version": "research_v2_gate.v1",
+  "stage": "R1",
+  "status": "BLOCKED",
+  "blocker": "BLOCKED_DATA_REVIEW",
+  "branch": "research-v2/r1-pixel-metric-audit",
+  "r0_closed_parent_commit": "c0ebb42b7390b687d0d942371ea339c9fc7f3a6b",
+  "r1_preregistration_commit": "fc5e8a5cabd00a381739df0e671a4a37e1f3af5a",
+  "metric_contract_commit": "3278fb1dc63c94d21b9c29f3103a8d4b3262d494",
+  "historical_phase8_immutable": true,
+  "data_scope": {
+    "locked_manifest_artifact_hash": "c24244951e050050cf25c4b321f67d61c2087fc0c93fdcf9d112e0e488e1384b",
+    "locked_manifest_file_sha256": "0e21a7d555e20b6011091bc18e462bc150cc23a8f46e522dbd8c01b014a44ae3",
+    "locked_split_artifact_hash": "936376cd7b5e6070397c2fef16e5125c60fd6569ff3188d7e9bb5428a46ffadb",
+    "locked_split_file_sha256": "416ca83e85c8598fc4f7065316153193211bf6b57875fbda4cafc01c360445f7",
+    "allowed_array_partitions": [
+      "train",
+      "validation"
+    ],
+    "expected_train_cases": 91,
+    "expected_validation_cases": 20,
+    "forbidden_array_partitions": [
+      "internal_test",
+      "historical_external",
+      "new_external"
+    ],
+    "internal_test_arrays_opened": 0,
+    "external_arrays_opened": 0,
+    "manifest_or_split_regeneration_allowed": false
+  },
+  "metric_contract": {
+    "tumor_raw_label_value": 2,
+    "allowed_raw_label_values": [
+      0,
+      1,
+      2
+    ],
+    "exact_metric_tolerance": 1e-06,
+    "affine_absolute_tolerance": 1e-05,
+    "surface_distance_space": "native_physical_mm",
+    "hd95_definition": "95th percentile of concatenated bidirectional foreground surface distances in native physical spacing",
+    "nsd_tolerance_mm": 1.0,
+    "surface_connectivity": 6,
+    "lesion_connectivity": 26,
+    "lesion_match_rule": "one-to-one maximum-overlap assignment; matched pair is TP only when voxel overlap > 0",
+    "image_or_probability_interpolation": "continuous",
+    "label_or_binary_mask_interpolation": "nearest",
+    "training_allowed": false,
+    "threshold_tuning_allowed": false
+  },
+  "synthetic_evaluator_audit": {
+    "status": "PENDING_CURRENT_BRANCH_CI",
+    "required_fixtures": [
+      "both_empty",
+      "two_lesions",
+      "small_lesion",
+      "axis_flip",
+      "affine_mismatch",
+      "shifted_prediction",
+      "lesion_merge",
+      "lesion_split"
+    ],
+    "required_rejections": [
+      "invalid_label_value",
+      "NaN_label",
+      "geometry_mismatch",
+      "probability_as_binary_mask",
+      "wrong_probability_threshold",
+      "logit_as_probability"
+    ],
+    "project_vs_independent_reference_required": true
+  },
+  "real_mac_lexar_audit": {
+    "status": "NOT_RUN",
+    "all_allowed_case_geometry_label_qa_required": true,
+    "expected_case_count": 111,
+    "minimum_diverse_train_overlays": 10,
+    "manual_overlay_review_required": true,
+    "unresolved_mismatch_count_required": 0,
+    "prediction_restore_probe": "geometry-only binary surrogate; not model-performance evidence",
+    "medical_arrays_or_overlays_allowed_in_git": false
+  },
+  "training_performed": false,
+  "threshold_tuning_performed": false,
+  "passed_checks": [
+    "R1 branch starts from the closed R0 commit",
+    "R1 metric and geometry contract was preregistered",
+    "R0 manifest and split are treated as immutable read-only inputs",
+    "R1 array-access code fails closed outside train/validation",
+    "Mac runner is designed to open arrays only after train/validation authorization",
+    "historical Phase 8 files remain immutable"
+  ],
+  "blocking_checks": [
+    "current R1 branch CI must pass lint, format, mypy, pytest and smoke",
+    "real Mac/Lexar audit must successfully open and audit exactly 91 train and 20 validation cases",
+    "10 diverse train tri-planar overlays must be manually reviewed in the secure local workspace",
+    "all real mismatches must be retained, explained and resolved; unresolved count must be zero",
+    "internal-test and external array access must remain zero"
+  ],
+  "leakage_audit": "PENDING_REAL_DATA_AUDIT",
+  "next_allowed_stage": "NONE",
+  "r2_started": false,
+  "gate_policy": "Synthetic fixtures and CI cannot promote R1. PASS requires real train/validation evidence from the locked R0 artifacts, zero unresolved mismatches, completed secure overlay review, and zero internal-test/external array access."
+}
