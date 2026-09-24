@@ -1,12 +1,27 @@
 {
-  "schema_version": "research_v2_r1_metric_contract.v1",
+  "schema_version": "research_v2_r1_metric_contract.v2",
   "stage": "R1",
-  "purpose": "Pre-registered evaluator and geometry-audit contract; not a model-selection or threshold-tuning configuration.",
+  "purpose": "Evaluator and geometry-audit contract; not a model-selection or threshold-tuning configuration.",
+  "contract_correction": {
+    "reason": "R1 v1 incorrectly reused the strict prediction-grid affine tolerance for source image/label QA. The source-pair tolerance is restored to the pre-existing approved Phase 2 real-run decision dated 2026-07-27; this is not fitted from R1 outcomes.",
+    "phase2_decision_date": "2026-07-27",
+    "source_nifti_modified": false,
+    "manifest_or_split_modified": false
+  },
   "tumor_raw_label_value": 2,
   "allowed_raw_label_values": [0, 1, 2],
   "binary_prediction_values": [0, 1],
   "metric_absolute_tolerance": 1e-6,
-  "affine_absolute_tolerance": 1e-6,
+  "prediction_ground_truth_affine_absolute_tolerance": 1e-6,
+  "source_image_label_affine_absolute_tolerance_mm": 1e-4,
+  "source_image_label_spacing_absolute_tolerance_mm": 1e-4,
+  "source_qform_sform_policy": "Record qform/sform disagreement as a retained header observation. It is not an automatic gate failure when the effective image/label shape, orientation, affine and spacing satisfy the approved source-geometry contract.",
+  "historical_phase2_precision_envelope": {
+    "max_selected_affine_delta_mm": 3.0517578125e-5,
+    "max_corner_displacement_mm": 5.71685607815e-5,
+    "max_voxel_translation_delta": 4.73484848555e-5,
+    "max_linear_transform_deviation": 1e-7
+  },
   "surface_distance_space": "native_physical_mm",
   "hd95_definition": "95th percentile of concatenated bidirectional foreground surface distances in native physical spacing",
   "hd95_both_empty": 0.0,
