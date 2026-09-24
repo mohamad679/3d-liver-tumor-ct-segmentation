@@ -41,10 +41,7 @@ def main() -> int:
             raise RuntimeError(f"overlay hash changed: {overlay.name}")
         while True:
             case_id = entry["anonymous_case_id"]
-            prompt = (
-                f"{case_id} ({overlay.name}) aligned in axial/sagittal/coronal? "
-                "[y/n]: "
-            )
+            prompt = f"{case_id} ({overlay.name}) aligned in axial/sagittal/coronal? [y/n]: "
             answer = input(prompt).strip().lower()
             if answer in {"y", "n"}:
                 break

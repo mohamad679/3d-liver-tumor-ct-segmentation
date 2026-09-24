@@ -49,9 +49,7 @@ from protoem_ct.research_v2.r1_audit import (
 )
 
 EXPECTED_MANIFEST_HASH = "c24244951e050050cf25c4b321f67d61c2087fc0c93fdcf9d112e0e488e1384b"
-EXPECTED_MANIFEST_FILE_SHA256 = (
-    "0e21a7d555e20b6011091bc18e462bc150cc23a8f46e522dbd8c01b014a44ae3"
-)
+EXPECTED_MANIFEST_FILE_SHA256 = "0e21a7d555e20b6011091bc18e462bc150cc23a8f46e522dbd8c01b014a44ae3"
 EXPECTED_SPLIT_HASH = "936376cd7b5e6070397c2fef16e5125c60fd6569ff3188d7e9bb5428a46ffadb"
 EXPECTED_SPLIT_FILE_SHA256 = "416ca83e85c8598fc4f7065316153193211bf6b57875fbda4cafc01c360445f7"
 DEFAULT_MANIFEST = Path("/Volumes/Lexar/ProtoEM-CT/runs/phase2_real_lits_v2/manifest.json")
@@ -206,8 +204,7 @@ def _audit_case(case: Any, *, dataset_root: Path) -> tuple[dict[str, Any], list[
     observed_values: list[int | float] = []
     if label.ndim == 3 and label_finite:
         observed_values = [
-            int(value) if float(value).is_integer() else float(value)
-            for value in np.unique(label)
+            int(value) if float(value).is_integer() else float(value) for value in np.unique(label)
         ]
         try:
             tumor = validate_raw_lits_label_array(label)
