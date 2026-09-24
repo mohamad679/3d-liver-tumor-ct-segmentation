@@ -1,0 +1,141 @@
+{
+  "schema_version": "research_v2_gate.v1",
+  "stage": "R2",
+  "status": "BLOCKED",
+  "blocker": "BLOCKED_PENDING_REAL_TRAIN_SUBSET_GPU_PREFLIGHT_AND_OVERFIT_EVIDENCE",
+  "branch": "research-v2/r2-overfit-real",
+  "parent_r1_closed_commit": "998584f7ff8703e9ff6a934a0dc540cf379e31b6",
+  "r2_preregistration_commit": "3091010856b416af07aeee7b67644948662000b3",
+  "historical_phase8_immutable": true,
+  "purpose": "diagnostic few-real-train-patient overfit test; not an estimate of unseen-patient performance",
+  "locked_inputs": {
+    "manifest_artifact_hash": "c24244951e050050cf25c4b321f67d61c2087fc0c93fdcf9d112e0e488e1384b",
+    "manifest_file_sha256": "0e21a7d555e20b6011091bc18e462bc150cc23a8f46e522dbd8c01b014a44ae3",
+    "split_artifact_hash": "936376cd7b5e6070397c2fef16e5125c60fd6569ff3188d7e9bb5428a46ffadb",
+    "split_file_sha256": "416ca83e85c8598fc4f7065316153193211bf6b57875fbda4cafc01c360445f7",
+    "linux_cuda_uv_lock_sha256": "c9ee200234eebf8c67fd97ff2c96ca0765f4067a8a69a7ef439deafdda3530a8"
+  },
+  "data_scope": {
+    "allowed_array_partitions": ["train"],
+    "forbidden_array_partitions": ["validation", "internal_test", "historical_external", "new_external"],
+    "expected_train_population": 91,
+    "selected_train_case_count": 4,
+    "selected_positive_case_count": 3,
+    "selected_empty_case_count": 1,
+    "validation_arrays_opened": 0,
+    "internal_test_arrays_opened": 0,
+    "external_arrays_opened": 0,
+    "manifest_or_split_regeneration_allowed": false
+  },
+  "selection_preregistration": {
+    "status": "PREREGISTERED_PENDING_REAL_SOURCE_HASH_VERIFICATION",
+    "positive_quantiles": [0.2, 0.5, 0.8],
+    "positive_rank_rule": "floor((N_positive-1)*q) after sorting by (tumor_voxel_count, anonymous_case_id)",
+    "empty_rule": "lexicographically smallest anonymous_case_id among train cases with tumor_voxel_count == 0",
+    "expected_train_positive_count": 86,
+    "expected_train_empty_count": 5,
+    "selected_cases": [
+      {
+        "role": "positive_q20",
+        "anonymous_case_id": "case_65917a1f3a47339a558042dac093bf1a",
+        "tumor_voxel_count": 2261
+      },
+      {
+        "role": "positive_q50",
+        "anonymous_case_id": "case_f232be7b649d2166e5158aa636b38766",
+        "tumor_voxel_count": 12265
+      },
+      {
+        "role": "positive_q80",
+        "anonymous_case_id": "case_6e4782e999691662f69fdf25f0e2e423",
+        "tumor_voxel_count": 179093
+      },
+      {
+        "role": "empty_lexicographic_first",
+        "anonymous_case_id": "case_25928d2451a7d948a79e60084e3c5d32",
+        "tumor_voxel_count": 0
+      }
+    ],
+    "source_image_label_hashes_verified": false,
+    "private_transfer_hashes_verified": false
+  },
+  "gpu_environment": {
+    "r0_registered_readiness": "PASS",
+    "registered_host": "Kaggle",
+    "registered_gpu_count": 2,
+    "registered_gpu_model": "Tesla T4",
+    "registered_total_memory_gib_per_device": 14.56219482421875,
+    "registered_torch": "2.2.2+cu121",
+    "registered_torch_cuda_runtime": "12.1",
+    "registered_python": "3.11.16",
+    "r2_fresh_preflight_status": "PENDING",
+    "cpu_fallback_allowed": false,
+    "training_device": "cuda:0",
+    "multi_gpu_memory_pooling_assumed": false
+  },
+  "experiment": {
+    "config_path": "configs/research_v2/r2_overfit_real_v1.json",
+    "architecture": "MONAI SegResNet",
+    "seed": 1729,
+    "patch_size": [96, 96, 64],
+    "batch_size": 1,
+    "augmentation": "disabled",
+    "target_spacing_mm": [1.5, 1.5, 1.5],
+    "raw_tumor_label": 2,
+    "image_interpolation": "continuous",
+    "label_interpolation": "nearest",
+    "optimizer": "AdamW",
+    "learning_rate": 0.001,
+    "precision": "CUDA AMP fp16 training; fp32 inference",
+    "fixed_threshold": 0.5,
+    "sliding_window_overlap": 0.5,
+    "primary_max_training_steps": 2500,
+    "primary_max_gpu_wall_hours": 3.0,
+    "single_extension_max_additional_steps": 1500,
+    "single_extension_max_additional_gpu_wall_hours": 1.5,
+    "training_started": false
+  },
+  "gate_requirements": {
+    "positive_case_native_full_volume_dice_min_each": 0.95,
+    "empty_case_binary_prediction_must_be_empty": true,
+    "empty_case_excluded_from_positive_dice_mean": true,
+    "no_nan_inf": true,
+    "no_geometry_error": true,
+    "no_data_leakage": true,
+    "fresh_process_checkpoint_reload": true,
+    "final_ci": true
+  },
+  "real_evidence": {
+    "selection_and_source_hash_evidence": "PENDING",
+    "kaggle_transfer_hash_evidence": "PENDING",
+    "gpu_preflight": "PENDING",
+    "training_log": "PENDING",
+    "patch_metrics": "PENDING",
+    "native_full_volume_metrics": "PENDING",
+    "checkpoint_reload": "PENDING",
+    "overlay_geometry_review": "PENDING"
+  },
+  "passed_checks": [
+    "R2 branch created from the closed R1 commit",
+    "R0 and R1 gates are PASS",
+    "R2 experiment and Gate thresholds were preregistered before R2 training",
+    "R2 deterministic train-only selection rule was preregistered before training",
+    "R2 forbids validation, internal-test and external array access",
+    "R2 forbids CPU fallback and does not pool VRAM across two T4 devices"
+  ],
+  "blocking_checks": [
+    "verify selected train image/label SHA-256 values against the locked manifest and actual source files",
+    "if transferring to Kaggle, verify pre/post transfer SHA-256 for only the selected train files",
+    "run fresh frozen-environment R2 CUDA preflight and one complete forward/backward/optimizer step",
+    "execute preregistered training budget with real selected train arrays",
+    "evaluate patch predictions and full native-volume predictions separately",
+    "require native full-volume tumor Dice >= 0.95 for every selected positive train case",
+    "require empty binary prediction on the selected empty train case",
+    "verify checkpoint reload in a fresh process within preregistered tolerance",
+    "verify native geometry restoration and selected-case overlays",
+    "run tests and final CI on the eventual R2 Gate commit"
+  ],
+  "next_allowed_stage": "NONE",
+  "r3_started": false,
+  "gate_policy": "R2 can PASS only from real selected train-patient evidence. Patch-only success, resampled-space-only metrics, averages that hide a failing positive case, threshold changes, synthetic fixtures, or CI alone cannot promote this gate."
+}
