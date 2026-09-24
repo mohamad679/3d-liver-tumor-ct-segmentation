@@ -1,42 +1,35 @@
 {
-  "schema_version": "research_v2_gate.v1",
+  "schema_version": "research_v2_gate.v2",
   "stage": "R1",
   "status": "BLOCKED",
-  "blocker": "BLOCKED_DATA_REVIEW",
+  "blocker": "BLOCKED_GEOMETRY_RECONCILIATION_AND_OVERLAY_REVIEW",
   "branch": "research-v2/r1-pixel-metric-audit",
   "r0_closed_parent_commit": "c0ebb42b7390b687d0d942371ea339c9fc7f3a6b",
   "r1_preregistration_commit": "fc5e8a5cabd00a381739df0e671a4a37e1f3af5a",
-  "metric_contract_commit": "b7481e78358c7041cb47280383704b634ff09f7f",
   "historical_phase8_immutable": true,
   "data_scope": {
     "locked_manifest_artifact_hash": "c24244951e050050cf25c4b321f67d61c2087fc0c93fdcf9d112e0e488e1384b",
     "locked_manifest_file_sha256": "0e21a7d555e20b6011091bc18e462bc150cc23a8f46e522dbd8c01b014a44ae3",
     "locked_split_artifact_hash": "936376cd7b5e6070397c2fef16e5125c60fd6569ff3188d7e9bb5428a46ffadb",
     "locked_split_file_sha256": "416ca83e85c8598fc4f7065316153193211bf6b57875fbda4cafc01c360445f7",
-    "allowed_array_partitions": [
-      "train",
-      "validation"
-    ],
+    "allowed_array_partitions": ["train", "validation"],
     "expected_train_cases": 91,
     "expected_validation_cases": 20,
-    "forbidden_array_partitions": [
-      "internal_test",
-      "historical_external",
-      "new_external"
-    ],
+    "forbidden_array_partitions": ["internal_test", "historical_external", "new_external"],
+    "observed_train_arrays_opened": 91,
+    "observed_validation_arrays_opened": 20,
     "internal_test_arrays_opened": 0,
     "external_arrays_opened": 0,
     "manifest_or_split_regeneration_allowed": false
   },
   "metric_contract": {
     "tumor_raw_label_value": 2,
-    "allowed_raw_label_values": [
-      0,
-      1,
-      2
-    ],
-    "exact_metric_tolerance": 1e-06,
-    "affine_absolute_tolerance": 1e-06,
+    "allowed_raw_label_values": [0, 1, 2],
+    "exact_metric_tolerance": 1e-6,
+    "prediction_ground_truth_affine_absolute_tolerance": 1e-6,
+    "source_image_label_affine_absolute_tolerance_mm": 1e-4,
+    "source_geometry_tolerance_basis": "pre-existing approved Phase 2 real-run decision dated 2026-07-27; not fitted from R1 outcomes",
+    "qform_sform_policy": "retained header observation, not an automatic gate failure when effective source geometry is safe",
     "surface_distance_space": "native_physical_mm",
     "hd95_definition": "95th percentile of concatenated bidirectional foreground surface distances in native physical spacing",
     "nsd_tolerance_mm": 1.0,
@@ -48,8 +41,16 @@
     "training_allowed": false,
     "threshold_tuning_allowed": false
   },
+  "contract_correction": {
+    "status": "IMPLEMENTED_PENDING_CI_AND_REAL_EVIDENCE_RECONCILIATION",
+    "r1_v1_error": "source image/label QA incorrectly reused 1e-6 prediction-grid tolerance and treated qform/sform disagreement as an automatic mismatch",
+    "correction": "restore pre-existing Phase 2 source tolerance of 1e-4 mm; retain qform/sform disagreement as an observation; keep prediction/ground-truth metric-grid tolerance at 1e-6",
+    "source_nifti_modified": false,
+    "manifest_or_split_modified": false
+  },
   "synthetic_evaluator_audit": {
-    "status": "PENDING_CURRENT_BRANCH_CI",
+    "status": "LOCAL_PASS_16_PENDING_CURRENT_BRANCH_CI",
+    "local_targeted_fixture_count": 16,
     "required_fixtures": [
       "both_empty",
       "two_lesions",
@@ -71,11 +72,34 @@
     "project_vs_independent_reference_required": true
   },
   "real_mac_lexar_audit": {
-    "status": "NOT_RUN",
-    "all_allowed_case_geometry_label_qa_required": true,
-    "expected_case_count": 111,
+    "status": "COMPLETED_BLOCKED_ON_RECONCILIATION_AND_OVERLAY_REVIEW",
+    "execution_runtime_seconds": 3516.026,
+    "case_record_count": 111,
+    "opened_train_cases": 91,
+    "opened_validation_cases": 20,
+    "internal_test_arrays_opened": 0,
+    "external_arrays_opened": 0,
+    "transform_trace_failures": 0,
+    "generated_diverse_train_overlays": 10,
+    "original_mismatch_record_count": 97,
+    "original_unique_mismatch_case_count": 89,
+    "original_mismatch_reason_counts": {
+      "label_qform_sform_conflict": 89,
+      "image_label_affine_mismatch": 8
+    },
+    "manual_diagnostic": {
+      "all_8_effective_affines_match_preexisting_1e-4_tolerance": true,
+      "all_8_orientation_match": true,
+      "observed_max_affine_abs_delta_mm": 3.0517578125e-5,
+      "observed_max_spacing_abs_delta_mm": 5.96046447754e-8,
+      "observed_max_corner_displacement_mm": 5.71685607815e-5,
+      "observed_max_voxel_translation_delta": 4.73484848555e-5,
+      "observed_max_linear_transform_deviation": 9.2477509428e-8,
+      "official_reconciliation_artifact_status": "PENDING"
+    },
     "minimum_diverse_train_overlays": 10,
     "manual_overlay_review_required": true,
+    "overlay_review_status": "NOT_STARTED",
     "unresolved_mismatch_count_required": 0,
     "prediction_restore_probe": "geometry-only binary surrogate; not model-performance evidence",
     "medical_arrays_or_overlays_allowed_in_git": false
@@ -84,21 +108,23 @@
   "threshold_tuning_performed": false,
   "passed_checks": [
     "R1 branch starts from the closed R0 commit",
-    "R1 metric and geometry contract was preregistered",
-    "R0 manifest and split are treated as immutable read-only inputs",
+    "R0 manifest and split remain immutable read-only inputs",
     "R1 array-access code fails closed outside train/validation",
-    "Mac runner is designed to open arrays only after train/validation authorization",
-    "historical Phase 8 files remain immutable"
+    "real Mac audit opened exactly 91 train and 20 validation arrays",
+    "real Mac audit opened zero internal-test and zero external arrays",
+    "real Mac audit reported zero transform-trace failures",
+    "10 diverse train overlays were generated only in the secure local workspace",
+    "historical Phase 8 files remain immutable",
+    "manual geometry diagnostic places all 8 effective-affine cases inside the pre-existing Phase 2 precision envelope"
   ],
   "blocking_checks": [
     "current R1 branch CI must pass lint, format, mypy, pytest and smoke",
-    "real Mac/Lexar audit must successfully open and audit exactly 91 train and 20 validation cases",
-    "10 diverse train tri-planar overlays must be manually reviewed in the secure local workspace",
-    "all real mismatches must be retained, explained and resolved; unresolved count must be zero",
+    "official metadata-only geometry reconciliation artifact must report zero unresolved mismatches",
+    "10 diverse train tri-planar overlays must be manually reviewed in the secure local workspace with all alignments confirmed",
     "internal-test and external array access must remain zero"
   ],
-  "leakage_audit": "PENDING_REAL_DATA_AUDIT",
+  "leakage_audit": "REAL_ARRAY_ACCESS_BOUNDARY_PASS_PENDING_FINAL_R1_CLOSEOUT",
   "next_allowed_stage": "NONE",
   "r2_started": false,
-  "gate_policy": "Synthetic fixtures and CI cannot promote R1. PASS requires real train/validation evidence from the locked R0 artifacts, zero unresolved mismatches, completed secure overlay review, and zero internal-test/external array access."
+  "gate_policy": "Synthetic fixtures, manual diagnostics, or CI alone cannot promote R1. PASS requires locked real train/validation evidence, an auditable zero-unresolved reconciliation, completed secure overlay review, zero internal-test/external array access, and passing branch CI."
 }
