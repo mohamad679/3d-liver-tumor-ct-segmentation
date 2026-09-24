@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -27,9 +28,34 @@ from protoem_ct.research_v2.r0_audit import write_nnunet_split_files
 BASE = Path(__file__).resolve().parents[2]
 PROTOCOL_PATH = BASE / "configs" / "research_v2" / "protocol_v2.yaml"
 
+EXPECTED_MANIFEST_ARTIFACT_HASH = (
+    "c24244951e050050cf25c4b321f67d61c2087fc0c93fdcf9d112e0e488e1384b"
+)
+EXPECTED_MANIFEST_FILE_SHA256 = (
+    "0e21a7d555e20b6011091bc18e462bc150cc23a8f46e522dbd8c01b014a44ae3"
+)
+EXPECTED_SPLIT_ARTIFACT_HASH = (
+    "936376cd7b5e6070397c2fef16e5125c60fd6569ff3188d7e9bb5428a46ffadb"
+)
+EXPECTED_SPLIT_FILE_SHA256 = (
+    "416ca83e85c8598fc4f7065316153193211bf6b57875fbda4cafc01c360445f7"
+)
+
 
 def _protocol() -> Any:
     return load_protocol(PROTOCOL_PATH)
+
+
+def _unlocked_protocol() -> Any:
+    """Return the production protocol with only artifact locks cleared for synthetic fixtures."""
+
+    return replace(
+        _protocol(),
+        existing_manifest_hash=None,
+        existing_manifest_file_sha256=None,
+        existing_split_hash=None,
+        existing_split_file_sha256=None,
+    )
 
 
 def _artifacts() -> tuple[dict[str, Any], dict[str, Any]]:
@@ -77,10 +103,10 @@ def test_protocol_loads_expected_locked_counts() -> None:
         20,
     )
     assert protocol.nnunet_fold_count == 5
-    assert protocol.existing_manifest_hash is None
-    assert protocol.existing_manifest_file_sha256 is None
-    assert protocol.existing_split_hash is None
-    assert protocol.existing_split_file_sha256 is None
+    assert protocol.existing_manifest_hash == EXPECTED_MANIFEST_ARTIFACT_HASH
+    assert protocol.existing_manifest_file_sha256 == EXPECTED_MANIFEST_FILE_SHA256
+    assert protocol.existing_split_hash == EXPECTED_SPLIT_ARTIFACT_HASH
+    assert protocol.existing_split_file_sha256 == EXPECTED_SPLIT_FILE_SHA256
 
 
 def test_gate_policy_v2_allows_r1_without_gpu_but_requires_gpu_before_training() -> None:
@@ -139,7 +165,7 @@ def test_access_policy_is_fail_closed() -> None:
 
 
 def test_partition_audit_accepts_disjoint_fixture_and_is_deterministic() -> None:
-    protocol = _protocol()
+    protocol = _unlocked_protocol()
     manifest, split = _artifacts()
     first = audit_partition_isolation(protocol, manifest=manifest, split=split)
     second = audit_partition_isolation(protocol, manifest=manifest, split=split)
@@ -149,7 +175,7 @@ def test_partition_audit_accepts_disjoint_fixture_and_is_deterministic() -> None
 
 
 def test_partition_audit_rejects_cross_partition_image_hash_collision() -> None:
-    protocol = _protocol()
+    protocol = _unlocked_protocol()
     manifest, split = _artifacts()
     train_case = next(
         case for case in manifest["cases"] if case["anonymous_case_id"] == "anon-c0001"
@@ -163,7 +189,7 @@ def test_partition_audit_rejects_cross_partition_image_hash_collision() -> None:
 
 
 def test_partition_audit_rejects_patient_crossing_partitions() -> None:
-    protocol = _protocol()
+    protocol = _unlocked_protocol()
     manifest, split = _artifacts()
     broken = copy.deepcopy(split)
     broken["assignments"][91]["anonymous_patient_id"] = "anon-p0001"
@@ -221,7 +247,7 @@ def test_protocol_artifact_lock_requires_artifact_and_file_hashes(tmp_path: Path
         manifest_case_count=131,
     )
     with pytest.raises(PartitionIsolationError, match="incomplete"):
-        assert_protocol_artifact_lock(_protocol(), identity)
+        assert_protocol_artifact_lock(_unlocked_protocol(), identity)
 
     raw = json.loads(PROTOCOL_PATH.read_text(encoding="utf-8"))
     existing = raw["development_data"]["existing_split"]
@@ -241,6 +267,11 @@ def test_partition_audit_rejects_case_count_mismatch(tmp_path: Path) -> None:
         "validation": 20,
         "internal_test": 20,
     }
+    existing = protocol_raw["development_data"]["existing_split"]
+    existing["manifest_hash"] = None
+    existing["manifest_file_sha256"] = None
+    existing["split_hash"] = None
+    existing["split_file_sha256"] = None
     protocol_path = tmp_path / "wrong-counts.yaml"
     protocol_path.write_text(json.dumps(protocol_raw), encoding="utf-8")
     manifest, split = _artifacts()
