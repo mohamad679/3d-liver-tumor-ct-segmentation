@@ -143,11 +143,11 @@ def reconcile_geometry_mismatches(
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Resolve only the two known R1-v1 geometry over-classifications.
 
-    Unknown reasons are retained as unresolved. qform/sform conflicts remain retained observations;
-    they are non-blocking only when effective image/label shape, orientation, affine, and spacing are
-    consistent under the pre-existing Phase 2 source-geometry contract. An effective-affine mismatch
-    from the erroneous R1 1e-6 source tolerance is resolved only when it also lies inside the
-    historical Phase 2 real-run envelope.
+    Unknown reasons are retained as unresolved. qform/sform conflicts remain retained
+    observations; they are non-blocking only when effective image/label shape, orientation,
+    affine, and spacing are consistent under the pre-existing Phase 2 source-geometry contract.
+    An effective-affine mismatch from the erroneous R1 1e-6 source tolerance is resolved only
+    when it also lies inside the historical Phase 2 real-run envelope.
     """
 
     records_by_id = {str(record["anonymous_case_id"]): record for record in records}
@@ -189,7 +189,9 @@ def reconcile_geometry_mismatches(
                 qform_observation_cases.add(case_id)
             else:
                 item["resolution_status"] = "unresolved"
-                item["resolution"] = "effective image/label geometry is not safe under Phase 2 contract"
+                item["resolution"] = (
+                    "effective image/label geometry is not safe under Phase 2 contract"
+                )
         elif reason == "image_label_affine_mismatch":
             if effective_geometry_safe and diagnostic.within_historical_phase2_envelope:
                 item["resolution_status"] = "resolved_preexisting_phase2_precision_envelope"
@@ -207,14 +209,20 @@ def reconcile_geometry_mismatches(
             item["resolution"] = item.get("resolution")
         reconciled.append(item)
 
-    unresolved = [item for item in reconciled if str(item["resolution_status"]).startswith("unresolved")]
+    unresolved = [
+        item
+        for item in reconciled
+        if str(item["resolution_status"]).startswith("unresolved")
+    ]
     diagnostics = [
         {
             "anonymous_case_id": diagnostic.anonymous_case_id,
             "partition": diagnostic.partition,
             "orientation_match": diagnostic.orientation_match,
             "shape_match": diagnostic.shape_match,
-            "effective_affine_match_at_approved_tolerance": diagnostic.effective_affine_match_at_approved_tolerance,
+            "effective_affine_match_at_approved_tolerance": (
+                diagnostic.effective_affine_match_at_approved_tolerance
+            ),
             "spacing_match_at_approved_tolerance": diagnostic.spacing_match_at_approved_tolerance,
             "max_affine_abs_delta_mm": diagnostic.max_affine_abs_delta_mm,
             "max_spacing_abs_delta_mm": diagnostic.max_spacing_abs_delta_mm,
@@ -223,7 +231,9 @@ def reconcile_geometry_mismatches(
             "max_linear_transform_deviation": diagnostic.max_linear_transform_deviation,
             "within_historical_phase2_envelope": diagnostic.within_historical_phase2_envelope,
         }
-        for diagnostic in sorted(diagnostic_cache.values(), key=lambda value: value.anonymous_case_id)
+        for diagnostic in sorted(
+            diagnostic_cache.values(), key=lambda value: value.anonymous_case_id
+        )
     ]
     summary: dict[str, Any] = {
         "schema_version": "research_v2_r1_geometry_reconciliation.v1",
