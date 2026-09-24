@@ -57,23 +57,35 @@ def run_r0_artifact_audit(
         "split_artifact_hash": isolation.split_hash,
         "status": "PASS",
     }
-    folds_payload = {
+    folds_metadata = {
         "description": "nnU-Net folds derived only from the verified 91-case development train",
         "fold_count": protocol.nnunet_fold_count,
-        "folds": folds,
+        "folds_sha256": canonical_json_sha256(folds),
         "protocol_id": protocol.protocol_id,
         "source_split_artifact_hash": verified.identity.split_artifact_hash,
     }
-    folds_payload["folds_sha256"] = canonical_json_sha256(folds_payload["folds"])
 
     _write_json(output_dir / "artifact_identity.json", identity_payload)
     _write_json(output_dir / "partition_isolation_audit.json", isolation_payload)
-    _write_json(output_dir / "splits_final.json", folds_payload)
+    write_nnunet_split_files(output_dir=output_dir, folds=folds, metadata=folds_metadata)
     return {
         "artifact_identity": identity_payload,
         "partition_isolation": isolation_payload,
-        "splits_final": folds_payload,
+        "splits_final": folds,
+        "splits_final_metadata": folds_metadata,
     }
+
+
+def write_nnunet_split_files(
+    *,
+    output_dir: Path,
+    folds: list[dict[str, list[str]]],
+    metadata: dict[str, Any],
+) -> None:
+    """Write nnU-Net's direct split list separately from Research-v2 metadata."""
+
+    _write_json(output_dir / "splits_final.json", folds)
+    _write_json(output_dir / "splits_final.meta.json", metadata)
 
 
 def _verify_fold_coverage(
