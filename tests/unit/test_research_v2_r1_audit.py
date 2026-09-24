@@ -15,11 +15,13 @@ from protoem_ct.artifacts import (
     DevelopmentSplitManifest,
     SplitAssignment,
 )
+from protoem_ct.baselines.metrics import BaselineCaseMetrics
 from protoem_ct.research_v2.r1_audit import (
     R1AccessBoundaryError,
     R1GeometryError,
     R1LabelValidationError,
     R1MetricInputError,
+    R1ReferenceMetrics,
     authorized_r1_cases,
     compute_strict_case_metrics,
     grid_for_spacing,
@@ -108,8 +110,12 @@ def _locked_shape_synthetic_artifacts() -> tuple[DatasetManifest, DevelopmentSpl
     return manifest, split
 
 
-def _cross_check(gt: np.ndarray, pred: np.ndarray, spacing: tuple[float, float, float] = (1, 1, 1)):
-    affine = _identity_affine(tuple(float(v) for v in spacing))
+def _cross_check(
+    gt: np.ndarray,
+    pred: np.ndarray,
+    spacing: tuple[float, float, float] = (1.0, 1.0, 1.0),
+) -> tuple[BaselineCaseMetrics, R1ReferenceMetrics]:
+    affine = _identity_affine(spacing)
     project = compute_strict_case_metrics(
         case_identifier="fixture-case",
         ground_truth_mask=gt,
@@ -319,5 +325,6 @@ def test_resampling_contract_nearest_for_mask_and_continuous_for_image() -> None
         target_affine=target_affine,
         is_label_or_mask=False,
     )
+    resampled_image_float = np.asarray(resampled_image, dtype=np.float64)
     assert set(np.unique(resampled_mask)).issubset({0, 1})
-    assert np.any((resampled_image > 0.0) & (resampled_image < 1.0))
+    assert np.any((resampled_image_float > 0.0) & (resampled_image_float < 1.0))
