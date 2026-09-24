@@ -215,13 +215,14 @@ def threshold_fixture_probability(probability: Array, *, threshold: float) -> Bo
     array = np.asarray(probability)
     if array.ndim != 3 or array.dtype.kind != "f":
         raise R1MetricInputError("fixture probability must be a 3D floating-point array")
-    if not bool(np.isfinite(array).all()):
+    float_array = cast(FloatArray, array)
+    if not bool(np.isfinite(float_array).all()):
         raise R1MetricInputError("fixture probability contains NaN or non-finite values")
-    if bool(np.any(array < 0.0)) or bool(np.any(array > 1.0)):
+    if bool(np.any(float_array < 0.0)) or bool(np.any(float_array > 1.0)):
         raise R1MetricInputError(
             "fixture probability values must lie in [0, 1]; logits are rejected"
         )
-    return cast(BoolArray, array >= threshold)
+    return cast(BoolArray, float_array >= threshold)
 
 
 def affine_spacing_mm(affine: Array) -> tuple[float, float, float]:
@@ -239,7 +240,7 @@ def affine_orientation(affine: Array) -> tuple[str, str, str]:
 
     matrix = _validated_affine(affine, field_name="affine")
     try:
-        codes = nib.orientations.aff2axcodes(matrix)
+        codes = nib.orientations.aff2axcodes(matrix)  # type: ignore[no-untyped-call]
     except (IndexError, ValueError) as exc:
         raise R1GeometryError("affine orientation could not be derived") from exc
     if len(codes) != 3 or any(code is None for code in codes):
@@ -362,11 +363,19 @@ def reorient_array_to_ras(
     if data.ndim != 3:
         raise R1GeometryError("reorientation requires an exactly 3D array")
     matrix = _validated_affine(affine, field_name="affine")
-    source_orientation = nib.orientations.io_orientation(matrix)
-    target_orientation = nib.orientations.axcodes2ornt(("R", "A", "S"))
-    transform = nib.orientations.ornt_transform(source_orientation, target_orientation)
-    reoriented = nib.orientations.apply_orientation(data, transform)
-    reoriented_affine = matrix @ nib.orientations.inv_ornt_aff(transform, data.shape)
+    source_orientation = nib.orientations.io_orientation(matrix)  # type: ignore[no-untyped-call]
+    target_orientation = nib.orientations.axcodes2ornt(  # type: ignore[no-untyped-call]
+        ("R", "A", "S")
+    )
+    transform = nib.orientations.ornt_transform(  # type: ignore[no-untyped-call]
+        source_orientation, target_orientation
+    )
+    reoriented = nib.orientations.apply_orientation(  # type: ignore[no-untyped-call]
+        data, transform
+    )
+    reoriented_affine = matrix @ nib.orientations.inv_ornt_aff(  # type: ignore[no-untyped-call]
+        transform, data.shape
+    )
     if affine_orientation(reoriented_affine) != ("R", "A", "S"):
         raise R1GeometryError("reorientation did not produce RAS axis codes")
     return np.asarray(reoriented), np.asarray(reoriented_affine, dtype=np.float64)
