@@ -24,10 +24,58 @@ jobs:
         run: uv python install 3.11
       - name: Install locked environment
         run: uv sync --frozen --python 3.11 --all-groups
-      - name: Apply Ruff safe fixes and formatting
+      - name: Apply exact reported lint repairs
         run: |
-          uv run ruff check --fix .
-          uv run ruff format .
+          python - <<'PY'
+          from pathlib import Path
+
+          audit = Path("src/protoem_ct/research_v2/r1_audit.py")
+          text = audit.read_text()
+          replacements = {
+              '    """Return exactly the 91 train + 20 validation cases without authorizing internal-test arrays."""\n': (
+                  '    """Return exactly 91 train + 20 validation cases.\n\n'
+                  '    Internal-test arrays are never authorized.\n'
+                  '    """\n'
+              ),
+              '    assignments_by_id = {assignment.anonymous_case_id: assignment for assignment in split.assignments}\n': (
+                  '    assignments_by_id = {\n'
+                  '        assignment.anonymous_case_id: assignment for assignment in split.assignments\n'
+                  '    }\n'
+              ),
+              '            f"raw label array contains values outside {R1_ALLOWED_RAW_LABEL_VALUES}: {sorted(unexpected)}"\n': (
+                  '            "raw label array contains values outside "\n'
+                  '            f"{R1_ALLOWED_RAW_LABEL_VALUES}: {sorted(unexpected)}"\n'
+              ),
+              '        raise R1MetricInputError("fixture probability values must lie in [0, 1]; logits are rejected")\n': (
+                  '        raise R1MetricInputError(\n'
+                  '            "fixture probability values must lie in [0, 1]; logits are rejected"\n'
+                  '        )\n'
+              ),
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f"expected r1_audit.py text not found: {old!r}")
+              text = text.replace(old, new, 1)
+          audit.write_text(text)
+
+          runner = Path("scripts/research_v2/run_r1_mac_lexar_audit.py")
+          text = runner.read_text()
+          old_nested = '''    if all(np.isfinite(image_spacing)) and all(np.isfinite(label_spacing)):\n        if not np.allclose(image_spacing, label_spacing, rtol=0.0, atol=1e-6):\n            mismatch("image_label_spacing_mismatch")\n'''
+          new_nested = '''    if (\n        all(np.isfinite(image_spacing))\n        and all(np.isfinite(label_spacing))\n        and not np.allclose(image_spacing, label_spacing, rtol=0.0, atol=1e-6)\n    ):\n        mismatch("image_label_spacing_mismatch")\n'''
+          if old_nested not in text:
+              raise SystemExit("expected nested spacing check not found")
+          text = text.replace(old_nested, new_nested, 1)
+          old_sig = '''def _roundtrip_trace(\n    *, image: np.ndarray, tumor: np.ndarray, native_affine: np.ndarray, target_spacing: tuple[float, ...]\n) -> tuple[dict[str, Any], np.ndarray]:\n'''
+          new_sig = '''def _roundtrip_trace(\n    *,\n    image: np.ndarray,\n    tumor: np.ndarray,\n    native_affine: np.ndarray,\n    target_spacing: tuple[float, ...],\n) -> tuple[dict[str, Any], np.ndarray]:\n'''
+          if old_sig not in text:
+              raise SystemExit("expected roundtrip signature not found")
+          text = text.replace(old_sig, new_sig, 1)
+          runner.write_text(text)
+          PY
+      - name: Apply Ruff formatting and verify lint
+        run: |
+          uv run ruff format src/protoem_ct/research_v2/r1_audit.py tests/unit/test_research_v2_r1_audit.py scripts/research_v2/run_r1_mac_lexar_audit.py scripts/research_v2/review_r1_overlays.py
+          uv run ruff check src/protoem_ct/research_v2/r1_audit.py tests/unit/test_research_v2_r1_audit.py scripts/research_v2/run_r1_mac_lexar_audit.py scripts/research_v2/review_r1_overlays.py
       - name: Commit mechanical formatting if needed
         run: |
           if git diff --quiet; then
