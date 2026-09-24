@@ -6,7 +6,7 @@
   "allowed_raw_label_values": [0, 1, 2],
   "binary_prediction_values": [0, 1],
   "metric_absolute_tolerance": 1e-6,
-  "affine_absolute_tolerance": 1e-5,
+  "affine_absolute_tolerance": 1e-6,
   "surface_distance_space": "native_physical_mm",
   "hd95_definition": "95th percentile of concatenated bidirectional foreground surface distances in native physical spacing",
   "hd95_both_empty": 0.0,
