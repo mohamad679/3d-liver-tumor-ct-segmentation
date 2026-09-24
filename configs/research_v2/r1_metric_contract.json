@@ -1,0 +1,38 @@
+{
+  "schema_version": "research_v2_r1_metric_contract.v1",
+  "stage": "R1",
+  "purpose": "Pre-registered evaluator and geometry-audit contract; not a model-selection or threshold-tuning configuration.",
+  "tumor_raw_label_value": 2,
+  "allowed_raw_label_values": [0, 1, 2],
+  "binary_prediction_values": [0, 1],
+  "metric_absolute_tolerance": 1e-6,
+  "affine_absolute_tolerance": 1e-5,
+  "surface_distance_space": "native_physical_mm",
+  "hd95_definition": "95th percentile of concatenated bidirectional foreground surface distances in native physical spacing",
+  "hd95_both_empty": 0.0,
+  "hd95_one_empty": null,
+  "nsd_tolerance_mm": 1.0,
+  "nsd_definition": "fraction of concatenated bidirectional foreground surface distances <= nsd_tolerance_mm in native physical spacing",
+  "nsd_both_empty": 1.0,
+  "nsd_one_empty": 0.0,
+  "surface_connectivity": 6,
+  "lesion_connectivity": 26,
+  "lesion_match_rule": "one-to-one maximum-overlap assignment; a matched pair counts as TP only when voxel overlap is > 0",
+  "empty_mask_policy": {
+    "dice_both_empty": 1.0,
+    "iou_both_empty": 1.0,
+    "dice_one_empty": 0.0,
+    "iou_one_empty": 0.0
+  },
+  "prediction_input_contract": "Metrics accept binary masks only. Probability maps must be finite, lie in [0,1], and be explicitly thresholded before evaluation; logits are never accepted as probabilities.",
+  "r1_probability_threshold": 0.5,
+  "r1_probability_threshold_role": "fixed validation fixture only; not tuned in R1 and not a candidate-selection decision",
+  "interpolation": {
+    "image_or_probability": "continuous",
+    "label_or_binary_mask": "nearest"
+  },
+  "data_access": {
+    "array_access_allowed": ["train", "validation"],
+    "array_access_forbidden": ["internal_test", "historical_external", "new_external"]
+  }
+}
