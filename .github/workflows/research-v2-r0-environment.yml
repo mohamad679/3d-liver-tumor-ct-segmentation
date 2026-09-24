@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   environment-evidence:
@@ -27,6 +27,26 @@ jobs:
       - name: Set up Python 3.11
         run: uv python install 3.11
 
+      - name: Ensure Research-v2 lock is committed
+        shell: bash
+        run: |
+          set -euo pipefail
+          ENV_DIR="$GITHUB_WORKSPACE/environments/research-v2-linux-cuda"
+          LOCK_PATH="$ENV_DIR/uv.lock"
+          if [[ -f "$LOCK_PATH" ]]; then
+            (cd "$ENV_DIR" && uv lock --check)
+            echo "Using committed Research-v2 uv.lock"
+            exit 0
+          fi
+
+          echo "Research-v2 uv.lock missing; generating one bootstrap lock and committing it"
+          (cd "$ENV_DIR" && uv lock --python 3.11)
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add environments/research-v2-linux-cuda/uv.lock
+          git commit -m "chore(research-v2): commit Linux CUDA dependency lock"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
       - name: Generate saved command evidence
         shell: bash
         run: |
@@ -37,17 +57,6 @@ jobs:
           mkdir -p "$EVIDENCE_DIR"
           STATUS_FILE="$EVIDENCE_DIR/command_status.tsv"
           printf 'command\texit_code\n' > "$STATUS_FILE"
-
-          run_logged() {
-            local name="$1"
-            shift
-            set +e
-            "$@" >"$EVIDENCE_DIR/${name}.log" 2>&1
-            local code=$?
-            set -e
-            printf '%s\t%s\n' "$name" "$code" >> "$STATUS_FILE"
-            return 0
-          }
 
           run_shell_logged() {
             local name="$1"
@@ -64,7 +73,7 @@ jobs:
           run_shell_logged "00_runtime_inventory" \
             "uname -a; python3 --version; uv --version; command -v nvidia-smi || true; nvidia-smi || true; free -h || true"
           run_shell_logged "01_python311" "python3.11 --version"
-          run_shell_logged "02_uv_lock" "cd '$ENV_DIR' && uv lock --python 3.11"
+          run_shell_logged "02_uv_lock_check" "cd '$ENV_DIR' && uv lock --check"
           run_shell_logged "03_uv_sync" "cd '$ENV_DIR' && uv sync --frozen --python 3.11 --all-groups"
           run_shell_logged "04_import_probe" \
             "cd '$ENV_DIR' && uv run --frozen --python 3.11 python -c 'import importlib.metadata as m; import torch, monai, nibabel; import nnunetv2; print(\"python=3.11\"); print(\"torch=\" + torch.__version__); print(\"monai=\" + monai.__version__); print(\"nnunetv2=\" + m.version(\"nnunetv2\")); print(\"nibabel=\" + nibabel.__version__); print(\"torch_cuda_runtime=\" + str(torch.version.cuda)); print(\"cuda_available=\" + str(torch.cuda.is_available()))'"
@@ -73,29 +82,35 @@ jobs:
           run_shell_logged "06_gpu_inventory" \
             "if command -v nvidia-smi >/dev/null 2>&1; then nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader; else echo 'nvidia-smi unavailable'; exit 4; fi"
 
-          cp "$ENV_DIR/uv.lock" "$EVIDENCE_DIR/uv.lock" 2>/dev/null || true
+          cp "$ENV_DIR/uv.lock" "$EVIDENCE_DIR/uv.lock"
           python3 - <<'PY'
           import csv
+          import hashlib
           import json
           import os
+          import subprocess
           from pathlib import Path
 
-          evidence = Path(os.environ["GITHUB_WORKSPACE"]) / "reports/research_v2/evidence/r0_environment"
+          root = Path(os.environ["GITHUB_WORKSPACE"])
+          evidence = root / "reports/research_v2/evidence/r0_environment"
+          lock = root / "environments/research-v2-linux-cuda/uv.lock"
           statuses = {}
           with (evidence / "command_status.tsv").open(encoding="utf-8") as handle:
-              rows = csv.DictReader(handle, delimiter="\t")
-              for row in rows:
+              for row in csv.DictReader(handle, delimiter="\t"):
                   statuses[row["command"]] = int(row["exit_code"])
           payload = {
-              "schema_version": "research_v2_r0_environment_evidence.v1",
-              "git_commit": os.environ["GITHUB_SHA"],
+              "schema_version": "research_v2_r0_environment_evidence.v2",
+              "git_commit": subprocess.check_output(
+                  ["git", "rev-parse", "HEAD"], text=True
+              ).strip(),
               "runner_os": os.environ.get("RUNNER_OS"),
               "runner_arch": os.environ.get("RUNNER_ARCH"),
+              "uv_lock_file_sha256": hashlib.sha256(lock.read_bytes()).hexdigest(),
               "command_exit_codes": statuses,
               "non_gpu_environment_pass": all(statuses.get(name) == 0 for name in [
                   "00_runtime_inventory",
                   "01_python311",
-                  "02_uv_lock",
+                  "02_uv_lock_check",
                   "03_uv_sync",
                   "04_import_probe",
               ]),
@@ -116,7 +131,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Enforce non-GPU environment checks
+      - name: Enforce R0 software environment checks
         shell: bash
         run: |
           python3 - <<'PY'
@@ -128,9 +143,9 @@ jobs:
           )
           if not payload["non_gpu_environment_pass"]:
               raise SystemExit(1)
-          print("non-GPU Python 3.11 environment checks passed")
+          print("R0 non-GPU Python 3.11 environment checks passed")
           if payload["cuda_pass"]:
-              print("CUDA probe passed")
+              print("GPU training-readiness probe passed")
           else:
-              print("CUDA probe BLOCKED on this runner; R0 overall must remain BLOCKED")
+              print("GPU training readiness BLOCKED; this does not block CPU-only R1")
           PY
