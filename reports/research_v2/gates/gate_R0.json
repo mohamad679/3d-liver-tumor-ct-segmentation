@@ -67,14 +67,52 @@
       "runner_arch": "X64",
       "python": "3.11.16",
       "commands": [
-        {"name": "python_version", "exit_code": 0, "result": "Python 3.11.16"},
-        {"name": "lock_check", "exit_code": 0, "result": "Resolved 158 packages"},
-        {"name": "ruff_lint", "exit_code": 0, "result": "All checks passed"},
-        {"name": "ruff_format", "exit_code": 0, "result": "291 files already formatted"},
-        {"name": "mypy", "exit_code": 0, "result": "Success: no issues found in 265 source files"},
-        {"name": "pytest_full", "exit_code": 0, "result": "1787 passed, 49 skipped in 241.65s"},
-        {"name": "pytest_smoke", "exit_code": 0, "result": "4 passed in 1.71s"}
+        {
+          "name": "python_version",
+          "exit_code": 0,
+          "result": "Python 3.11.16"
+        },
+        {
+          "name": "lock_check",
+          "exit_code": 0,
+          "result": "Resolved 158 packages"
+        },
+        {
+          "name": "ruff_lint",
+          "exit_code": 0,
+          "result": "All checks passed"
+        },
+        {
+          "name": "ruff_format",
+          "exit_code": 0,
+          "result": "291 files already formatted"
+        },
+        {
+          "name": "mypy",
+          "exit_code": 0,
+          "result": "Success: no issues found in 265 source files"
+        },
+        {
+          "name": "pytest_full",
+          "exit_code": 0,
+          "result": "1787 passed, 49 skipped in 241.65s"
+        },
+        {
+          "name": "pytest_smoke",
+          "exit_code": 0,
+          "result": "4 passed in 1.71s"
+        }
       ]
+    },
+    "post_lock_ci_repair": {
+      "commit": "1839b6c096f57c8b01bdc219013b6b213ac97702",
+      "reason": "Unit tests were updated to distinguish the now-populated production artifact lock from explicit unlocked synthetic fixtures.",
+      "phase0_ci_run_id": 36009549823,
+      "phase0_ci_conclusion": "success",
+      "software_evidence_run_id": 36009549861,
+      "software_evidence_conclusion": "success",
+      "software_evidence_artifact_id": 10811893177,
+      "software_evidence_artifact_digest": "sha256:af60ab94b4f80f9024ea43b448865a3ee31ad1b7b60d228b2190546fa727a608"
     }
   },
   "environment_lock": {
@@ -92,11 +130,46 @@
     "frozen_execution_policy": "uv lock --check followed by uv sync --frozen --python 3.11 --all-groups"
   },
   "gpu_training_readiness": {
-    "status": "BLOCKED_GPU",
+    "status": "PASS",
     "blocks_r0": false,
     "blocks_cpu_r1": false,
-    "required_before": ["R2_training", "R3_training"],
-    "locked_environment_gpu_probe": "NOT_RUN",
+    "required_before": [
+      "R2_training",
+      "R3_training"
+    ],
+    "locked_environment_gpu_probe": "PASS",
+    "evidence_source": "user-executed Kaggle GPU notebook; evidence archive reviewed in-chat",
+    "evidence_archive_sha256": "682286e42aa1d3b900027c8179134e38ce265b9c129319a45168f0f7c46a199f",
+    "evidence_archive_size_bytes": 7322,
+    "project_environment_commit": "a9f15dcc56e388697ea75186fec4ce3a85224ae3",
+    "code_parent_commit": "5336158f20ad46c01ec6a66d75a9005f44bba26c",
+    "lock_file_sha256_match": true,
+    "lock_git_blob_sha1_match": true,
+    "lock_size_match": true,
+    "uv_version": "0.12.18",
+    "python_version": "3.11.16",
+    "gpu_host": "Kaggle",
+    "gpu_count": 2,
+    "gpu_model": "Tesla T4",
+    "gpu_total_memory_bytes_per_device": 15636037632,
+    "gpu_total_memory_gib_per_device": 14.56219482421875,
+    "nvidia_driver_version": "580.159.04",
+    "host_nvidia_smi_cuda_version": "13.0",
+    "locked_environment_torch_version": "2.2.2+cu121",
+    "locked_environment_torch_cuda_runtime": "12.1",
+    "locked_environment_cudnn_version": 8902,
+    "torch_cuda_available": true,
+    "torch_cuda_device_count": 2,
+    "tensor_device": "cuda:0",
+    "tensor_numel": 1048576,
+    "tensor_result": 274878693376.0,
+    "tensor_memory_allocated_bytes": 4194816,
+    "tensor_memory_reserved_bytes": 23068672,
+    "nvidia_smi_exit_code": 0,
+    "all_required_command_exit_codes_zero": true,
+    "datasets_transferred": [],
+    "host_nvidia_smi_is_not_sufficient_for_pass": true,
+    "pass_basis": "PASS is based on successful CUDA probing from the exact frozen project Python 3.11 environment, not on default Kaggle host GPU visibility.",
     "required_evidence": [
       "nvidia-smi output and exit code",
       "NVIDIA driver version",
@@ -116,7 +189,10 @@
     "current_gpu_readiness_notebook_datasets": [],
     "r2_after_r0": "Transfer only the small number of train cases needed for an overfit test.",
     "r3": "Decide train-cohort transfer and GPU capacity separately before training.",
-    "forbidden_for_current_gpu_readiness_notebook": ["internal_test", "3D-IRCADb"]
+    "forbidden_for_current_gpu_readiness_notebook": [
+      "internal_test",
+      "3D-IRCADb"
+    ]
   },
   "passed_checks": [
     "independent Research-v2 branch created from the required base commit",
@@ -133,13 +209,15 @@
     "discovery and require-protocol-lock audits agree on artifact identity, audit hash, and fold hash",
     "historical abbreviated split-reference mismatch is preserved as provenance metadata and did not cause artifact regeneration",
     "Phase 0 CI passed on current tested code commit 5336158f20ad46c01ec6a66d75a9005f44bba26c",
-    "Linux/CUDA Python 3.11 dependency lock is committed and independently identified by raw SHA-256 and Git blob SHA"
+    "Linux/CUDA Python 3.11 dependency lock is committed and independently identified by raw SHA-256 and Git blob SHA",
+    "Kaggle GPU probe passed from the exact frozen Research-v2 Python 3.11 environment with the committed uv.lock",
+    "CUDA tensor allocation, arithmetic, synchronization, driver/runtime reporting, GPU model, and VRAM evidence were persisted with zero required command exit codes",
+    "GPU readiness probe transferred no medical datasets",
+    "post-lock unit tests were aligned with the frozen real artifact lock and both Phase 0 CI and Research V2 R0 software-evidence workflows passed on commit 1839b6c096f57c8b01bdc219013b6b213ac97702"
   ],
   "blocking_checks": [],
-  "deferred_training_readiness": [
-    "BLOCKED_GPU: the exact frozen project environment has not yet passed the required CUDA probe on an NVIDIA GPU host"
-  ],
+  "deferred_training_readiness": [],
   "next_allowed_stage": "R1",
   "r1_started": false,
-  "gate_policy": "R0 requires real data readiness and software readiness. Both are PASS. R1 is now allowed but has not started. GPU readiness remains separate from R0 and CPU-only R1, and is mandatory before real R2/R3 training. Synthetic evidence or default-host GPU visibility cannot promote the GPU training gate."
+  "gate_policy": "R0 requires real data readiness and software readiness; both are PASS. GPU training readiness is also PASS from the exact frozen project environment. R1 is allowed but has not started. R2/R3 training still follows stage sequencing and data-transfer policy; internal-test and 3D-IRCADb remain excluded from the current training-readiness notebook."
 }
