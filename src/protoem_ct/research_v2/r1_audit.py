@@ -1,6 +1,6 @@
 """Research-v2 R1 pixel-to-metric audit contracts.
 
-This module is deliberately separate from the immutable Phase 8 implementation.  It contains
+This module is deliberately separate from the immutable Phase 8 implementation. It contains
 fail-closed access, label, geometry, transformation, and metric wrappers used by the R1 audit.
 No function in this module trains a model or performs threshold selection.
 """
@@ -93,12 +93,14 @@ def authorized_r1_cases(
     manifest: DatasetManifest,
     split: DevelopmentSplitManifest,
 ) -> tuple[R1AllowedCase, ...]:
-    """Return exactly the 91 train + 20 validation cases without authorizing internal-test arrays."""
+    """Return the 91 train + 20 validation cases without authorizing internal-test arrays."""
 
     if split.source_manifest_hash != manifest.manifest_hash:
         raise R1AccessBoundaryError("split source_manifest_hash does not match manifest_hash")
     cases_by_id = {case.anonymous_case_id: case for case in manifest.cases}
-    assignments_by_id = {assignment.anonymous_case_id: assignment for assignment in split.assignments}
+    assignments_by_id = {
+        assignment.anonymous_case_id: assignment for assignment in split.assignments
+    }
     if set(cases_by_id) != set(assignments_by_id):
         raise R1AccessBoundaryError("manifest and split case sets do not match exactly")
 
@@ -160,7 +162,7 @@ def require_r1_array_access(partition: str) -> None:
 
 
 def validate_raw_lits_label_array(label: Array) -> BoolArray:
-    """Validate one raw LiTS-derived label and return the binary tumor mask (raw label == 2)."""
+    """Validate one raw LiTS-derived label and return tumor as raw label 2."""
 
     array = np.asarray(label)
     if array.ndim != 3:
@@ -177,13 +179,14 @@ def validate_raw_lits_label_array(label: Array) -> BoolArray:
     unexpected = values - allowed
     if unexpected:
         raise R1LabelValidationError(
-            f"raw label array contains values outside {R1_ALLOWED_RAW_LABEL_VALUES}: {sorted(unexpected)}"
+            "raw label array contains values outside "
+            f"{R1_ALLOWED_RAW_LABEL_VALUES}: {sorted(unexpected)}"
         )
     return cast(BoolArray, rounded == R1_TUMOR_RAW_LABEL_VALUE)
 
 
 def validate_binary_metric_mask(mask: Array, *, field_name: str) -> BoolArray:
-    """Require explicit boolean/integer binary semantics; probability/logit arrays are rejected."""
+    """Require boolean/integer binary semantics; probability/logit arrays are rejected."""
 
     array = np.asarray(mask)
     if array.ndim != 3:
@@ -203,7 +206,7 @@ def validate_binary_metric_mask(mask: Array, *, field_name: str) -> BoolArray:
 
 
 def threshold_fixture_probability(probability: Array, *, threshold: float) -> BoolArray:
-    """Threshold a synthetic fixture probability only at the preregistered R1 value 0.5."""
+    """Threshold a synthetic fixture probability only at preregistered R1 value 0.5."""
 
     if threshold != R1_FIXTURE_PROBABILITY_THRESHOLD:
         raise R1MetricInputError(
@@ -215,7 +218,9 @@ def threshold_fixture_probability(probability: Array, *, threshold: float) -> Bo
     if not bool(np.isfinite(array).all()):
         raise R1MetricInputError("fixture probability contains NaN or non-finite values")
     if bool(np.any(array < 0.0)) or bool(np.any(array > 1.0)):
-        raise R1MetricInputError("fixture probability values must lie in [0, 1]; logits are rejected")
+        raise R1MetricInputError(
+            "fixture probability values must lie in [0, 1]; logits are rejected"
+        )
     return cast(BoolArray, array >= threshold)
 
 
@@ -347,7 +352,10 @@ def independent_reference_metrics(
     )
 
 
-def reorient_array_to_ras(array: Array, affine: Array) -> tuple[Array, npt.NDArray[np.float64]]:
+def reorient_array_to_ras(
+    array: Array,
+    affine: Array,
+) -> tuple[Array, npt.NDArray[np.float64]]:
     """Reorient a 3D array to RAS while preserving world coordinates."""
 
     data = np.asarray(array)
@@ -398,7 +406,7 @@ def resample_array_to_grid(
     target_affine: Array,
     is_label_or_mask: bool,
 ) -> Array:
-    """Affine-aware resampling with nearest for labels/masks and linear for image/probability."""
+    """Affine-aware resampling with nearest for masks and linear for image/probability."""
 
     data = np.asarray(array)
     if data.ndim != 3:
@@ -454,7 +462,8 @@ def _validated_affine(affine: Array, *, field_name: str) -> npt.NDArray[np.float
         raise R1GeometryError(f"{field_name} must have shape (4, 4)")
     if not bool(np.isfinite(matrix).all()):
         raise R1GeometryError(f"{field_name} contains NaN or non-finite values")
-    if not np.allclose(matrix[3], np.array([0.0, 0.0, 0.0, 1.0]), rtol=0.0, atol=1e-9):
+    expected_row = np.array([0.0, 0.0, 0.0, 1.0])
+    if not np.allclose(matrix[3], expected_row, rtol=0.0, atol=1e-9):
         raise R1GeometryError(f"{field_name} has an invalid homogeneous row")
     determinant = float(np.linalg.det(matrix[:3, :3]))
     if not math.isfinite(determinant) or abs(determinant) <= 1e-12:
