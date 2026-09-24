@@ -1,8 +1,8 @@
 {
   "schema_version": "research_v2_gate.v2",
   "stage": "R1",
-  "status": "BLOCKED",
-  "blocker": "BLOCKED_GEOMETRY_RECONCILIATION_AND_OVERLAY_REVIEW",
+  "status": "PASS",
+  "blocker": null,
   "branch": "research-v2/r1-pixel-metric-audit",
   "r0_closed_parent_commit": "c0ebb42b7390b687d0d942371ea339c9fc7f3a6b",
   "r1_preregistration_commit": "fc5e8a5cabd00a381739df0e671a4a37e1f3af5a",
@@ -12,10 +12,17 @@
     "locked_manifest_file_sha256": "0e21a7d555e20b6011091bc18e462bc150cc23a8f46e522dbd8c01b014a44ae3",
     "locked_split_artifact_hash": "936376cd7b5e6070397c2fef16e5125c60fd6569ff3188d7e9bb5428a46ffadb",
     "locked_split_file_sha256": "416ca83e85c8598fc4f7065316153193211bf6b57875fbda4cafc01c360445f7",
-    "allowed_array_partitions": ["train", "validation"],
+    "allowed_array_partitions": [
+      "train",
+      "validation"
+    ],
     "expected_train_cases": 91,
     "expected_validation_cases": 20,
-    "forbidden_array_partitions": ["internal_test", "historical_external", "new_external"],
+    "forbidden_array_partitions": [
+      "internal_test",
+      "historical_external",
+      "new_external"
+    ],
     "observed_train_arrays_opened": 91,
     "observed_validation_arrays_opened": 20,
     "internal_test_arrays_opened": 0,
@@ -24,10 +31,14 @@
   },
   "metric_contract": {
     "tumor_raw_label_value": 2,
-    "allowed_raw_label_values": [0, 1, 2],
-    "exact_metric_tolerance": 1e-6,
-    "prediction_ground_truth_affine_absolute_tolerance": 1e-6,
-    "source_image_label_affine_absolute_tolerance_mm": 1e-4,
+    "allowed_raw_label_values": [
+      0,
+      1,
+      2
+    ],
+    "exact_metric_tolerance": 1e-06,
+    "prediction_ground_truth_affine_absolute_tolerance": 1e-06,
+    "source_image_label_affine_absolute_tolerance_mm": 0.0001,
     "source_geometry_tolerance_basis": "pre-existing approved Phase 2 real-run decision dated 2026-07-27; not fitted from R1 outcomes",
     "qform_sform_policy": "retained header observation, not an automatic gate failure when effective source geometry is safe",
     "surface_distance_space": "native_physical_mm",
@@ -42,14 +53,14 @@
     "threshold_tuning_allowed": false
   },
   "contract_correction": {
-    "status": "IMPLEMENTED_PENDING_CI_AND_REAL_EVIDENCE_RECONCILIATION",
+    "status": "CLOSED_VERIFIED",
     "r1_v1_error": "source image/label QA incorrectly reused 1e-6 prediction-grid tolerance and treated qform/sform disagreement as an automatic mismatch",
     "correction": "restore pre-existing Phase 2 source tolerance of 1e-4 mm; retain qform/sform disagreement as an observation; keep prediction/ground-truth metric-grid tolerance at 1e-6",
     "source_nifti_modified": false,
     "manifest_or_split_modified": false
   },
   "synthetic_evaluator_audit": {
-    "status": "LOCAL_PASS_16_PENDING_CURRENT_BRANCH_CI",
+    "status": "PASS",
     "local_targeted_fixture_count": 16,
     "required_fixtures": [
       "both_empty",
@@ -69,10 +80,13 @@
       "wrong_probability_threshold",
       "logit_as_probability"
     ],
-    "project_vs_independent_reference_required": true
+    "project_vs_independent_reference_required": true,
+    "ci_verified_commit": "8a52159b27d839c9646f38e6cdef5db0bc28a78f",
+    "ci_workflow_run_id": 36028934422,
+    "ci_conclusion": "success"
   },
   "real_mac_lexar_audit": {
-    "status": "COMPLETED_BLOCKED_ON_RECONCILIATION_AND_OVERLAY_REVIEW",
+    "status": "PASS",
     "execution_runtime_seconds": 3516.026,
     "case_record_count": 111,
     "opened_train_cases": 91,
@@ -90,19 +104,42 @@
     "manual_diagnostic": {
       "all_8_effective_affines_match_preexisting_1e-4_tolerance": true,
       "all_8_orientation_match": true,
-      "observed_max_affine_abs_delta_mm": 3.0517578125e-5,
-      "observed_max_spacing_abs_delta_mm": 5.96046447754e-8,
-      "observed_max_corner_displacement_mm": 5.71685607815e-5,
-      "observed_max_voxel_translation_delta": 4.73484848555e-5,
-      "observed_max_linear_transform_deviation": 9.2477509428e-8,
-      "official_reconciliation_artifact_status": "PENDING"
+      "observed_max_affine_abs_delta_mm": 3.0517578125e-05,
+      "observed_max_spacing_abs_delta_mm": 5.96046447754e-08,
+      "observed_max_corner_displacement_mm": 5.71685607815e-05,
+      "observed_max_voxel_translation_delta": 4.73484848555e-05,
+      "observed_max_linear_transform_deviation": 9.2477509428e-08,
+      "official_reconciliation_artifact_status": "PASS",
+      "resolved_qform_sform_observation_case_count": 89,
+      "resolved_effective_affine_case_count": 8,
+      "unresolved_mismatch_record_count": 0
     },
     "minimum_diverse_train_overlays": 10,
     "manual_overlay_review_required": true,
-    "overlay_review_status": "NOT_STARTED",
+    "overlay_review_status": "PASS_MANUAL_LOCAL_REVIEW_10_OF_10",
+    "overlay_reviewed_count": 10,
+    "all_overlay_alignment_confirmed": true,
+    "overlay_review_blocking_case_ids": [],
+    "overlay_review_artifact_sha256": "898b5a3461e37d7c6da9aab69fea25b8f323cb7a64e350ddeaa597985d04f39a",
     "unresolved_mismatch_count_required": 0,
     "prediction_restore_probe": "geometry-only binary surrogate; not model-performance evidence",
     "medical_arrays_or_overlays_allowed_in_git": false
+  },
+  "final_evidence": {
+    "handoff_schema_version": "research_v2_r1_handoff.v2",
+    "handoff_status": "READY_FOR_GATE_REVIEW",
+    "sanitized_archive_filename": "research_v2_r1_sanitized_evidence_v2.zip",
+    "sanitized_archive_sha256": "c9f778686ce4cd84a47fc98ac4f72c4d599b7577f89ee8565391c35d25a813cc",
+    "sanitized_archive_size_bytes": 40740,
+    "archive_member_count": 11,
+    "archive_contains_json_only": true,
+    "medical_images_in_handoff": false,
+    "raw_labels_in_handoff": false,
+    "overlay_pngs_in_handoff": false,
+    "reconciliation_artifact_sha256": "dc0bca4b89daab89d9bddc556ea27d0009b15896919d7f5533de1e4467c27c56",
+    "review_artifact_sha256": "898b5a3461e37d7c6da9aab69fea25b8f323cb7a64e350ddeaa597985d04f39a",
+    "original_evidence_hashes_verified": true,
+    "reconciliation_source_hashes_verified": true
   },
   "training_performed": false,
   "threshold_tuning_performed": false,
@@ -114,17 +151,19 @@
     "real Mac audit opened zero internal-test and zero external arrays",
     "real Mac audit reported zero transform-trace failures",
     "10 diverse train overlays were generated only in the secure local workspace",
-    "historical Phase 8 files remain immutable",
-    "manual geometry diagnostic places all 8 effective-affine cases inside the pre-existing Phase 2 precision envelope"
+    "10 diverse train tri-planar overlays were manually reviewed locally with all alignments confirmed",
+    "official metadata-only geometry reconciliation resolved all 97 original mismatch records with zero unresolved mismatches",
+    "89 qform/sform records were resolved as non-blocking header observations",
+    "8 effective-affine records were resolved inside the pre-existing approved Phase 2 precision envelope",
+    "sanitized evidence archive independently matched the reported SHA-256 and size",
+    "sanitized evidence archive contains JSON evidence only and no medical images, raw labels, or overlay PNGs",
+    "original evidence hashes and reconciliation source hashes were independently verified",
+    "current R1 implementation commit passed Phase 0 CI",
+    "historical Phase 8 files remain immutable"
   ],
-  "blocking_checks": [
-    "current R1 branch CI must pass lint, format, mypy, pytest and smoke",
-    "official metadata-only geometry reconciliation artifact must report zero unresolved mismatches",
-    "10 diverse train tri-planar overlays must be manually reviewed in the secure local workspace with all alignments confirmed",
-    "internal-test and external array access must remain zero"
-  ],
-  "leakage_audit": "REAL_ARRAY_ACCESS_BOUNDARY_PASS_PENDING_FINAL_R1_CLOSEOUT",
-  "next_allowed_stage": "NONE",
+  "blocking_checks": [],
+  "leakage_audit": "PASS",
+  "next_allowed_stage": "R2",
   "r2_started": false,
   "gate_policy": "Synthetic fixtures, manual diagnostics, or CI alone cannot promote R1. PASS requires locked real train/validation evidence, an auditable zero-unresolved reconciliation, completed secure overlay review, zero internal-test/external array access, and passing branch CI."
 }
