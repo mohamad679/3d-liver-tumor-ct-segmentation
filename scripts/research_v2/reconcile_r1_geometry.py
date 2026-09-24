@@ -78,9 +78,7 @@ def main() -> int:
     reconciliation["original_unresolved_mismatch_count"] = audit_summary.get(
         "unresolved_mismatch_count"
     )
-    reconciliation["internal_test_arrays_opened"] = int(
-        array_access["internal_test_arrays_opened"]
-    )
+    reconciliation["internal_test_arrays_opened"] = int(array_access["internal_test_arrays_opened"])
     reconciliation["external_arrays_opened"] = int(array_access["external_arrays_opened"])
 
     reconciled_path = root / "r1_mismatches.reconciled.json"
