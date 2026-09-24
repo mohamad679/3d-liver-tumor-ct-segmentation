@@ -1,0 +1,201 @@
+{
+  "schema_version": "research_v2_r2_overfit_real.v1",
+  "stage": "R2",
+  "purpose": "diagnostic overfit on a few real train patients; not a generalization estimate",
+  "parent_r1_commit": "998584f7ff8703e9ff6a934a0dc540cf379e31b6",
+  "locked_inputs": {
+    "manifest_artifact_hash": "c24244951e050050cf25c4b321f67d61c2087fc0c93fdcf9d112e0e488e1384b",
+    "manifest_file_sha256": "0e21a7d555e20b6011091bc18e462bc150cc23a8f46e522dbd8c01b014a44ae3",
+    "split_artifact_hash": "936376cd7b5e6070397c2fef16e5125c60fd6569ff3188d7e9bb5428a46ffadb",
+    "split_file_sha256": "416ca83e85c8598fc4f7065316153193211bf6b57875fbda4cafc01c360445f7",
+    "linux_cuda_uv_lock_path": "environments/research-v2-linux-cuda/uv.lock",
+    "linux_cuda_uv_lock_sha256": "c9ee200234eebf8c67fd97ff2c96ca0765f4067a8a69a7ef439deafdda3530a8"
+  },
+  "data_access": {
+    "array_partitions_allowed": ["train"],
+    "array_partitions_forbidden": ["validation", "internal_test", "historical_external", "new_external"],
+    "manifest_or_split_regeneration_allowed": false,
+    "medical_images_labels_checkpoints_overlays_allowed_in_git": false,
+    "public_artifact_transfer_allowed": false
+  },
+  "selection": {
+    "source_statistics": "R1 sanitized case records, filtered to partition=train before ranking",
+    "positive_case_count": 3,
+    "positive_rule": "sort train cases with tumor_voxel_count > 0 by (tumor_voxel_count, anonymous_case_id); for q in [0.20, 0.50, 0.80], select zero-based index floor((N_positive-1)*q)",
+    "empty_rule": "if train contains one or more cases with tumor_voxel_count == 0, select the lexicographically smallest anonymous_case_id",
+    "expected_train_positive_count_from_closed_r1_evidence": 86,
+    "expected_train_empty_count_from_closed_r1_evidence": 5,
+    "expected_selected_cases": [
+      {
+        "role": "positive_q20",
+        "anonymous_case_id": "case_65917a1f3a47339a558042dac093bf1a",
+        "anonymous_patient_id": "pat_246f88a9462c54f13e07521625d8b279",
+        "tumor_voxel_count": 2261,
+        "tumor_volume_mm3": 6534.290366563802,
+        "tumor_lesion_count_26c": 2
+      },
+      {
+        "role": "positive_q50",
+        "anonymous_case_id": "case_f232be7b649d2166e5158aa636b38766",
+        "anonymous_patient_id": "pat_01c11fe64cf20902458918e250b9e9c8",
+        "tumor_voxel_count": 12265,
+        "tumor_volume_mm3": 18902.51022584445,
+        "tumor_lesion_count_26c": 14
+      },
+      {
+        "role": "positive_q80",
+        "anonymous_case_id": "case_6e4782e999691662f69fdf25f0e2e423",
+        "anonymous_patient_id": "pat_63eb9d6a0b5afdd95cef44562b33bb7f",
+        "tumor_voxel_count": 179093,
+        "tumor_volume_mm3": 216438.78917011793,
+        "tumor_lesion_count_26c": 1
+      },
+      {
+        "role": "empty_lexicographic_first",
+        "anonymous_case_id": "case_25928d2451a7d948a79e60084e3c5d32",
+        "anonymous_patient_id": "pat_00279fb16b44fe5112f954f7f68f0a8c",
+        "tumor_voxel_count": 0,
+        "tumor_volume_mm3": 0.0,
+        "tumor_lesion_count_26c": 0
+      }
+    ],
+    "source_image_label_sha256": "must be populated from the locked manifest and verified against actual selected train files before transfer or training"
+  },
+  "gpu_preflight": {
+    "cpu_fallback_allowed": false,
+    "training_device": "cuda:0",
+    "multi_gpu_memory_pooling_assumed": false,
+    "record_all_gpu_devices": true,
+    "required_before_training": [
+      "torch.cuda.is_available() == true",
+      "record GPU model and total VRAM for every visible device",
+      "verify exact uv.lock SHA-256",
+      "record Python, PyTorch, MONAI, nnU-Net, CUDA runtime, cuDNN and NVIDIA driver versions",
+      "single-GPU allocation probe",
+      "one complete forward/backward/optimizer step on cuda:0 with finite loss and gradients"
+    ]
+  },
+  "model": {
+    "family": "MONAI SegResNet",
+    "spatial_dims": 3,
+    "init_filters": 8,
+    "in_channels": 1,
+    "out_channels": 2,
+    "dropout_prob": null,
+    "blocks_down": [1, 1, 1],
+    "blocks_up": [1, 1],
+    "upsample_mode": "deconv"
+  },
+  "training": {
+    "seed": 1729,
+    "augmentation": "disabled",
+    "target_spacing_mm": [1.5, 1.5, 1.5],
+    "image_resampling": "continuous",
+    "label_resampling": "nearest",
+    "raw_tumor_label": 2,
+    "binary_training_target": "raw_label == 2",
+    "intensity_clip_hu": [-200.0, 300.0],
+    "intensity_scale": "linear_to_minus1_plus1_after_clipping",
+    "patch_size": [96, 96, 64],
+    "batch_size": 1,
+    "positive_patch_fraction": 0.75,
+    "positive_patch_requirement": "every positive patch must contain at least one tumor voxel after nearest-neighbor label resampling",
+    "sampling": "seeded deterministic schedule; positive centers sampled only from tumor voxels of positive selected cases; remaining patches are non-tumor patches including the selected empty case",
+    "loss": {
+      "name": "MONAI DiceCELoss",
+      "include_background": false,
+      "to_onehot_y": true,
+      "softmax": true,
+      "lambda_dice": 1.0,
+      "lambda_ce": 1.0
+    },
+    "optimizer": "AdamW",
+    "learning_rate": 0.001,
+    "weight_decay": 0.00001,
+    "precision": "CUDA AMP fp16 training; fp32 inference",
+    "gradient_clipping": null,
+    "threshold": 0.5
+  },
+  "inference": {
+    "full_volume_required": true,
+    "sliding_window_roi_size": [96, 96, 64],
+    "sliding_window_batch_size": 1,
+    "sliding_window_overlap": 0.5,
+    "sliding_window_mode": "gaussian",
+    "probability": "softmax tumor channel",
+    "threshold": 0.5,
+    "restore_to_native_space": true,
+    "native_metric_contract": "R1 pixel-to-metric contract",
+    "prediction_ground_truth_affine_absolute_tolerance": 0.000001,
+    "exact_metric_tolerance": 0.000001
+  },
+  "evaluation_schedule": {
+    "patch_logging_every_steps": 25,
+    "full_volume_evaluation_every_steps": 250,
+    "final_full_volume_evaluation_required": true,
+    "record_per_selected_case": [
+      "patch_dice",
+      "native_full_volume_tumor_dice",
+      "ground_truth_tumor_voxels",
+      "predicted_tumor_voxels",
+      "false_positive_lesion_count",
+      "probability_min",
+      "probability_max",
+      "probability_mean"
+    ]
+  },
+  "budget": {
+    "timing_memory_calibration": {
+      "max_steps": 20,
+      "purpose": "measure time and peak VRAM only; not permitted to change threshold or Gate criteria"
+    },
+    "primary": {
+      "max_training_steps": 2500,
+      "max_gpu_wall_hours": 3.0
+    },
+    "single_extension_allowed": true,
+    "extension": {
+      "max_additional_training_steps": 1500,
+      "max_additional_gpu_wall_hours": 1.5,
+      "requires_new_versioned_run_record_with_reason": true,
+      "threshold_change_allowed": false,
+      "gate_threshold_change_allowed": false
+    }
+  },
+  "runtime_logging": {
+    "required": [
+      "loss",
+      "positive_patch_ratio",
+      "tumor_voxels_per_patch",
+      "finite_gradients",
+      "finite_logits_probabilities",
+      "probability_distribution",
+      "step_time_seconds",
+      "elapsed_time_seconds",
+      "peak_vram_bytes",
+      "exceptions"
+    ]
+  },
+  "checkpoint": {
+    "gate_checkpoint": "last checkpoint of the preregistered primary run, or last checkpoint of the single explicitly versioned extension if used",
+    "save_optimizer_state": true,
+    "save_amp_scaler_state": true,
+    "save_rng_state": true,
+    "fresh_process_reload_required": true,
+    "reload_probability_max_abs_tolerance": 0.000001,
+    "reload_binary_prediction_exact_match_required": true
+  },
+  "gate": {
+    "positive_case_native_full_volume_dice_min_each": 0.95,
+    "empty_case_binary_prediction_must_be_empty": true,
+    "positive_case_mean_dice_is_not_a_substitute": true,
+    "empty_case_excluded_from_positive_dice_mean": true,
+    "no_nan_inf_required": true,
+    "no_geometry_error_required": true,
+    "no_data_leakage_required": true,
+    "checkpoint_reload_required": true,
+    "final_ci_required": true,
+    "next_allowed_stage_on_pass": "R3",
+    "next_allowed_stage_on_failure": "NONE"
+  }
+}
