@@ -1,0 +1,114 @@
+name: Research V2 R0 software evidence
+
+on:
+  push:
+    branches:
+      - research-v2/r0-protocol-environment
+    paths:
+      - ".github/workflows/research-v2-r0-software-evidence.yml"
+      - "src/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "configs/research_v2/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  software-evidence:
+    name: Saved lint type and test evidence
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+
+      - name: Set up Python 3.11
+        run: uv python install 3.11
+
+      - name: Install locked root environment
+        run: uv sync --frozen --python 3.11 --all-groups
+
+      - name: Run commands and save individual logs
+        shell: bash
+        run: |
+          set -uo pipefail
+          EVIDENCE_DIR="$GITHUB_WORKSPACE/reports/research_v2/evidence/r0_software"
+          mkdir -p "$EVIDENCE_DIR"
+          STATUS_FILE="$EVIDENCE_DIR/command_status.tsv"
+          printf 'command\texit_code\n' > "$STATUS_FILE"
+
+          run_logged() {
+            local name="$1"
+            local command="$2"
+            set +e
+            bash -lc "$command" >"$EVIDENCE_DIR/${name}.log" 2>&1
+            local code=$?
+            set -e
+            printf '%s\t%s\n' "$name" "$code" >> "$STATUS_FILE"
+            return 0
+          }
+
+          set -e
+          run_logged "00_python_version" "uv run python --version"
+          run_logged "01_lock_check" "uv lock --check"
+          run_logged "02_ruff_lint" "uv run ruff check ."
+          run_logged "03_ruff_format" "uv run ruff format --check ."
+          run_logged "04_mypy" "uv run mypy src tests"
+          run_logged "05_pytest_full" "uv run pytest -q"
+          run_logged "06_pytest_smoke" "uv run pytest -q tests/smoke"
+
+          python3 - <<'PY'
+          import csv
+          import json
+          import os
+          from pathlib import Path
+
+          evidence = Path(os.environ["GITHUB_WORKSPACE"]) / "reports/research_v2/evidence/r0_software"
+          statuses = {}
+          with (evidence / "command_status.tsv").open(encoding="utf-8") as handle:
+              rows = csv.DictReader(handle, delimiter="\t")
+              for row in rows:
+                  statuses[row["command"]] = int(row["exit_code"])
+          payload = {
+              "schema_version": "research_v2_r0_software_evidence.v1",
+              "git_commit": os.environ["GITHUB_SHA"],
+              "runner_os": os.environ.get("RUNNER_OS"),
+              "runner_arch": os.environ.get("RUNNER_ARCH"),
+              "command_exit_codes": statuses,
+              "all_pass": all(code == 0 for code in statuses.values()),
+          }
+          (evidence / "software_summary.json").write_text(
+              json.dumps(payload, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Upload R0 software evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: research-v2-r0-software-evidence
+          path: reports/research_v2/evidence/r0_software
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce all software checks
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          payload = json.loads(
+              Path("reports/research_v2/evidence/r0_software/software_summary.json").read_text()
+          )
+          if not payload["all_pass"]:
+              print(json.dumps(payload, indent=2, sort_keys=True))
+              raise SystemExit(1)
+          print(json.dumps(payload, indent=2, sort_keys=True))
+          PY
