@@ -22,6 +22,7 @@ from protoem_ct.research_v2.protocol import (
     build_nnunet_splits,
     load_protocol,
 )
+from protoem_ct.research_v2.r0_audit import write_nnunet_split_files
 
 BASE = Path(__file__).resolve().parents[2]
 PROTOCOL_PATH = BASE / "configs" / "research_v2" / "protocol_v2.yaml"
@@ -80,6 +81,22 @@ def test_protocol_loads_expected_locked_counts() -> None:
     assert protocol.existing_manifest_file_sha256 is None
     assert protocol.existing_split_hash is None
     assert protocol.existing_split_file_sha256 is None
+
+
+def test_gate_policy_v2_allows_r1_without_gpu_but_requires_gpu_before_training() -> None:
+    raw = json.loads(PROTOCOL_PATH.read_text(encoding="utf-8"))
+    policy = raw["gate_policy"]
+    assert policy["version"] == "research_v2_gate_policy.v2"
+    assert policy["r0_research_readiness"] == {
+        "required_for": ["R1"],
+        "requires_real_data_audit": True,
+        "requires_python311_software_ci": True,
+        "requires_cuda_gpu": False,
+    }
+    assert policy["gpu_training_readiness"] == {
+        "required_before": ["R2_training", "R3_training"],
+        "requires_cuda_gpu": True,
+    }
 
 
 def test_access_policy_is_fail_closed() -> None:
@@ -165,6 +182,24 @@ def test_nnunet_folds_use_train_only_and_cover_each_train_case_once() -> None:
     for fold in folds:
         assert set(fold["train"]).isdisjoint(fold["val"])
         assert len(fold["train"]) + len(fold["val"]) == 91
+
+
+def test_nnunet_split_file_is_direct_list_and_metadata_is_separate(tmp_path: Path) -> None:
+    _manifest, split = _artifacts()
+    folds = build_nnunet_splits(split, fold_count=5)
+    metadata = {
+        "fold_count": 5,
+        "folds_sha256": "f" * 64,
+        "protocol_id": "test",
+    }
+    write_nnunet_split_files(output_dir=tmp_path, folds=folds, metadata=metadata)
+
+    direct = json.loads((tmp_path / "splits_final.json").read_text(encoding="utf-8"))
+    meta = json.loads((tmp_path / "splits_final.meta.json").read_text(encoding="utf-8"))
+    assert isinstance(direct, list)
+    assert direct == folds
+    assert meta == metadata
+    assert "folds" not in meta
 
 
 def test_protocol_rejects_a_policy_that_exposes_internal_test_to_tuning(tmp_path: Path) -> None:
