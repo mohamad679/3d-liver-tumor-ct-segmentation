@@ -100,8 +100,11 @@ def main() -> int:
         raise RuntimeError("R1 reconciliation evidence reports internal-test array access")
     if reconciliation.get("external_arrays_opened") != 0:
         raise RuntimeError("R1 reconciliation evidence reports external array access")
-    if reconciliation.get("original_mismatch_record_count") != len(_load_json(root / "r1_mismatches.json")):
-        raise RuntimeError("geometry reconciliation does not link to the original mismatch artifact")
+    original_mismatches = _load_json(root / "r1_mismatches.json")
+    if reconciliation.get("original_mismatch_record_count") != len(original_mismatches):
+        raise RuntimeError(
+            "geometry reconciliation does not link to the original mismatch artifact"
+        )
 
     unresolved = [
         item
@@ -147,7 +150,10 @@ def main() -> int:
         "overlay_pngs_in_handoff": False,
     }
     handoff_path = root / "r1_handoff_summary.v2.json"
-    handoff_path.write_text(json.dumps(handoff, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    handoff_path.write_text(
+        json.dumps(handoff, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
     output = (
         args.output.expanduser().resolve()
