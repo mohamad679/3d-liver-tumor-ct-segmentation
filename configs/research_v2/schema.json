@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "protoem-ct/research-v2/protocol-v1",
+  "title": "ProtoEM-CT Research-v2 protocol",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "protocol_id",
+    "base_commit",
+    "historical_phase8",
+    "development_data",
+    "access_policy",
+    "candidate_lock",
+    "metrics",
+    "nnunet",
+    "budget",
+    "gate"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "research_v2_protocol.v1"
+    },
+    "protocol_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "base_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "historical_phase8": {
+      "type": "object",
+      "required": [
+        "immutable",
+        "protected_paths"
+      ],
+      "properties": {
+        "immutable": {
+          "const": true
+        },
+        "protected_paths": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "development_data": {
+      "type": "object",
+      "required": [
+        "cohort_id",
+        "counts",
+        "existing_split"
+      ],
+      "properties": {
+        "cohort_id": {
+          "const": "lits-msd-task03-unified"
+        },
+        "counts": {
+          "type": "object",
+          "properties": {
+            "train": {
+              "const": 91
+            },
+            "validation": {
+              "const": 20
+            },
+            "internal_test": {
+              "const": 20
+            }
+          },
+          "required": [
+            "train",
+            "validation",
+            "internal_test"
+          ],
+          "additionalProperties": false
+        },
+        "existing_split": {
+          "type": "object",
+          "required": [
+            "artifact_required",
+            "manifest_hash",
+            "split_hash",
+            "manifest_file_sha256",
+            "split_file_sha256",
+            "replace_existing_split"
+          ],
+          "properties": {
+            "artifact_required": {
+              "const": true
+            },
+            "manifest_hash": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              ]
+            },
+            "split_hash": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              ]
+            },
+            "replace_existing_split": {
+              "const": false
+            },
+            "manifest_file_sha256": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              ]
+            },
+            "split_file_sha256": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "access_policy": {
+      "type": "object"
+    },
+    "candidate_lock": {
+      "type": "object"
+    },
+    "metrics": {
+      "type": "object"
+    },
+    "nnunet": {
+      "type": "object"
+    },
+    "budget": {
+      "type": "object"
+    },
+    "gate": {
+      "type": "object"
+    }
+  }
+}

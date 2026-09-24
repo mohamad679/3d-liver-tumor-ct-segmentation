@@ -1,0 +1,97 @@
+{
+  "schema_version": "research_v2_protocol.v1",
+  "protocol_id": "protoem-ct-r2-2026-09-24",
+  "base_commit": "ae05bf41665f71339da533068fd5b5324c634669",
+  "historical_phase8": {
+    "immutable": true,
+    "protected_paths": [
+      "docs/phase8/FINAL_REPORT.md",
+      "reports/final_report.md",
+      "src/protoem_ct/external/definitive_pipeline.py",
+      "src/protoem_ct/external/image_only_inference.py"
+    ]
+  },
+  "development_data": {
+    "cohort_id": "lits-msd-task03-unified",
+    "counts": {
+      "train": 91,
+      "validation": 20,
+      "internal_test": 20
+    },
+    "existing_split": {
+      "artifact_required": true,
+      "manifest_hash": null,
+      "manifest_file_sha256": null,
+      "split_hash": null,
+      "split_file_sha256": null,
+      "replace_existing_split": false
+    }
+  },
+  "access_policy": {
+    "fit": [
+      "train"
+    ],
+    "tune": [
+      "train",
+      "validation"
+    ],
+    "fold_planning": [
+      "train"
+    ],
+    "locked_evaluation": [
+      "internal_test"
+    ],
+    "external_confirmation": [
+      "new_external"
+    ],
+    "exploratory_external": [
+      "historical_external"
+    ]
+  },
+  "candidate_lock": {
+    "required_for": [
+      "locked_evaluation",
+      "external_confirmation"
+    ]
+  },
+  "metrics": {
+    "primary": "patient_macro_tumor_dice_positive_cases",
+    "bootstrap_unit": "patient",
+    "confidence_level": 0.95,
+    "report_empty_cases_separately": true,
+    "secondary": [
+      "lesion_recall",
+      "lesion_precision",
+      "lesion_f1",
+      "fp_lesions_per_scan",
+      "small_lesion_sensitivity",
+      "volume_error",
+      "hd95",
+      "nsd",
+      "inference_time",
+      "failure_rate"
+    ]
+  },
+  "nnunet": {
+    "fold_count": 5,
+    "fold_policy": "patient_hash_round_robin_v1",
+    "planning_scope": "train_only",
+    "validation_scope": "external_20_case_development_validation"
+  },
+  "budget": {
+    "r0_cpu_smoke_required": true,
+    "r0_gpu_smoke_required": true,
+    "gpu_hours": null,
+    "gpu_model": null,
+    "record_vram": true,
+    "record_wall_time": true
+  },
+  "gate": {
+    "require_patient_id_disjointness": true,
+    "require_image_hash_disjointness": true,
+    "require_label_hash_disjointness": true,
+    "require_manifest_hash_reproducibility": true,
+    "fail_closed_on_internal_test_during_tuning": true,
+    "fail_closed_on_external_during_tuning": true
+  }
+}

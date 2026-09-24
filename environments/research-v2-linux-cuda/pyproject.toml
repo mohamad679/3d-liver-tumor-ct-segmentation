@@ -1,0 +1,28 @@
+[project]
+name = "protoem-ct-research-v2-linux-cuda"
+version = "0.0.0"
+description = "Isolated Linux/CUDA dependency environment for ProtoEM-CT Research V2."
+requires-python = ">=3.11,<3.12"
+dependencies = [
+  "protoem-ct",
+  "numpy==1.26.4",
+  "torch==2.2.2",
+  "torchvision==0.17.2",
+  "monai==1.4.0",
+  "nnunetv2==2.8.1",
+  "mlflow==3.14.0",
+  "simpleitk==2.5.5",
+  "scikit-image==0.26.0",
+  "scipy==1.17.1",
+  "nibabel==5.4.2",
+]
+
+[dependency-groups]
+dev = [
+  "pytest==9.1.1",
+  "ruff==0.16.0",
+  "mypy==2.3.0",
+]
+
+[tool.uv.sources]
+protoem-ct = { path = "../..", editable = true }
