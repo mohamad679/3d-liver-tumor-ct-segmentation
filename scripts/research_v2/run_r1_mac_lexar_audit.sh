@@ -61,14 +61,21 @@ EOF
   uv sync --frozen --python 3.11 --all-groups
   uv run --frozen --python 3.11 python --version
   echo ""
+  echo "===== PACKAGE IMPORT PREFLIGHT ====="
+  PYTHONPATH="$REPO_ROOT/src${PYTHONPATH:+:$PYTHONPATH}" \
+    uv run --frozen --python 3.11 python -c \
+    'import protoem_ct, sys; print("protoem_ct_import=PASS"); print("python_executable=" + sys.executable); print("protoem_ct_file=" + str(protoem_ct.__file__))'
+  echo ""
   echo "===== R1 TARGETED FIXTURES ====="
-  uv run --frozen --python 3.11 pytest -q \
+  PYTHONPATH="$REPO_ROOT/src${PYTHONPATH:+:$PYTHONPATH}" \
+    uv run --frozen --python 3.11 pytest -q \
     tests/unit/test_research_v2_r1_audit.py \
     tests/unit/test_research_v2_r1_lesion_matching.py
 } 2>&1 | tee "$OUT/r1_preflight.log"
 
 set +e
-uv run --frozen --python 3.11 python scripts/research_v2/run_r1_mac_lexar_audit.py \
+PYTHONPATH="$REPO_ROOT/src${PYTHONPATH:+:$PYTHONPATH}" \
+  uv run --frozen --python 3.11 python scripts/research_v2/run_r1_mac_lexar_audit.py \
   --manifest "$MANIFEST" \
   --split "$SPLIT" \
   --output-dir "$OUT/audit" \
@@ -94,9 +101,9 @@ NEXT:
   Open the 10 PNG files under:
     $OUT/audit/overlays_local_only
   Then run:
-    uv run --frozen --python 3.11 python scripts/research_v2/review_r1_overlays.py "$OUT/audit"
+    PYTHONPATH="$REPO_ROOT/src" uv run --frozen --python 3.11 python scripts/research_v2/review_r1_overlays.py "$OUT/audit"
   If every overlay is confirmed, package sanitized evidence with:
-    uv run --frozen --python 3.11 python scripts/research_v2/package_r1_evidence.py "$OUT/audit"
+    PYTHONPATH="$REPO_ROOT/src" uv run --frozen --python 3.11 python scripts/research_v2/package_r1_evidence.py "$OUT/audit"
 
 Do not upload the overlay PNGs or raw NIfTI files.
 Upload the sanitized ZIP plus:
