@@ -24,10 +24,14 @@ from protoem_ct.research_v2.r2_amp_recovery import (
 
 CORRECTIVE_CONFIG_RELATIVE_PATH = Path("configs/research_v2/r2_corrective_primary_v2.json")
 PRIMARY_RUNNER_PATH = Path(__file__).with_name("run_r2_primary.py")
+primary: Any
 
 
 def _load_primary_runtime() -> Any:
-    spec = importlib.util.spec_from_file_location("r2_primary_corrective_v2_runtime", PRIMARY_RUNNER_PATH)
+    spec = importlib.util.spec_from_file_location(
+        "r2_primary_corrective_v2_runtime",
+        PRIMARY_RUNNER_PATH,
+    )
     if spec is None or spec.loader is None:
         raise RuntimeError("unable to load locked R2 primary runner")
     module = importlib.util.module_from_spec(spec)
@@ -226,7 +230,10 @@ def _postprocess_output(output_dir: Path, *, corrective_config_sha256: str) -> N
         "corrective_config_path": str(CORRECTIVE_CONFIG_RELATIVE_PATH),
         "corrective_config_sha256": corrective_config_sha256,
         "source_diagnostic_v2_sha256": R2_DIAGNOSTIC_V2_JSON_SHA256,
-        "amp_overflow_policy": "skip optimizer update, back off GradScaler, retry identical patch without consuming sampling RNG",
+        "amp_overflow_policy": (
+            "skip optimizer update, back off GradScaler, retry identical patch "
+            "without consuming sampling RNG"
+        ),
         "amp_total_overflow_retries": total_overflow_retries,
         "amp_steps_requiring_recovery": recovered_steps,
         "amp_max_overflow_retries_observed_single_step": max_retries,
@@ -242,7 +249,10 @@ def _postprocess_output(output_dir: Path, *, corrective_config_sha256: str) -> N
         payload["schema_version"] = "research_v2_r2_corrective_primary.v2"
     else:
         payload["schema_version"] = "research_v2_r2_corrective_primary_failure.v2"
-    target.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    target.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     print(json.dumps(payload, indent=2, sort_keys=True))
 
 
