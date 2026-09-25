@@ -2,7 +2,7 @@
   "schema_version": "research_v2_gate.v1",
   "stage": "R2",
   "status": "BLOCKED",
-  "blocker": "BLOCKED_PENDING_MAIN_OVERFIT_TRAINING_AND_NATIVE_EVALUATION",
+  "blocker": "BLOCKED_NUMERICAL_STABILITY_DIAGNOSTIC_AFTER_PRIMARY_ATTEMPT1",
   "branch": "research-v2/r2-overfit-real",
   "parent_r1_closed_commit": "998584f7ff8703e9ff6a934a0dc540cf379e31b6",
   "r2_preregistration_commit": "3091010856b416af07aeee7b67644948662000b3",
@@ -35,26 +35,10 @@
     "expected_train_positive_count": 86,
     "expected_train_empty_count": 5,
     "selected_cases": [
-      {
-        "role": "positive_q20",
-        "anonymous_case_id": "case_65917a1f3a47339a558042dac093bf1a",
-        "tumor_voxel_count": 2261
-      },
-      {
-        "role": "positive_q50",
-        "anonymous_case_id": "case_f232be7b649d2166e5158aa636b38766",
-        "tumor_voxel_count": 12265
-      },
-      {
-        "role": "positive_q80",
-        "anonymous_case_id": "case_6e4782e999691662f69fdf25f0e2e423",
-        "tumor_voxel_count": 179093
-      },
-      {
-        "role": "empty_lexicographic_first",
-        "anonymous_case_id": "case_25928d2451a7d948a79e60084e3c5d32",
-        "tumor_voxel_count": 0
-      }
+      {"role": "positive_q20", "anonymous_case_id": "case_65917a1f3a47339a558042dac093bf1a", "tumor_voxel_count": 2261},
+      {"role": "positive_q50", "anonymous_case_id": "case_f232be7b649d2166e5158aa636b38766", "tumor_voxel_count": 12265},
+      {"role": "positive_q80", "anonymous_case_id": "case_6e4782e999691662f69fdf25f0e2e423", "tumor_voxel_count": 179093},
+      {"role": "empty_lexicographic_first", "anonymous_case_id": "case_25928d2451a7d948a79e60084e3c5d32", "tumor_voxel_count": 0}
     ],
     "source_image_label_hashes_verified": true,
     "local_private_staging_hashes_verified": true,
@@ -110,7 +94,50 @@
     "primary_max_gpu_wall_hours": 3.0,
     "single_extension_max_additional_steps": 1500,
     "single_extension_max_additional_gpu_wall_hours": 1.5,
-    "training_started": false
+    "training_started": true,
+    "primary_attempt_count": 1,
+    "primary_attempt1_runner_commit": "c3b8b157e4f0478a7548486f288b01fb0b57b6c7",
+    "primary_attempt1_status": "FAILED_NUMERICAL_STABILITY_STEP_227"
+  },
+  "calibration": {
+    "status": "PASS_VERIFIED",
+    "summary_sha256": "f1866ea3d5028ad8e73d8e81df0dfeac80bd35646ea1a34472f3f5781aa2deb1",
+    "steps_sha256": "4b3b738ae1bc82b0b6db0850f9b9f88a0076c655ecf41dff3951c1e84b6a8b09",
+    "optimizer_steps": 20,
+    "positive_patch_count": 15,
+    "empty_patch_count": 5,
+    "checkpoint_created": false,
+    "warm_start_allowed": false
+  },
+  "primary_attempt1": {
+    "status": "FAILED_VERIFIED",
+    "classification": "NUMERICAL_STABILITY_FAILURE_BEFORE_FIRST_NATIVE_EVALUATION",
+    "evidence_path": "reports/research_v2/evidence/r2_primary_attempt1_verification.json",
+    "source_archive_sha256": "389d40f5f451d56f835f51ebc6f6b662e419c3062be5442e70bc99a895ef828a",
+    "logged_optimizer_steps": 226,
+    "failure_step": 227,
+    "failure": "R2 primary produced non-finite gradients",
+    "positive_patch_count": 170,
+    "empty_patch_count": 56,
+    "all_logged_logits_finite_through_step_226": true,
+    "all_logged_losses_finite_through_step_226": true,
+    "all_logged_gradients_finite_through_step_226": true,
+    "first_full_volume_evaluation_step": 250,
+    "full_volume_evaluation_record_count": 0,
+    "native_gate_metric_observed": false,
+    "validation_arrays_opened": 0,
+    "internal_test_arrays_opened": 0,
+    "external_arrays_opened": 0
+  },
+  "numerical_stability_diagnostic": {
+    "status": "PREREGISTERED_PENDING_EXECUTION",
+    "config_path": "configs/research_v2/r2_numerical_stability_diag_v1.json",
+    "target_failure_step": 227,
+    "replay_optimizer_steps": 226,
+    "hypothesis": "GradScaler growth after 200 finite updates increased the loss scale from 65536 to 131072 and triggered fp16 backward overflow at step 227.",
+    "observed_scale_amp_vs_baseline_scale_amp_vs_fp32_probe": true,
+    "optimizer_step_at_probe": false,
+    "can_promote_R2": false
   },
   "gate_requirements": {
     "positive_case_native_full_volume_dice_min_each": 0.95,
@@ -126,17 +153,19 @@
     "selection_and_source_hash_evidence": "PASS: reports/research_v2/evidence/r2_selected_train_cases_verified.json",
     "kaggle_transfer_hash_evidence": "PASS: byte-preserving transfer and per-file post-transfer SHA-256 verified in reports/research_v2/evidence/r2_kaggle_preflight_verified.json",
     "gpu_preflight": "PASS: reports/research_v2/evidence/r2_kaggle_preflight_verified.json",
-    "training_log": "PENDING",
-    "patch_metrics": "PENDING",
-    "native_full_volume_metrics": "PENDING",
-    "checkpoint_reload": "PENDING",
-    "overlay_geometry_review": "PENDING"
+    "calibration": "PASS_VERIFIED: reports/research_v2/evidence/r2_calibration_summary_verified.json and r2_calibration_verification.json",
+    "training_log": "ATTEMPT_1_FAILED_VERIFIED: reports/research_v2/evidence/r2_primary_attempt1_verification.json",
+    "patch_metrics": "PARTIAL_THROUGH_STEP_226_ONLY; not Gate-promotable",
+    "native_full_volume_metrics": "NOT_OBSERVED; attempt #1 stopped before step 250",
+    "checkpoint_reload": "NOT_REACHED",
+    "overlay_geometry_review": "NOT_REACHED"
   },
-  "preflight_incidents": [
+  "incidents": [
     "Initial Kaggle dataset ingestion transformed .nii.gz inputs into .nii and was rejected as non-promotable transfer evidence.",
     "Byte-wrapped .nii.gz.bin transfer preserved bytes and matched all eight locked source hashes.",
     "Kaggle inherited an incompatible matplotlib inline backend; a versioned headless launcher forces MPLBACKEND=Agg without changing the scientific contract.",
-    "A CPU-only Kaggle session failed closed as required; the successful run used GPU T4 x2 and cuda:0 without pooling VRAM."
+    "A CPU-only Kaggle session failed closed as required; the successful run used GPU T4 x2 and cuda:0 without pooling VRAM.",
+    "Primary attempt #1 stopped at step 227 with non-finite gradients; no full-volume native evaluation had yet occurred. The failed attempt is preserved and R2 remains BLOCKED."
   ],
   "passed_checks": [
     "R2 branch created from the closed R1 commit",
@@ -153,10 +182,15 @@
     "R2 uv.lock SHA-256 matches the R0 Linux CUDA lock",
     "single-GPU 256 MiB allocation probe passes on cuda:0",
     "one complete AMP forward/backward/AdamW optimizer step passes on cuda:0 with finite logits, loss and gradients",
-    "preflight opened zero validation, internal-test and external arrays"
+    "timing/memory calibration completed 20 steps with no warm start and was independently verified",
+    "primary attempt #1 evidence was independently verified and preserved without hiding the numerical failure",
+    "all recorded primary-attempt-1 steps 1-226 had finite logits, loss and gradients",
+    "selection, preflight, calibration and primary attempt #1 opened zero validation, internal-test and external arrays"
   ],
   "blocking_checks": [
-    "execute preregistered training budget with real selected train arrays",
+    "execute the preregistered step-227 numerical-stability diagnostic and classify AMP-vs-FP32 behavior",
+    "if justified by diagnostic evidence, preregister a separately versioned corrective primary experiment without lowering any Gate threshold",
+    "complete the permitted primary training budget from fresh initialization",
     "evaluate patch predictions and full native-volume predictions separately",
     "require native full-volume tumor Dice >= 0.95 for every selected positive train case",
     "require empty binary prediction on the selected empty train case",
@@ -166,5 +200,5 @@
   ],
   "next_allowed_stage": "NONE",
   "r3_started": false,
-  "gate_policy": "R2 can PASS only from real selected train-patient evidence. Patch-only success, resampled-space-only metrics, averages that hide a failing positive case, threshold changes, synthetic fixtures, or CI alone cannot promote this gate."
+  "gate_policy": "R2 can PASS only from real selected train-patient evidence. Patch-only success, resampled-space-only metrics, averages that hide a failing positive case, threshold changes, synthetic fixtures, numerical diagnostics, or CI alone cannot promote this gate."
 }
