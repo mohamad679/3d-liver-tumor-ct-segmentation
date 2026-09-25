@@ -149,7 +149,7 @@ def threshold_probability(
         raise ValueError("R2 probability contains NaN or Inf")
     if bool(np.any(array < 0.0)) or bool(np.any(array > 1.0)):
         raise ValueError("R2 probability must lie in [0, 1]")
-    return cast(BoolArray, array >= threshold)
+    return array >= threshold
 
 
 def restore_probability_to_native(
