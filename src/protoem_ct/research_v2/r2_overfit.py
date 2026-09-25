@@ -172,9 +172,7 @@ def restore_probability_to_native(
     if not bool(np.isfinite(array).all()):
         raise ValueError("R2 restored native probability contains NaN or Inf")
     if bool(np.any(array < -1e-6)) or bool(np.any(array > 1.0 + 1e-6)):
-        raise ValueError(
-            "R2 restored native probability lies outside numerical [0, 1] tolerance"
-        )
+        raise ValueError("R2 restored native probability lies outside numerical [0, 1] tolerance")
     return cast(FloatArray, np.clip(array, 0.0, 1.0))
 
 
