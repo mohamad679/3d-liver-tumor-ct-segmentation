@@ -1,0 +1,95 @@
+{
+  "attempt1_failure_sha256": "5a4ee93ab5ceafef673f4d7af20cdeff6cecf5374df1e45b9f6d7cb87246b1f2",
+  "attempt1_steps_sha256": "e9288e11aeafbd3214e8dc9e6c35b68432be92e9a1f01c6ae2cba8aea1e3e4b2",
+  "checkpoint_created": false,
+  "classification": "AMP_BACKOFF_RECOVERY_SUPPORTED",
+  "diagnostic_config_sha256": "9d10247670b8ed23885e77d7de3f1c0e09161b38cf897f53ffa0cdc8adac59c1",
+  "elapsed_seconds": 67.76305905300023,
+  "external_arrays_opened": 0,
+  "gate_threshold_changed": false,
+  "gpu": {
+    "cpu_fallback_allowed": false,
+    "cuda_available": true,
+    "devices": [
+      {
+        "index": 0,
+        "name": "Tesla T4",
+        "total_memory_bytes": 15636037632,
+        "total_memory_gib": 14.56219482421875
+      },
+      {
+        "index": 1,
+        "name": "Tesla T4",
+        "total_memory_bytes": 15636037632,
+        "total_memory_gib": 14.56219482421875
+      }
+    ],
+    "multi_gpu_memory_pooling_assumed": false,
+    "training_device": "cuda:0",
+    "visible_device_count": 2
+  },
+  "internal_test_arrays_opened": 0,
+  "interpretation": "Root-cause diagnostic only; cannot PASS R2 or estimate unseen-patient performance.",
+  "main_training_started": false,
+  "probe": {
+    "amp_observed_scale": {
+      "autocast_enabled": true,
+      "gradient_tensor_count": 43,
+      "gradients_finite": false,
+      "logits_finite": true,
+      "loss": 0.6756364107131958,
+      "loss_finite": true,
+      "loss_scale": 65536.0,
+      "max_finite_abs_gradient": 0.7733341455459595,
+      "nonfinite_gradient_tensor_count": 1,
+      "nonfinite_gradient_value_count": 27,
+      "optimizer_step_performed": false
+    },
+    "amp_single_backoff_scale": {
+      "autocast_enabled": true,
+      "gradient_tensor_count": 43,
+      "gradients_finite": true,
+      "logits_finite": true,
+      "loss": 0.6756364107131958,
+      "loss_finite": true,
+      "loss_scale": 32768.0,
+      "max_finite_abs_gradient": 1.2197265625,
+      "nonfinite_gradient_tensor_count": 0,
+      "nonfinite_gradient_value_count": 0,
+      "optimizer_step_performed": false
+    },
+    "anonymous_case_id": "case_6e4782e999691662f69fdf25f0e2e423",
+    "fp32": {
+      "autocast_enabled": false,
+      "gradient_tensor_count": 43,
+      "gradients_finite": true,
+      "logits_finite": true,
+      "loss": 0.6756930947303772,
+      "loss_finite": true,
+      "loss_scale": 1.0,
+      "max_finite_abs_gradient": 1.2177610397338867,
+      "nonfinite_gradient_tensor_count": 0,
+      "nonfinite_gradient_value_count": 0,
+      "optimizer_step_performed": false
+    },
+    "optimizer_updates": 0,
+    "sampling_role": "positive",
+    "step": 227,
+    "tumor_voxels": 64179
+  },
+  "replay": {
+    "all_sampling_records_matched_exactly": true,
+    "expected_scale_before_step_227": 65536.0,
+    "loss_abs_tolerance": 1e-05,
+    "max_loss_abs_difference": 1.1920928955078125e-07,
+    "max_patch_dice_abs_difference": 0.0,
+    "optimizer_steps_replayed": 226,
+    "patch_dice_abs_tolerance": 1e-06,
+    "scale_before_step_227": 65536.0
+  },
+  "schema_version": "research_v2_r2_numerical_stability_diagnostic.v2",
+  "seed": 1729,
+  "status": "COMPLETE",
+  "threshold_changed": false,
+  "validation_arrays_opened": 0
+}
