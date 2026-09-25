@@ -1,0 +1,79 @@
+{
+  "schema_version": "research_v2_r2_corrective_primary.v2",
+  "purpose": "Repeat the R2 selected-train overfit diagnostic from fresh initialization while correcting only AMP overflow handling, based on diagnostic v2 evidence.",
+  "source_failure": {
+    "primary_attempt": 1,
+    "failure_step": 227,
+    "failure": "R2 primary produced non-finite gradients",
+    "attempt1_steps_sha256": "e9288e11aeafbd3214e8dc9e6c35b68432be92e9a1f01c6ae2cba8aea1e3e4b2",
+    "attempt1_failure_sha256": "5a4ee93ab5ceafef673f4d7af20cdeff6cecf5374df1e45b9f6d7cb87246b1f2"
+  },
+  "source_diagnostic": {
+    "schema_version": "research_v2_r2_numerical_stability_diagnostic.v2",
+    "classification": "AMP_BACKOFF_RECOVERY_SUPPORTED",
+    "diagnostic_config_sha256": "9d10247670b8ed23885e77d7de3f1c0e09161b38cf897f53ffa0cdc8adac59c1",
+    "diagnostic_json_sha256": "961b754e40811a67ef8818f4abe93d50295e1604b19c52e1a872bed9e88678b0",
+    "observed_failure_scale": 65536.0,
+    "single_backoff_scale": 32768.0,
+    "fp32_gradients_finite": true
+  },
+  "locked_scientific_settings": {
+    "base_config_path": "configs/research_v2/r2_overfit_real_v1.json",
+    "seed": 1729,
+    "fresh_random_initialization": true,
+    "warm_start_used": false,
+    "architecture": "MONAI SegResNet",
+    "init_filters": 8,
+    "patch_size": [96, 96, 64],
+    "batch_size": 1,
+    "target_spacing_mm": [1.5, 1.5, 1.5],
+    "positive_patch_fraction": 0.75,
+    "augmentation": "disabled",
+    "loss": "MONAI DiceCELoss(include_background=false,to_onehot_y=true,softmax=true,lambda_dice=1,lambda_ce=1)",
+    "optimizer": "AdamW",
+    "learning_rate": 0.001,
+    "weight_decay": 0.00001,
+    "precision": "CUDA AMP fp16 training; fp32 inference",
+    "fixed_threshold": 0.5,
+    "full_volume_eval_every_successful_optimizer_steps": 250,
+    "primary_successful_optimizer_steps": 2500,
+    "primary_max_gpu_wall_hours": 3.0,
+    "extension_used": false,
+    "gate_positive_native_dice_min_each": 0.95,
+    "empty_case_binary_prediction_must_be_empty": true
+  },
+  "corrected_amp_policy": {
+    "grad_scaler_initial_scale": 65536.0,
+    "growth_factor": 2.0,
+    "backoff_factor": 0.5,
+    "growth_interval": 2000,
+    "overflow_behavior": "call GradScaler.step so the optimizer update is skipped, call GradScaler.update to back off the scale, then retry the identical already-sampled patch",
+    "failed_overflow_attempt_counts_as_optimizer_step": false,
+    "consume_sampling_rng_on_retry": false,
+    "retry_same_image_and_target_patch": true,
+    "require_scale_decrease_after_overflow": true,
+    "require_optimizer_state_step_unchanged_after_overflow": true,
+    "max_overflow_retries_per_successful_optimizer_step": 8,
+    "require_final_successful_attempt_gradients_finite": true,
+    "nonfinite_logits_or_loss_behavior": "fail closed without retry"
+  },
+  "logging": {
+    "record_per_successful_step": true,
+    "record_amp_overflow_retry_count": true,
+    "record_amp_overflow_scales": true,
+    "record_success_scale_before_update": true,
+    "record_scale_after_successful_update": true,
+    "record_finite_logits_loss_gradients": true,
+    "record_peak_vram": true,
+    "record_full_native_volume_metrics": true
+  },
+  "data_policy": {
+    "allowed_array_partitions": ["train"],
+    "forbidden_array_partitions": ["validation", "internal_test", "historical_external", "new_external"],
+    "selected_train_case_count": 4,
+    "validation_arrays_opened": 0,
+    "internal_test_arrays_opened": 0,
+    "external_arrays_opened": 0
+  },
+  "promotion_policy": "Corrective primary v2 can satisfy R2 only if all original real-data Gate requirements remain satisfied. AMP recovery, patch metrics, or diagnostic evidence alone cannot PASS R2."
+}
