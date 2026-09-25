@@ -290,11 +290,15 @@ def _sample_patch(
         raise RuntimeError("R2 positive primary patch contains no tumor")
     if role == "empty" and tumor_voxels != 0:
         raise RuntimeError("R2 empty primary patch contains tumor")
-    return image_patch, target_patch, {
-        "anonymous_case_id": case.anonymous_case_id,
-        "sampling_role": role,
-        "tumor_voxels": tumor_voxels,
-    }
+    return (
+        image_patch,
+        target_patch,
+        {
+            "anonymous_case_id": case.anonymous_case_id,
+            "sampling_role": role,
+            "tumor_voxels": tumor_voxels,
+        },
+    )
 
 
 def _optimizer_step(
@@ -441,9 +445,7 @@ def _evaluate_case(
         ),
         "ground_truth_tumor_voxels": int(np.count_nonzero(case.native_tumor)),
         "predicted_tumor_voxels": int(np.count_nonzero(prediction_native)),
-        "predicted_tumor_volume_mm3": float(
-            np.count_nonzero(prediction_native) * voxel_volume_mm3
-        ),
+        "predicted_tumor_volume_mm3": float(np.count_nonzero(prediction_native) * voxel_volume_mm3),
         "probability_min": float(probability_native.min()),
         "probability_max": float(probability_native.max()),
         "probability_mean": float(probability_native.mean()),
@@ -655,10 +657,13 @@ def main() -> int:
 
         all_step_records: list[dict[str, Any]] = []
         final_records: list[dict[str, Any]] = []
-        with steps_path.open("w", encoding="utf-8") as steps_handle, evaluations_path.open(
-            "w",
-            encoding="utf-8",
-        ) as evaluation_handle:
+        with (
+            steps_path.open("w", encoding="utf-8") as steps_handle,
+            evaluations_path.open(
+                "w",
+                encoding="utf-8",
+            ) as evaluation_handle,
+        ):
             for step in range(1, R2_PRIMARY_MAX_STEPS + 1):
                 elapsed_hours = (time.perf_counter() - started_wall) / 3600.0
                 if elapsed_hours >= R2_PRIMARY_MAX_GPU_WALL_HOURS:
@@ -684,9 +689,7 @@ def main() -> int:
                     **sampling,
                     **metrics,
                     "elapsed_time_seconds": float(time.perf_counter() - started_wall),
-                    "peak_vram_allocated_bytes": int(
-                        torch.cuda.max_memory_allocated(device)
-                    ),
+                    "peak_vram_allocated_bytes": int(torch.cuda.max_memory_allocated(device)),
                 }
                 steps_handle.write(json.dumps(record, sort_keys=True) + "\n")
                 steps_handle.flush()
@@ -746,18 +749,12 @@ def main() -> int:
                     statistics.fmean(record["patch_dice"] for record in records)
                 ),
                 "final_patch_dice": float(records[-1]["patch_dice"]),
-                "mean_loss": float(
-                    statistics.fmean(record["loss"] for record in records)
-                ),
+                "mean_loss": float(statistics.fmean(record["loss"] for record in records)),
             }
 
-        positives = [
-            record for record in final_records if record["role"].startswith("positive_")
-        ]
+        positives = [record for record in final_records if record["role"].startswith("positive_")]
         empty_records = [
-            record
-            for record in final_records
-            if record["role"] == "empty_lexicographic_first"
+            record for record in final_records if record["role"] == "empty_lexicographic_first"
         ]
         if len(positives) != 3 or len(empty_records) != 1:
             raise RuntimeError("R2 final case-role accounting is invalid")
