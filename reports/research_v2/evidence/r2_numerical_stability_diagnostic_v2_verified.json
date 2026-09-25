@@ -1,0 +1,79 @@
+{
+  "schema_version": "research_v2_r2_numerical_stability_diagnostic_verification.v1",
+  "status": "PASS_ROOT_CAUSE_CLASSIFIED",
+  "interpretation": "Root-cause diagnostic only. This evidence cannot PASS R2 and does not estimate unseen-patient performance.",
+  "source_runner_commit": "69c310aa6a7208c7211ddbc46c3177c9d53a6c9a",
+  "diagnostic_schema_version": "research_v2_r2_numerical_stability_diagnostic.v2",
+  "diagnostic_config_sha256": "9d10247670b8ed23885e77d7de3f1c0e09161b38cf897f53ffa0cdc8adac59c1",
+  "diagnostic_json_canonical_sha256": "961b754e40811a67ef8818f4abe93d50295e1604b19c52e1a872bed9e88678b0",
+  "diagnostic_exit_code": 0,
+  "classification": "AMP_BACKOFF_RECOVERY_SUPPORTED",
+  "seed": 1729,
+  "attempt1_steps_sha256": "e9288e11aeafbd3214e8dc9e6c35b68432be92e9a1f01c6ae2cba8aea1e3e4b2",
+  "attempt1_failure_sha256": "5a4ee93ab5ceafef673f4d7af20cdeff6cecf5374df1e45b9f6d7cb87246b1f2",
+  "replay": {
+    "optimizer_steps_replayed": 226,
+    "all_sampling_records_matched_exactly": true,
+    "max_loss_abs_difference": 1.1920928955078125e-07,
+    "loss_abs_tolerance": 0.00001,
+    "max_patch_dice_abs_difference": 0.0,
+    "patch_dice_abs_tolerance": 0.000001,
+    "scale_before_step_227": 65536.0,
+    "expected_scale_before_step_227": 65536.0
+  },
+  "probe": {
+    "step": 227,
+    "anonymous_case_id": "case_6e4782e999691662f69fdf25f0e2e423",
+    "sampling_role": "positive",
+    "tumor_voxels": 64179,
+    "optimizer_updates": 0,
+    "amp_observed_scale": {
+      "loss_scale": 65536.0,
+      "logits_finite": true,
+      "loss_finite": true,
+      "loss": 0.6756364107131958,
+      "gradient_tensor_count": 43,
+      "gradients_finite": false,
+      "nonfinite_gradient_tensor_count": 1,
+      "nonfinite_gradient_value_count": 27,
+      "optimizer_step_performed": false
+    },
+    "amp_single_backoff_scale": {
+      "loss_scale": 32768.0,
+      "logits_finite": true,
+      "loss_finite": true,
+      "loss": 0.6756364107131958,
+      "gradient_tensor_count": 43,
+      "gradients_finite": true,
+      "nonfinite_gradient_tensor_count": 0,
+      "nonfinite_gradient_value_count": 0,
+      "optimizer_step_performed": false
+    },
+    "fp32": {
+      "loss_scale": 1.0,
+      "logits_finite": true,
+      "loss_finite": true,
+      "loss": 0.6756930947303772,
+      "gradient_tensor_count": 43,
+      "gradients_finite": true,
+      "nonfinite_gradient_tensor_count": 0,
+      "nonfinite_gradient_value_count": 0,
+      "optimizer_step_performed": false
+    }
+  },
+  "gpu": {
+    "visible_device_count": 2,
+    "models": ["Tesla T4", "Tesla T4"],
+    "training_device": "cuda:0",
+    "cpu_fallback_allowed": false,
+    "multi_gpu_memory_pooling_assumed": false
+  },
+  "main_training_started": false,
+  "checkpoint_created": false,
+  "threshold_changed": false,
+  "gate_threshold_changed": false,
+  "validation_arrays_opened": 0,
+  "internal_test_arrays_opened": 0,
+  "external_arrays_opened": 0,
+  "corrective_experiment_justification": "The identical replayed state and step-227 patch produce non-finite AMP gradients at loss scale 65536, while one standard 0.5 backoff to 32768 and FP32 both produce finite gradients. A separately versioned corrective primary may therefore preserve AMP and use standard GradScaler overflow skip/backoff semantics without changing the scientific Gate."
+}
