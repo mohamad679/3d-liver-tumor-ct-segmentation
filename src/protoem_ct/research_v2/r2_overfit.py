@@ -83,7 +83,11 @@ def positive_case_index_for_step(step: int) -> int:
     return positive_steps_before % 3
 
 
-def choose_random_positive_center(mask: BoolArray, *, rng: np.random.Generator) -> tuple[int, int, int]:
+def choose_random_positive_center(
+    mask: BoolArray,
+    *,
+    rng: np.random.Generator,
+) -> tuple[int, int, int]:
     """Sample a tumor voxel from one positive resampled mask."""
 
     array = np.asarray(mask, dtype=bool)
@@ -96,7 +100,11 @@ def choose_random_positive_center(mask: BoolArray, *, rng: np.random.Generator) 
     return cast(tuple[int, int, int], tuple(int(value) for value in selected))
 
 
-def choose_random_center(shape: Sequence[int], *, rng: np.random.Generator) -> tuple[int, int, int]:
+def choose_random_center(
+    shape: Sequence[int],
+    *,
+    rng: np.random.Generator,
+) -> tuple[int, int, int]:
     """Sample one deterministic RNG-driven center from a 3D volume shape."""
 
     if len(shape) != 3:
@@ -125,8 +133,12 @@ def binary_dice(ground_truth: BoolArray, prediction: BoolArray) -> float:
     return float(2.0 * intersection / (gt_count + pred_count))
 
 
-def threshold_probability(probability: FloatArray, *, threshold: float = R2_THRESHOLD) -> BoolArray:
-    """Validate and threshold an R2 tumor probability map at the fixed preregistered threshold."""
+def threshold_probability(
+    probability: FloatArray,
+    *,
+    threshold: float = R2_THRESHOLD,
+) -> BoolArray:
+    """Validate and threshold an R2 tumor probability map at the locked threshold."""
 
     if threshold != R2_THRESHOLD:
         raise ValueError("R2 threshold is locked at exactly 0.5")
@@ -160,7 +172,9 @@ def restore_probability_to_native(
     if not bool(np.isfinite(array).all()):
         raise ValueError("R2 restored native probability contains NaN or Inf")
     if bool(np.any(array < -1e-6)) or bool(np.any(array > 1.0 + 1e-6)):
-        raise ValueError("R2 restored native probability lies outside numerical [0, 1] tolerance")
+        raise ValueError(
+            "R2 restored native probability lies outside numerical [0, 1] tolerance"
+        )
     return cast(FloatArray, np.clip(array, 0.0, 1.0))
 
 
