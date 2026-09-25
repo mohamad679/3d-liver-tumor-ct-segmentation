@@ -86,7 +86,10 @@ def _load_json(path: Path) -> dict[str, Any]:
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
 
 def _verify_prerequisites(
@@ -96,7 +99,7 @@ def _verify_prerequisites(
     preflight_path: Path,
     calibration_summary_path: Path,
     calibration_steps_path: Path,
-) -> dict[str, Any]:
+) -> None:
     if sha256_file(repo_root / LOCK_RELATIVE_PATH) != EXPECTED_LOCK_SHA256:
         raise RuntimeError("R2 uv.lock differs from the frozen R0 CUDA lock")
     config_path = repo_root / CONFIG_RELATIVE_PATH
@@ -157,7 +160,6 @@ def _verify_prerequisites(
     }
     if observed_paths != expected_paths:
         raise RuntimeError("R2 data root must contain exactly eight selected train files")
-    return _load_json(config_path)
 
 
 def _require_gpu(torch: Any) -> dict[str, Any]:
@@ -308,8 +310,14 @@ def _optimizer_step(
 ) -> dict[str, Any]:
     model.train()
     optimizer.zero_grad(set_to_none=True)
-    image_tensor = torch.from_numpy(image_patch[None, None]).to(device=device, dtype=torch.float32)
-    target_tensor = torch.from_numpy(target_patch[None, None]).to(device=device, dtype=torch.long)
+    image_tensor = torch.from_numpy(image_patch[None, None]).to(
+        device=device,
+        dtype=torch.float32,
+    )
+    target_tensor = torch.from_numpy(target_patch[None, None]).to(
+        device=device,
+        dtype=torch.long,
+    )
     started = time.perf_counter()
     with torch.cuda.amp.autocast(enabled=True, dtype=torch.float16):
         logits = model(image_tensor)
@@ -427,7 +435,10 @@ def _evaluate_case(
         "step": step,
         "anonymous_case_id": case.anonymous_case_id,
         "role": case.role,
-        "native_full_volume_tumor_dice": binary_dice(case.native_tumor, prediction_native),
+        "native_full_volume_tumor_dice": binary_dice(
+            case.native_tumor,
+            prediction_native,
+        ),
         "ground_truth_tumor_voxels": int(np.count_nonzero(case.native_tumor)),
         "predicted_tumor_voxels": int(np.count_nonzero(prediction_native)),
         "predicted_tumor_volume_mm3": float(
@@ -606,7 +617,7 @@ def main() -> int:
     current_step = 0
 
     try:
-        config = _verify_prerequisites(
+        _verify_prerequisites(
             repo_root=repo_root,
             data_root=data_root,
             preflight_path=preflight_path,
@@ -626,7 +637,11 @@ def main() -> int:
         rng = np.random.default_rng(R2_SEED)
         cases = [_prepare_case(data_root, spec) for spec in R2_SELECTED_CASES]
         model = _build_model(monai, device)
-        optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, weight_decay=0.00001)
+        optimizer = torch.optim.AdamW(
+            model.parameters(),
+            lr=0.001,
+            weight_decay=0.00001,
+        )
         scaler = torch.cuda.amp.GradScaler(enabled=True)
         loss_function = monai.losses.DiceCELoss(
             include_background=False,
@@ -641,14 +656,19 @@ def main() -> int:
         all_step_records: list[dict[str, Any]] = []
         final_records: list[dict[str, Any]] = []
         with steps_path.open("w", encoding="utf-8") as steps_handle, evaluations_path.open(
-            "w", encoding="utf-8"
+            "w",
+            encoding="utf-8",
         ) as evaluation_handle:
             for step in range(1, R2_PRIMARY_MAX_STEPS + 1):
                 elapsed_hours = (time.perf_counter() - started_wall) / 3600.0
                 if elapsed_hours >= R2_PRIMARY_MAX_GPU_WALL_HOURS:
                     raise RuntimeError("R2 primary GPU wall-hour budget exhausted")
                 current_step = step
-                image_patch, target_patch, sampling = _sample_patch(cases, step=step, rng=rng)
+                image_patch, target_patch, sampling = _sample_patch(
+                    cases,
+                    step=step,
+                    rng=rng,
+                )
                 metrics = _optimizer_step(
                     torch=torch,
                     model=model,
@@ -664,7 +684,9 @@ def main() -> int:
                     **sampling,
                     **metrics,
                     "elapsed_time_seconds": float(time.perf_counter() - started_wall),
-                    "peak_vram_allocated_bytes": int(torch.cuda.max_memory_allocated(device)),
+                    "peak_vram_allocated_bytes": int(
+                        torch.cuda.max_memory_allocated(device)
+                    ),
                 }
                 steps_handle.write(json.dumps(record, sort_keys=True) + "\n")
                 steps_handle.flush()
@@ -720,14 +742,22 @@ def main() -> int:
             ]
             per_case_patch[spec.anonymous_case_id] = {
                 "patch_count": len(records),
-                "mean_patch_dice": float(statistics.fmean(record["patch_dice"] for record in records)),
+                "mean_patch_dice": float(
+                    statistics.fmean(record["patch_dice"] for record in records)
+                ),
                 "final_patch_dice": float(records[-1]["patch_dice"]),
-                "mean_loss": float(statistics.fmean(record["loss"] for record in records)),
+                "mean_loss": float(
+                    statistics.fmean(record["loss"] for record in records)
+                ),
             }
 
-        positives = [record for record in final_records if record["role"].startswith("positive_")]
+        positives = [
+            record for record in final_records if record["role"].startswith("positive_")
+        ]
         empty_records = [
-            record for record in final_records if record["role"] == "empty_lexicographic_first"
+            record
+            for record in final_records
+            if record["role"] == "empty_lexicographic_first"
         ]
         if len(positives) != 3 or len(empty_records) != 1:
             raise RuntimeError("R2 final case-role accounting is invalid")
@@ -738,9 +768,11 @@ def main() -> int:
         elapsed_seconds = float(time.perf_counter() - started_wall)
         summary = {
             "schema_version": "research_v2_r2_primary.v1",
-            "status": "READY_FOR_RELOAD_AND_OVERLAY_REVIEW"
-            if positive_dice_gate and empty_prediction_gate
-            else "PRIMARY_GATE_METRICS_FAILED",
+            "status": (
+                "READY_FOR_RELOAD_AND_OVERLAY_REVIEW"
+                if positive_dice_gate and empty_prediction_gate
+                else "PRIMARY_GATE_METRICS_FAILED"
+            ),
             "interpretation": (
                 "Diagnostic overfit results on selected training patients only; "
                 "not an estimate of unseen-patient performance."
