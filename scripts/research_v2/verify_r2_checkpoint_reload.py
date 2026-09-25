@@ -215,9 +215,7 @@ def main() -> int:
         cases = [_prepare_case(data_root, spec) for spec in R2_SELECTED_CASES]
         records: list[dict[str, Any]] = []
         for case in cases:
-            reference_path = (
-                reference_dir / f"{case.anonymous_case_id}.native_probability.npy"
-            )
+            reference_path = reference_dir / f"{case.anonymous_case_id}.native_probability.npy"
             if not reference_path.is_file():
                 raise RuntimeError(f"R2 reload reference missing: {case.anonymous_case_id}")
             reference = np.load(reference_path, allow_pickle=False)
@@ -231,9 +229,7 @@ def main() -> int:
             )
             if reference_array.shape != observed.shape:
                 raise RuntimeError(f"R2 reload shape mismatch: {case.anonymous_case_id}")
-            max_abs_difference = float(
-                np.max(np.abs(reference_array - observed), initial=0.0)
-            )
+            max_abs_difference = float(np.max(np.abs(reference_array - observed), initial=0.0))
             probability_match = max_abs_difference <= R2_RELOAD_PROBABILITY_ATOL
             binary_match = bool(
                 np.array_equal(
@@ -252,9 +248,7 @@ def main() -> int:
                 }
             )
             if not probability_match or not binary_match:
-                raise RuntimeError(
-                    f"R2 checkpoint reload mismatch: {case.anonymous_case_id}"
-                )
+                raise RuntimeError(f"R2 checkpoint reload mismatch: {case.anonymous_case_id}")
 
         evidence = {
             "schema_version": "research_v2_r2_checkpoint_reload.v1",
