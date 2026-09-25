@@ -288,7 +288,8 @@ def main() -> int:
         expected_scale = expected_loss_scale_before_step(R2_DIAGNOSTIC_FAILURE_STEP)
         if observed_scale != expected_scale:
             raise RuntimeError(
-                f"REPLAY_MISMATCH: step-227 scale expected {expected_scale}, observed {observed_scale}"
+                "REPLAY_MISMATCH: step-227 scale expected "
+                f"{expected_scale}, observed {observed_scale}"
             )
 
         probe_image, probe_target, probe_sampling = primary._sample_patch(
