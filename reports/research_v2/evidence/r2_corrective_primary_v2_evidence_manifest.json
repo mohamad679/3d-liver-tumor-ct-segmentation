@@ -1,0 +1,49 @@
+{
+  "members": {
+    "r2_corrective_primary_v2.exit_code.txt": {
+      "line_count": 1,
+      "sha256": "673650f936cb3b0a2f93ce09d81be10748b1b203c19e8176b4eefc1964a0cf3a",
+      "size_bytes": 3
+    },
+    "r2_overlay_manifest.json": {
+      "sha256": "669532c155d08a7a100133310da74a67c17a9b892594c0ccb5df06ca838530b6",
+      "size_bytes": 1340
+    },
+    "r2_primary_full_volume_evaluations.jsonl": {
+      "line_count": 40,
+      "sha256": "11ff7dca6976daf269c66b592be6f7fda83f76f39dc0a8a854630b11dacb3373",
+      "size_bytes": 23922
+    },
+    "r2_primary_steps.jsonl": {
+      "line_count": 2500,
+      "sha256": "8216651d98e9afdcd621d237d37be45980e0e9b5e6c3664152989b5d6abebac7",
+      "size_bytes": 1782581
+    },
+    "r2_primary_summary.json": {
+      "sha256": "d95873c10c30ee256498fc6401b459359509700ec57bb94da0587210a2a56ce3",
+      "size_bytes": 8565
+    }
+  },
+  "run_result": {
+    "amp_steps_requiring_recovery": 4,
+    "amp_total_overflow_retries": 4,
+    "empty_case_prediction_gate_pass": false,
+    "extension_used": false,
+    "external_arrays_opened": 0,
+    "gate_threshold_changed": false,
+    "internal_test_arrays_opened": 0,
+    "optimizer_steps_completed": 2500,
+    "positive_case_native_dice_gate_pass": false,
+    "status": "PRIMARY_GATE_METRICS_FAILED",
+    "threshold_changed": false,
+    "validation_arrays_opened": 0
+  },
+  "schema_version": "research_v2_r2_corrective_primary_v2_evidence_manifest.v1",
+  "source_archive": {
+    "filename": "r2_corrective_primary_v2_sanitized_evidence.zip",
+    "member_count": 5,
+    "sha256": "d5af860c7f55806a03cbf4ddab835295397e5d3457b7519a02ca55d83c570b8c",
+    "size_bytes": 207282
+  },
+  "status": "VERIFIED"
+}
