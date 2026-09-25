@@ -2,7 +2,7 @@
   "schema_version": "research_v2_gate.v1",
   "stage": "R2",
   "status": "BLOCKED",
-  "blocker": "BLOCKED_NUMERICAL_STABILITY_DIAGNOSTIC_AFTER_PRIMARY_ATTEMPT1",
+  "blocker": "BLOCKED_PENDING_CORRECTED_NUMERICAL_STABILITY_DIAGNOSTIC_V2",
   "branch": "research-v2/r2-overfit-real",
   "parent_r1_closed_commit": "998584f7ff8703e9ff6a934a0dc540cf379e31b6",
   "r2_preregistration_commit": "3091010856b416af07aeee7b67644948662000b3",
@@ -130,12 +130,19 @@
     "external_arrays_opened": 0
   },
   "numerical_stability_diagnostic": {
-    "status": "PREREGISTERED_PENDING_EXECUTION",
-    "config_path": "configs/research_v2/r2_numerical_stability_diag_v1.json",
-    "target_failure_step": 227,
-    "replay_optimizer_steps": 226,
-    "hypothesis": "GradScaler growth after 200 finite updates increased the loss scale from 65536 to 131072 and triggered fp16 backward overflow at step 227.",
-    "observed_scale_amp_vs_baseline_scale_amp_vs_fp32_probe": true,
+    "v1_status": "FAILED_BEFORE_PROBE_DUE_TO_DIAGNOSTIC_ASSUMPTION",
+    "v1_config_path": "configs/research_v2/r2_numerical_stability_diag_v1.json",
+    "v1_failure": "REPLAY_MISMATCH: unexpected GradScaler scale before step 227",
+    "v1_root_cause": "diagnostic v1 assumed GradScaler growth_interval=200 although Primary attempt #1 used torch.cuda.amp.GradScaler defaults with growth_interval=2000",
+    "v1_scientific_probe_completed": false,
+    "v2_status": "PREREGISTERED_READY_FOR_EXECUTION",
+    "v2_config_path": "configs/research_v2/r2_numerical_stability_diag_v2.json",
+    "v2_runner_path": "scripts/research_v2/run_r2_numerical_stability_diagnostic_v2.py",
+    "v2_target_failure_step": 227,
+    "v2_replay_optimizer_steps": 226,
+    "v2_expected_scale_before_step_227": 65536.0,
+    "v2_single_backoff_scale": 32768.0,
+    "v2_probe": "AMP@65536 vs AMP@32768 vs FP32 on identical post-step-226 state and identical step-227 patch",
     "optimizer_step_at_probe": false,
     "can_promote_R2": false
   },
@@ -165,7 +172,8 @@
     "Byte-wrapped .nii.gz.bin transfer preserved bytes and matched all eight locked source hashes.",
     "Kaggle inherited an incompatible matplotlib inline backend; a versioned headless launcher forces MPLBACKEND=Agg without changing the scientific contract.",
     "A CPU-only Kaggle session failed closed as required; the successful run used GPU T4 x2 and cuda:0 without pooling VRAM.",
-    "Primary attempt #1 stopped at step 227 with non-finite gradients; no full-volume native evaluation had yet occurred. The failed attempt is preserved and R2 remains BLOCKED."
+    "Primary attempt #1 stopped at step 227 with non-finite gradients; no full-volume native evaluation had yet occurred. The failed attempt is preserved and R2 remains BLOCKED.",
+    "Numerical diagnostic v1 replayed attempt #1 but failed before the scientific probe because v1 incorrectly assumed GradScaler growth_interval=200; Primary attempt #1 used the PyTorch default growth_interval=2000. Diagnostic v1 is preserved and superseded by preregistered v2."
   ],
   "passed_checks": [
     "R2 branch created from the closed R1 commit",
@@ -185,10 +193,11 @@
     "timing/memory calibration completed 20 steps with no warm start and was independently verified",
     "primary attempt #1 evidence was independently verified and preserved without hiding the numerical failure",
     "all recorded primary-attempt-1 steps 1-226 had finite logits, loss and gradients",
+    "numerical diagnostic v2 code passed lock check, Ruff lint/format, mypy, pytest and smoke checks",
     "selection, preflight, calibration and primary attempt #1 opened zero validation, internal-test and external arrays"
   ],
   "blocking_checks": [
-    "execute the preregistered step-227 numerical-stability diagnostic and classify AMP-vs-FP32 behavior",
+    "execute corrected numerical-stability diagnostic v2 and classify AMP@65536 vs AMP@32768 vs FP32 behavior",
     "if justified by diagnostic evidence, preregister a separately versioned corrective primary experiment without lowering any Gate threshold",
     "complete the permitted primary training budget from fresh initialization",
     "evaluate patch predictions and full native-volume predictions separately",
