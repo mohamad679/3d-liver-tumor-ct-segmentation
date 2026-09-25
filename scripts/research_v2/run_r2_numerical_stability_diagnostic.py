@@ -31,23 +31,15 @@ from protoem_ct.research_v2.r2_numerical_diagnostic import (
 from protoem_ct.research_v2.r2_overfit import R2_SELECTED_CASES
 from protoem_ct.research_v2.r2_preflight import R2_SEED
 
-EXPECTED_LOCK_SHA256 = (
-    "c9ee200234eebf8c67fd97ff2c96ca0765f4067a8a69a7ef439deafdda3530a8"
-)
-EXPECTED_PRIMARY_CONFIG_SHA256 = (
-    "dfe50f52110bd77861f52fc4683712e0549a1f0f77c363f64f09da05940f3d1a"
-)
-EXPECTED_ATTEMPT1_STEPS_SHA256 = (
-    "e9288e11aeafbd3214e8dc9e6c35b68432be92e9a1f01c6ae2cba8aea1e3e4b2"
-)
+EXPECTED_LOCK_SHA256 = "c9ee200234eebf8c67fd97ff2c96ca0765f4067a8a69a7ef439deafdda3530a8"
+EXPECTED_PRIMARY_CONFIG_SHA256 = "dfe50f52110bd77861f52fc4683712e0549a1f0f77c363f64f09da05940f3d1a"
+EXPECTED_ATTEMPT1_STEPS_SHA256 = "e9288e11aeafbd3214e8dc9e6c35b68432be92e9a1f01c6ae2cba8aea1e3e4b2"
 EXPECTED_ATTEMPT1_FAILURE_SHA256 = (
     "5a4ee93ab5ceafef673f4d7af20cdeff6cecf5374df1e45b9f6d7cb87246b1f2"
 )
 LOCK_PATH = Path("environments/research-v2-linux-cuda/uv.lock")
 PRIMARY_CONFIG_PATH = Path("configs/research_v2/r2_overfit_real_v1.json")
-DIAGNOSTIC_CONFIG_PATH = Path(
-    "configs/research_v2/r2_numerical_stability_diag_v1.json"
-)
+DIAGNOSTIC_CONFIG_PATH = Path("configs/research_v2/r2_numerical_stability_diag_v1.json")
 PRIMARY_RUNNER_PATH = Path("scripts/research_v2/run_r2_primary.py")
 
 
@@ -133,9 +125,7 @@ def _verify_inputs(
         if path.is_file()
     }
     if observed_paths != expected_paths:
-        raise RuntimeError(
-            "diagnostic data root must contain exactly eight selected train files"
-        )
+        raise RuntimeError("diagnostic data root must contain exactly eight selected train files")
     return records, failure
 
 
@@ -301,9 +291,7 @@ def main() -> int:
                 device=device,
             )
             loss_difference = abs(float(observed["loss"]) - float(expected["loss"]))
-            dice_difference = abs(
-                float(observed["patch_dice"]) - float(expected["patch_dice"])
-            )
+            dice_difference = abs(float(observed["patch_dice"]) - float(expected["patch_dice"]))
             max_loss_difference = max(max_loss_difference, loss_difference)
             max_dice_difference = max(max_dice_difference, dice_difference)
             if loss_difference > R2_REPLAY_LOSS_ATOL:
@@ -320,13 +308,9 @@ def main() -> int:
                 )
 
         observed_scale = float(scaler.get_scale())
-        expected_scale = expected_loss_scale_before_step(
-            R2_DIAGNOSTIC_FAILURE_STEP
-        )
+        expected_scale = expected_loss_scale_before_step(R2_DIAGNOSTIC_FAILURE_STEP)
         if observed_scale != expected_scale:
-            raise RuntimeError(
-                "REPLAY_MISMATCH: unexpected GradScaler scale before step 227"
-            )
+            raise RuntimeError("REPLAY_MISMATCH: unexpected GradScaler scale before step 227")
 
         probe_image, probe_target, probe_sampling = primary._sample_patch(
             cases,
@@ -370,12 +354,8 @@ def main() -> int:
             loss_scale=1.0,
         )
         classification = classify_probe(
-            observed_scale_amp_gradients_finite=bool(
-                observed_probe["gradients_finite"]
-            ),
-            baseline_scale_amp_gradients_finite=bool(
-                baseline_probe["gradients_finite"]
-            ),
+            observed_scale_amp_gradients_finite=bool(observed_probe["gradients_finite"]),
+            baseline_scale_amp_gradients_finite=bool(baseline_probe["gradients_finite"]),
             fp32_gradients_finite=bool(fp32_probe["gradients_finite"]),
         )
         result = {
@@ -383,16 +363,13 @@ def main() -> int:
             "status": "COMPLETE",
             "classification": classification,
             "interpretation": (
-                "Root-cause diagnostic only; cannot PASS R2 or estimate "
-                "unseen-patient performance."
+                "Root-cause diagnostic only; cannot PASS R2 or estimate unseen-patient performance."
             ),
             "gpu": gpu,
             "seed": R2_SEED,
             "attempt1_steps_sha256": EXPECTED_ATTEMPT1_STEPS_SHA256,
             "attempt1_failure_sha256": EXPECTED_ATTEMPT1_FAILURE_SHA256,
-            "diagnostic_config_sha256": sha256_file(
-                repo_root / DIAGNOSTIC_CONFIG_PATH
-            ),
+            "diagnostic_config_sha256": sha256_file(repo_root / DIAGNOSTIC_CONFIG_PATH),
             "replay": {
                 "optimizer_steps_replayed": R2_DIAGNOSTIC_REPLAY_STEPS,
                 "all_sampling_records_matched_exactly": True,
@@ -429,9 +406,7 @@ def main() -> int:
         return 0
     except (RuntimeError, ValueError) as exc:
         failure = {
-            "schema_version": (
-                "research_v2_r2_numerical_stability_diagnostic_failure.v1"
-            ),
+            "schema_version": ("research_v2_r2_numerical_stability_diagnostic_failure.v1"),
             "status": "FAILED",
             "error_type": type(exc).__name__,
             "error": str(exc),
