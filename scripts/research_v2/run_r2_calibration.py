@@ -304,11 +304,15 @@ def _sample_patch(
         raise RuntimeError("R2 positive calibration patch contains no tumor")
     if role == "empty" and tumor_voxels != 0:
         raise RuntimeError("R2 empty calibration patch contains tumor")
-    return image_patch, target_patch, {
-        "anonymous_case_id": case.anonymous_case_id,
-        "sampling_role": role,
-        "tumor_voxels": tumor_voxels,
-    }
+    return (
+        image_patch,
+        target_patch,
+        {
+            "anonymous_case_id": case.anonymous_case_id,
+            "sampling_role": role,
+            "tumor_voxels": tumor_voxels,
+        },
+    )
 
 
 def _optimizer_step(
@@ -497,18 +501,12 @@ def main() -> int:
             "full_volume_probe_case_id": cases[1].anonymous_case_id,
             "full_volume_probe_seconds": inference_seconds,
             "full_volume_probe_finite": True,
-            "peak_vram_allocated_bytes": int(
-                torch.cuda.max_memory_allocated(device)
-            ),
-            "peak_vram_reserved_bytes": int(
-                torch.cuda.max_memory_reserved(device)
-            ),
+            "peak_vram_allocated_bytes": int(torch.cuda.max_memory_allocated(device)),
+            "peak_vram_reserved_bytes": int(torch.cuda.max_memory_reserved(device)),
             "positive_patch_count": sum(
                 record["sampling_role"] == "positive" for record in records
             ),
-            "empty_patch_count": sum(
-                record["sampling_role"] == "empty" for record in records
-            ),
+            "empty_patch_count": sum(record["sampling_role"] == "empty" for record in records),
             "threshold_changed": False,
             "gate_threshold_changed": False,
             "checkpoint_created": False,
