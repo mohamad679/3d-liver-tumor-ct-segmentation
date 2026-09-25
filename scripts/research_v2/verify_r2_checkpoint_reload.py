@@ -19,7 +19,11 @@ import nibabel as nib
 import numpy as np
 
 from protoem_ct.artifacts import sha256_file
-from protoem_ct.research_v2.r1_audit import grid_for_spacing, reorient_array_to_ras, resample_array_to_grid
+from protoem_ct.research_v2.r1_audit import (
+    grid_for_spacing,
+    reorient_array_to_ras,
+    resample_array_to_grid,
+)
 from protoem_ct.research_v2.r2_overfit import (
     R2_RELOAD_PROBABILITY_ATOL,
     R2_SELECTED_CASES,
@@ -55,7 +59,10 @@ def _load_json(path: Path) -> dict[str, Any]:
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
 
 def _prepare_case(data_root: Path, spec: Any) -> ReloadCase:
@@ -143,7 +150,10 @@ def _infer_native_probability(
             device=torch.device("cpu"),
             progress=False,
         )
-    probability_resampled = np.asarray(probability_tensor[0, 0].numpy(), dtype=np.float32)
+    probability_resampled = np.asarray(
+        probability_tensor[0, 0].numpy(),
+        dtype=np.float32,
+    )
     return np.asarray(
         restore_probability_to_native(
             probability_resampled,
@@ -205,7 +215,9 @@ def main() -> int:
         cases = [_prepare_case(data_root, spec) for spec in R2_SELECTED_CASES]
         records: list[dict[str, Any]] = []
         for case in cases:
-            reference_path = reference_dir / f"{case.anonymous_case_id}.native_probability.npy"
+            reference_path = (
+                reference_dir / f"{case.anonymous_case_id}.native_probability.npy"
+            )
             if not reference_path.is_file():
                 raise RuntimeError(f"R2 reload reference missing: {case.anonymous_case_id}")
             reference = np.load(reference_path, allow_pickle=False)
@@ -219,7 +231,9 @@ def main() -> int:
             )
             if reference_array.shape != observed.shape:
                 raise RuntimeError(f"R2 reload shape mismatch: {case.anonymous_case_id}")
-            max_abs_difference = float(np.max(np.abs(reference_array - observed), initial=0.0))
+            max_abs_difference = float(
+                np.max(np.abs(reference_array - observed), initial=0.0)
+            )
             probability_match = max_abs_difference <= R2_RELOAD_PROBABILITY_ATOL
             binary_match = bool(
                 np.array_equal(
@@ -238,7 +252,9 @@ def main() -> int:
                 }
             )
             if not probability_match or not binary_match:
-                raise RuntimeError(f"R2 checkpoint reload mismatch: {case.anonymous_case_id}")
+                raise RuntimeError(
+                    f"R2 checkpoint reload mismatch: {case.anonymous_case_id}"
+                )
 
         evidence = {
             "schema_version": "research_v2_r2_checkpoint_reload.v1",
