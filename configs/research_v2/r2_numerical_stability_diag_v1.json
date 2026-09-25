@@ -1,0 +1,82 @@
+{
+  "schema_version": "research_v2_r2_numerical_stability_diag.v1",
+  "purpose": "Diagnose the non-finite-gradient failure observed in R2 primary attempt #1 without changing the R2 Gate threshold or observing validation/internal-test/external arrays.",
+  "source_primary_attempt": {
+    "runner_commit": "c3b8b157e4f0478a7548486f288b01fb0b57b6c7",
+    "archive_sha256": "389d40f5f451d56f835f51ebc6f6b662e419c3062be5442e70bc99a895ef828a",
+    "steps_sha256": "e9288e11aeafbd3214e8dc9e6c35b68432be92e9a1f01c6ae2cba8aea1e3e4b2",
+    "failure_sha256": "5a4ee93ab5ceafef673f4d7af20cdeff6cecf5374df1e45b9f6d7cb87246b1f2",
+    "logged_optimizer_steps": 226,
+    "failure_step": 227,
+    "failure": "R2 primary produced non-finite gradients",
+    "first_full_volume_evaluation_step": 250,
+    "native_gate_metric_observed": false
+  },
+  "locked_scientific_settings": {
+    "seed": 1729,
+    "architecture": "MONAI SegResNet",
+    "init_filters": 8,
+    "patch_size": [96, 96, 64],
+    "batch_size": 1,
+    "target_spacing_mm": [1.5, 1.5, 1.5],
+    "positive_patch_fraction": 0.75,
+    "augmentation": "disabled",
+    "loss": "MONAI DiceCELoss(include_background=false,to_onehot_y=true,softmax=true,lambda_dice=1,lambda_ce=1)",
+    "optimizer": "AdamW",
+    "learning_rate": 0.001,
+    "weight_decay": 0.00001,
+    "primary_precision": "CUDA AMP fp16",
+    "fixed_threshold": 0.5,
+    "gate_positive_native_dice_min_each": 0.95
+  },
+  "replay_contract": {
+    "replay_optimizer_steps": 226,
+    "compare_case_id_sampling_role_and_tumor_voxels_exactly": true,
+    "compare_loss_abs_tolerance": 0.00001,
+    "compare_patch_dice_abs_tolerance": 0.000001,
+    "require_all_replay_logits_loss_gradients_finite": true,
+    "optimizer_updates_at_probe_step": 0,
+    "consume_additional_sampling_rng_at_probe_step": false
+  },
+  "amp_hypothesis": {
+    "grad_scaler_initial_scale": 65536.0,
+    "grad_scaler_growth_factor": 2.0,
+    "grad_scaler_backoff_factor": 0.5,
+    "grad_scaler_growth_interval": 200,
+    "expected_scale_before_step_227_if_steps_1_226_are_finite": 131072.0,
+    "hypothesis": "Default GradScaler growth after 200 successful optimizer steps raised the loss scale from 65536 to 131072; the larger scale causes fp16 backward overflow on the step-227 patch even though forward logits and loss remain finite."
+  },
+  "probe_branches": {
+    "amp_observed_scale": {
+      "autocast": true,
+      "loss_scale": "replayed GradScaler scale before step 227",
+      "optimizer_step": false
+    },
+    "amp_baseline_scale": {
+      "autocast": true,
+      "loss_scale": 65536.0,
+      "optimizer_step": false
+    },
+    "fp32": {
+      "autocast": false,
+      "loss_scale": 1.0,
+      "optimizer_step": false
+    }
+  },
+  "interpretation_rules": {
+    "SCALE_GROWTH_OVERFLOW_SUPPORTED": "Observed-scale AMP gradients are non-finite while 65536-scale AMP and FP32 gradients are finite.",
+    "AMP_NUMERICAL_OVERFLOW_SUPPORTED": "Observed-scale AMP gradients are non-finite and FP32 gradients are finite, but the 65536-scale AMP branch is also non-finite.",
+    "FP32_INSTABILITY_OBSERVED": "FP32 gradients are non-finite on the same model state and patch.",
+    "FAILURE_NOT_REPRODUCED": "Observed-scale AMP gradients are finite at the step-227 replay probe.",
+    "REPLAY_MISMATCH": "The first 226 steps do not reproduce attempt #1 within the preregistered replay tolerances."
+  },
+  "data_policy": {
+    "allowed_array_partitions": ["train"],
+    "forbidden_array_partitions": ["validation", "internal_test", "historical_external", "new_external"],
+    "selected_train_case_count": 4,
+    "validation_arrays_opened": 0,
+    "internal_test_arrays_opened": 0,
+    "external_arrays_opened": 0
+  },
+  "promotion_policy": "This diagnostic cannot PASS R2 and cannot authorize R3. Its only purpose is root-cause classification and evidence for a separately versioned corrective primary experiment, if justified."
+}
