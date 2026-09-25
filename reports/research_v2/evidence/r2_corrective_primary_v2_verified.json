@@ -1,0 +1,89 @@
+{
+  "amp_recovery": {
+    "max_overflow_retries_observed_single_step": 1,
+    "status": "PASS",
+    "steps_requiring_recovery": 4,
+    "total_overflow_retries": 4
+  },
+  "execution": {
+    "all_logged_gradients_finite": true,
+    "all_logged_logits_finite": true,
+    "all_logged_losses_finite": true,
+    "elapsed_gpu_wall_hours": 0.20633912326083337,
+    "extension_used": false,
+    "optimizer_steps_completed": 2500,
+    "primary_completed": true
+  },
+  "extension_decision": {
+    "basis": "Native full-volume trajectory remained far below the locked Gate for the positive cases and the selected empty case never reached an empty binary prediction during the preregistered primary run. The optional extension is therefore left unused; Gate thresholds remain unchanged.",
+    "decision": "DO_NOT_USE_EXTENSION",
+    "extension_used": false
+  },
+  "interpretation": "Selected-train diagnostic only; not an estimate of unseen-patient performance.",
+  "leakage_and_threshold_checks": {
+    "external_arrays_opened": 0,
+    "fixed_threshold": 0.5,
+    "gate_threshold_changed": false,
+    "internal_test_arrays_opened": 0,
+    "threshold_changed": false,
+    "validation_arrays_opened": 0
+  },
+  "native_gate": {
+    "cases": {
+      "case_25928d2451a7d948a79e60084e3c5d32": {
+        "best_observed_predicted_tumor_voxels": 9581,
+        "best_observed_step": 1000,
+        "final_predicted_tumor_voxels": 46669,
+        "gate_pass": false,
+        "required_predicted_tumor_voxels": 0,
+        "role": "empty_lexicographic_first"
+      },
+      "case_65917a1f3a47339a558042dac093bf1a": {
+        "best_native_dice_step": 2000,
+        "best_native_full_volume_tumor_dice": 0.17901865576284182,
+        "final_native_full_volume_tumor_dice": 0.127270772868967,
+        "final_predicted_tumor_voxels": 25648,
+        "gate_pass": false,
+        "required_native_full_volume_tumor_dice": 0.95,
+        "role": "positive_q20"
+      },
+      "case_6e4782e999691662f69fdf25f0e2e423": {
+        "best_native_dice_step": 1000,
+        "best_native_full_volume_tumor_dice": 0.7330483584275692,
+        "final_native_full_volume_tumor_dice": 0.5863774694907836,
+        "final_predicted_tumor_voxels": 410401,
+        "gate_pass": false,
+        "required_native_full_volume_tumor_dice": 0.95,
+        "role": "positive_q80"
+      },
+      "case_f232be7b649d2166e5158aa636b38766": {
+        "best_native_dice_step": 2000,
+        "best_native_full_volume_tumor_dice": 0.1298555387453639,
+        "final_native_full_volume_tumor_dice": 0.109088276061816,
+        "final_predicted_tumor_voxels": 181083,
+        "gate_pass": false,
+        "required_native_full_volume_tumor_dice": 0.95,
+        "role": "positive_q50"
+      }
+    },
+    "empty_binary_prediction_must_be_empty": true,
+    "empty_gate_pass": false,
+    "positive_gate_pass": false,
+    "positive_native_dice_min_each_required": 0.95
+  },
+  "next_allowed_stage": "NONE",
+  "r2_gate_status": "FAILED",
+  "r3_started": false,
+  "schema_version": "research_v2_r2_corrective_primary_v2_verified.v1",
+  "source_commit": "a95fea37455f2c15c3f2b5ba12161aa22bddc992",
+  "source_evidence": {
+    "evidence_manifest_sha256": "342e4d34d03884712ae5cd8c0ee130f4d84d6884ebfa5fd2966eaf4f2e399472",
+    "full_volume_evaluation_rows": 40,
+    "optimizer_step_rows": 2500,
+    "primary_full_volume_evaluations_sha256": "11ff7dca6976daf269c66b592be6f7fda83f76f39dc0a8a854630b11dacb3373",
+    "primary_steps_sha256": "8216651d98e9afdcd621d237d37be45980e0e9b5e6c3664152989b5d6abebac7",
+    "primary_summary_sha256": "d95873c10c30ee256498fc6401b459359509700ec57bb94da0587210a2a56ce3",
+    "sanitized_archive_sha256": "d5af860c7f55806a03cbf4ddab835295397e5d3457b7519a02ca55d83c570b8c"
+  },
+  "status": "VERIFIED_PRIMARY_GATE_METRICS_FAILED"
+}
