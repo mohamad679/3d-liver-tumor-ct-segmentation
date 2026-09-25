@@ -1,0 +1,49 @@
+{
+  "calibration_optimizer_steps": 20,
+  "checkpoint_created": false,
+  "config_sha256": "dfe50f52110bd77861f52fc4683712e0549a1f0f77c363f64f09da05940f3d1a",
+  "empty_patch_count": 5,
+  "external_arrays_opened": 0,
+  "full_volume_probe_case_id": "case_f232be7b649d2166e5158aa636b38766",
+  "full_volume_probe_finite": true,
+  "full_volume_probe_seconds": 5.882511752000028,
+  "gate_threshold_changed": false,
+  "gpu": {
+    "cpu_fallback_allowed": false,
+    "cuda_available": true,
+    "devices": [
+      {
+        "index": 0,
+        "name": "Tesla T4",
+        "total_memory_bytes": 15636037632,
+        "total_memory_gib": 14.56219482421875
+      },
+      {
+        "index": 1,
+        "name": "Tesla T4",
+        "total_memory_bytes": 15636037632,
+        "total_memory_gib": 14.56219482421875
+      }
+    ],
+    "multi_gpu_memory_pooling_assumed": false,
+    "training_device": "cuda:0",
+    "visible_device_count": 2
+  },
+  "internal_test_arrays_opened": 0,
+  "interpretation": "Transient selected-train timing/memory calibration only; the primary R2 run must restart from seed 1729 and random initialization.",
+  "main_training_started": false,
+  "max_step_time_seconds": 0.626364306999676,
+  "mean_step_time_seconds": 0.08159895034998499,
+  "mode": "timing_memory_calibration",
+  "peak_vram_allocated_bytes": 468064256,
+  "peak_vram_reserved_bytes": 511705088,
+  "positive_patch_count": 15,
+  "preflight_sha256": "0d55bfe51604518e1e2c5c7245779217b689be3207eee83783a9709f1924911f",
+  "projected_2500_step_hours_excluding_evaluations": 0.05666593774304513,
+  "schema_version": "research_v2_r2_calibration.v1",
+  "seed": 1729,
+  "status": "PASS",
+  "threshold_changed": false,
+  "training_warm_start_allowed": false,
+  "validation_arrays_opened": 0
+}
