@@ -1,0 +1,159 @@
+{
+  "schema_version": "research_v2_r2_kaggle_preflight_verified.v1",
+  "status": "PASS",
+  "source_artifact": {
+    "filename": "r2_kaggle_preflight.json",
+    "sha256": "0d55bfe51604518e1e2c5c7245779217b689be3207eee83783a9709f1924911f",
+    "size_bytes": 5927,
+    "source_schema_version": "research_v2_r2_kaggle_preflight.v1"
+  },
+  "environment": {
+    "python": "3.11.16",
+    "uv": "uv 0.12.18 (x86_64-unknown-linux-gnu)",
+    "torch": "2.2.2+cu121",
+    "torch_cuda_runtime": "12.1",
+    "cudnn_version": 8902,
+    "monai": "1.4.0",
+    "nnunetv2": "2.8.1",
+    "nvidia_driver_versions": ["580.159.04"],
+    "uv_lock_sha256": "c9ee200234eebf8c67fd97ff2c96ca0765f4067a8a69a7ef439deafdda3530a8",
+    "uv_lock_sha256_verified": true
+  },
+  "gpu": {
+    "cuda_available": true,
+    "visible_device_count": 2,
+    "training_device": "cuda:0",
+    "cpu_fallback_allowed": false,
+    "multi_gpu_memory_pooling_assumed": false,
+    "devices": [
+      {
+        "index": 0,
+        "name": "Tesla T4",
+        "total_memory_bytes": 15636037632,
+        "total_memory_gib": 14.56219482421875,
+        "compute_capability": [7, 5]
+      },
+      {
+        "index": 1,
+        "name": "Tesla T4",
+        "total_memory_bytes": 15636037632,
+        "total_memory_gib": 14.56219482421875,
+        "compute_capability": [7, 5]
+      }
+    ]
+  },
+  "allocation_probe": {
+    "requested_bytes": 268435456,
+    "allocated_bytes_during_probe": 268435456,
+    "peak_allocated_bytes": 268435456,
+    "status": "PASS"
+  },
+  "forward_backward_optimizer_step": {
+    "status": "PASS",
+    "device": "cuda:0",
+    "optimizer": "AdamW",
+    "learning_rate": 0.001,
+    "weight_decay": 0.00001,
+    "loss": "MONAI DiceCELoss",
+    "loss_value": 1.473236083984375,
+    "amp_fp16": true,
+    "finite_logits": true,
+    "finite_loss": true,
+    "finite_gradients": true,
+    "gradient_tensor_count": 43,
+    "probability_min": 4.373932370071998e-06,
+    "probability_max": 0.9243127703666687,
+    "probability_mean": 0.37165775895118713,
+    "elapsed_seconds": 0.6417651689999957,
+    "peak_vram_allocated_bytes": 468064256,
+    "peak_vram_reserved_bytes": 509607936,
+    "transient_preflight_step_count": 1,
+    "main_training_started": false
+  },
+  "post_transfer_hashes": [
+    {
+      "anonymous_case_id": "case_65917a1f3a47339a558042dac093bf1a",
+      "role": "positive_q20",
+      "image_sha256": "fb2c353bc4cc35aedd9c8070883791c2241beb36bf7e5f884cd8a0f418226b9d",
+      "label_sha256": "56282d27ae73a4ea808311dc54363fa344eee473c9af184f069ab94e97a70dae",
+      "post_transfer_hash_verified": true
+    },
+    {
+      "anonymous_case_id": "case_f232be7b649d2166e5158aa636b38766",
+      "role": "positive_q50",
+      "image_sha256": "7efcb4f28d9cc19b2c306260b5b75f13a8ab772d309a211dbdb4a8ef8b30a124",
+      "label_sha256": "b4946039c62db1b69c4d0bc810e4a3a51effdf4fe380b7b53def160cb3c6bc18",
+      "post_transfer_hash_verified": true
+    },
+    {
+      "anonymous_case_id": "case_6e4782e999691662f69fdf25f0e2e423",
+      "role": "positive_q80",
+      "image_sha256": "7489d81f32ad48ce33e086cbc0105d65d1db4c9122c97af8d3ceef45eb9cfa47",
+      "label_sha256": "3b12ff9755d6719311bcc74b825a45c6ce5ee56ef7a33e5c294289043dd58dbf",
+      "post_transfer_hash_verified": true
+    },
+    {
+      "anonymous_case_id": "case_25928d2451a7d948a79e60084e3c5d32",
+      "role": "empty_lexicographic_first",
+      "image_sha256": "9f0fac0d26bfab882941e840a7a4eef6dab9d35d19bc64e1e79e7ec5738503bc",
+      "label_sha256": "e5ec79c42475d308595a6108b3f48d231bfcba2d3692bbe773584f2d458d2fad",
+      "post_transfer_hash_verified": true
+    }
+  ],
+  "selected_label_contract": [
+    {
+      "anonymous_case_id": "case_65917a1f3a47339a558042dac093bf1a",
+      "observed_raw_label_values": [0, 1, 2],
+      "raw_label_two_mapping_verified": true,
+      "tumor_voxel_count": 2261
+    },
+    {
+      "anonymous_case_id": "case_f232be7b649d2166e5158aa636b38766",
+      "observed_raw_label_values": [0, 1, 2],
+      "raw_label_two_mapping_verified": true,
+      "tumor_voxel_count": 12265
+    },
+    {
+      "anonymous_case_id": "case_6e4782e999691662f69fdf25f0e2e423",
+      "observed_raw_label_values": [0, 1, 2],
+      "raw_label_two_mapping_verified": true,
+      "tumor_voxel_count": 179093
+    },
+    {
+      "anonymous_case_id": "case_25928d2451a7d948a79e60084e3c5d32",
+      "observed_raw_label_values": [0, 1],
+      "raw_label_two_mapping_verified": true,
+      "tumor_voxel_count": 0
+    }
+  ],
+  "smoke_patch": {
+    "anonymous_case_id": "case_f232be7b649d2166e5158aa636b38766",
+    "augmentation": "disabled",
+    "image_interpolation": "continuous_order_1",
+    "label_interpolation": "nearest_order_0",
+    "image_label_effective_affine_max_abs_delta_mm": 0.0,
+    "patch_size": [96, 96, 64],
+    "positive_center_resampled": [186, 146, 239],
+    "source_shape": [512, 512, 198],
+    "resampled_shape": [268, 268, 329],
+    "tumor_voxels_in_patch": 2712
+  },
+  "array_access": {
+    "selected_train_label_arrays_opened": 4,
+    "selected_train_image_arrays_opened": 1,
+    "validation_arrays_opened": 0,
+    "internal_test_arrays_opened": 0,
+    "external_arrays_opened": 0
+  },
+  "medical_images_in_evidence": false,
+  "raw_labels_in_evidence": false,
+  "checkpoint_created": false,
+  "main_training_started": false,
+  "incidents_before_success": [
+    "Initial Kaggle dataset ingestion transformed .nii.gz inputs into .nii and was declared non-promotable for byte-preserving transfer evidence.",
+    "A byte-wrapped .nii.gz.bin transfer was used instead and post-transfer hashes matched the locked source hashes.",
+    "Kaggle inherited MPLBACKEND=module://matplotlib_inline.backend_inline; the versioned headless launcher fixes this integration issue by forcing MPLBACKEND=Agg.",
+    "A CPU-only Kaggle session correctly failed closed; after enabling GPU T4 x2, the frozen environment reported CUDA available with two independent Tesla T4 devices."
+  ],
+  "interpretation": "Real post-transfer train-only hash and CUDA preflight evidence. This is not the R2 main training run and is not evidence of unseen-patient performance."
+}
