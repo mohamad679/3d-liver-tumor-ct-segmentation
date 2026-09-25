@@ -1,0 +1,49 @@
+{
+  "independent_checks": {
+    "all_finite_flags_true": true,
+    "all_logged_numeric_values_finite": true,
+    "checkpoint_created": false,
+    "each_selected_case_step_count": {
+      "case_25928d2451a7d948a79e60084e3c5d32": 5,
+      "case_65917a1f3a47339a558042dac093bf1a": 5,
+      "case_6e4782e999691662f69fdf25f0e2e423": 5,
+      "case_f232be7b649d2166e5158aa636b38766": 5
+    },
+    "empty_patch_count": 5,
+    "empty_patches_all_have_zero_tumor_voxels": true,
+    "external_arrays_opened": 0,
+    "full_volume_probe_finite": true,
+    "gate_threshold_changed": false,
+    "internal_test_arrays_opened": 0,
+    "main_training_started": false,
+    "positive_patch_count": 15,
+    "positive_patches_all_have_tumor_voxels": true,
+    "recomputed_max_step_time_seconds": 0.626364306999676,
+    "recomputed_mean_step_time_seconds": 0.08159895034998499,
+    "recomputed_projected_2500_step_hours_excluding_evaluations": 0.05666593774304513,
+    "step_count": 20,
+    "step_sequence_exact_1_to_20": true,
+    "summary_recomputed_values_match": true,
+    "threshold_changed": false,
+    "training_warm_start_allowed": false,
+    "validation_arrays_opened": 0
+  },
+  "schema_version": "research_v2_r2_calibration_verification.v1",
+  "source_archive": {
+    "filename": "r2_calibration_evidence.zip",
+    "member_count": 2,
+    "members": {
+      "r2_calibration_steps.jsonl": {
+        "sha256": "4b3b738ae1bc82b0b6db0850f9b9f88a0076c655ecf41dff3951c1e84b6a8b09",
+        "size_bytes": 8262
+      },
+      "r2_calibration_summary.json": {
+        "sha256": "f1866ea3d5028ad8e73d8e81df0dfeac80bd35646ea1a34472f3f5781aa2deb1",
+        "size_bytes": 1755
+      }
+    },
+    "sha256": "9fc9593f88bed204bf66bec41c4fe2c1d57c66913840847245df7f69c2870c53",
+    "size_bytes": 2781
+  },
+  "status": "PASS"
+}
