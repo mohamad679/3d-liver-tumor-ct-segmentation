@@ -1,0 +1,42 @@
+{
+  "case_count": 131,
+  "dataset_id": 903,
+  "execution_model": {
+    "automatic_steps": [
+      "discover and verify exact 131 source pairs against the locked semantic source hash",
+      "apply locked header-only repairs with before/after voxel hash equality",
+      "build Dataset903 and deterministic five-fold CV",
+      "fingerprint and plan nnU-Net v2.8.1 3d_fullres",
+      "preprocess into six balanced private shards and verify remote persistence",
+      "assemble mounted preprocessing shards without copying them into working storage",
+      "restore latest fold checkpoints and continue with nnU-Net --c when available",
+      "train up to two incomplete folds concurrently on the two T4 GPUs",
+      "persist periodic latest and final fold checkpoints to source-locked private datasets",
+      "restore all five final folds, run exact OOF inference, and generate final metrics report"
+    ],
+    "user_action": "run the same turnkey command per Kaggle session; attach six private preprocessing shard datasets once when requested"
+  },
+  "header_repair_case_ids": [
+    48,
+    49,
+    50,
+    51,
+    52
+  ],
+  "header_repair_policy": "copy image geometry only; no resampling; no interpolation",
+  "local_validation": {
+    "pytest_count": 6,
+    "pytest_status": "PASS",
+    "python_compile": "PASS"
+  },
+  "nnunet": {
+    "configuration": "3d_fullres",
+    "fold_count": 5,
+    "trainer": "nnUNetTrainer_100epochs",
+    "version": "2.8.1"
+  },
+  "repository_write_performed": true,
+  "schema_version": "protoem_ct.research_v3.turnkey_integration_report.v1",
+  "source_semantic_lock_sha256": "4baf8ff86c43f2f2efe6c15f8c1dab4ef24f06eafa6ffd49697a52bc31c19ff5",
+  "status": "READY_FOR_EXECUTION"
+}

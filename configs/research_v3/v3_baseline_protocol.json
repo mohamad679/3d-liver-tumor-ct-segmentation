@@ -1,0 +1,59 @@
+{
+  "schema_version": "protoem_ct.research_v3.baseline_protocol.v1",
+  "stage": "V3-A",
+  "status": "PREREGISTERED_NOT_STARTED",
+  "purpose": "Establish a reproducible 3D multiclass liver/tumor nnU-Net baseline on the full LiTS/MSD Task03 Liver development cohort before any few-shot or adaptation work.",
+  "dataset": {
+    "source": "LiTS / MSD Task03 Liver",
+    "case_count_expected": 131,
+    "task_labels": {"background": 0, "liver": 1, "tumor": 2},
+    "external_3dircadb_use": "historical_only_not_for_v3_model_selection"
+  },
+  "model": {
+    "framework": "nnU-Net v2",
+    "configuration": "3d_fullres",
+    "trainer": "nnUNetTrainer_100epochs",
+    "folds": [0, 1, 2, 3, 4],
+    "architecture_sweep_allowed": false
+  },
+  "cross_validation": {
+    "strategy": "deterministic_patient_level_5fold",
+    "all_cases_receive_exactly_one_oof_prediction": true,
+    "fold_overlap_allowed": false
+  },
+  "primary_endpoint": {
+    "name": "OOF mean tumor Dice",
+    "pass_threshold": 0.70
+  },
+  "secondary_endpoint": {
+    "name": "OOF mean liver-region Dice",
+    "pass_threshold": 0.90
+  },
+  "required_metrics": [
+    "tumor_dice",
+    "tumor_iou",
+    "liver_region_dice",
+    "lesion_recall",
+    "lesion_precision",
+    "lesion_f1",
+    "false_positive_lesions_per_scan",
+    "tumor_volume_error_ml"
+  ],
+  "lesion_size_analysis": {
+    "enabled": true,
+    "definition": "connected-component tumor volume in mL",
+    "bins_ml": {"small_lt": 5.0, "medium_lt": 20.0, "large_ge": 20.0}
+  },
+  "engineering_overfit_gate": {
+    "separate_from_scientific_success": true,
+    "tumor_dice_target": 0.95,
+    "historical_r2_status_unchanged": "FAILED_CLOSED"
+  },
+  "stop_rules": {
+    "on_pass": "close V3-A PASS and permit few-shot/adaptation protocol design",
+    "on_fail": "close V3-A FAIL and audit data/evaluation/training before any new architecture or threshold change",
+    "posthoc_threshold_change_allowed": false,
+    "posthoc_epoch_extension_allowed": false,
+    "architecture_change_within_v3a_allowed": false
+  }
+}
