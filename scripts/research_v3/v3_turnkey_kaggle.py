@@ -802,9 +802,9 @@ def finalize_oof(root: Path, owner: str) -> dict[str, Any]:
 
 def auto(root: Path, owner: str) -> int:
     os.environ["nnUNet_compile"] = "false"
-    os.environ["nnUNet_n_proc_DA"] = "1"
+    os.environ["nnUNet_n_proc_DA"] = "0"
     print("NNUNET_COMPILE=false", flush=True)
-    print("NNUNET_N_PROC_DA=1", flush=True)
+    print("NNUNET_N_PROC_DA=0", flush=True)
     ensure_nnunet()
     paths = base_paths(root)
     for p in (paths["raw"], paths["preprocessed"], paths["results"], paths["work"]):
@@ -816,8 +816,8 @@ def auto(root: Path, owner: str) -> int:
         print("TURNKEY_STATUS=WAITING_FOR_SHARD_INPUT_ATTACH")
         print("After attaching the six private datasets above, rerun the SAME command.")
         return 0
-    done = train_next_folds(root, owner, max_parallel=2)
-    remaining = [f for f in range(5) if not remote_fold_complete(owner, f)]
+    done = train_next_folds(root, owner, max_parallel=1)
+    print("SESSION_TRAINING_MODE=single_fold_singlethreaded_da", flush=True)\n    remaining = [f for f in range(5) if not remote_fold_complete(owner, f)]
     if remaining:
         print("TURNKEY_STATUS=SESSION_COMPLETE_MORE_FOLDS_REMAIN")
         print("REMAINING_FOLDS=" + json.dumps(remaining))
