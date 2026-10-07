@@ -405,7 +405,11 @@ def preprocess_and_persist_shards(root: Path, owner: str) -> list[str]:
     shards = build_balanced_shards(case_work)
     handles = shard_handles(owner)
     for shard, handle in zip(shards, handles, strict=True):
-        expected = [name for case in shard["cases"] for name in (f"{case}.b2nd", f"{case}.pkl")]
+        expected = [
+            name
+            for case in shard["cases"]
+            for name in (f"{case}.b2nd", f"{case}_seg.b2nd", f"{case}.pkl")
+        ]
         expected += ["control_nnUNetPlans.json", "control_dataset.json", "control_splits_final.json", "stage7e_shard_manifest.json"]
         if _remote_complete(handle, expected):
             print(f"SHARD_REMOTE_COMPLETE=SKIP {handle}")
@@ -489,9 +493,10 @@ def assemble_preprocessed_from_mounts(root: Path, owner: str) -> bool:
     target = paths["pp_dataset"] / data_identifier
     target.mkdir(parents=True, exist_ok=True)
     seen = set()
+    artifact_re = re.compile(r"^case_\d{3}(?:\.b2nd|_seg\.b2nd|\.pkl)$")
     for mount in attached.values():
         for p in mount.iterdir():
-            if p.is_file() and re.match(r"^case_\d{3}\.(b2nd|pkl)$", p.name):
+            if p.is_file() and artifact_re.match(p.name):
                 if p.name in seen:
                     raise RuntimeError(f"duplicate preprocessed artifact: {p.name}")
                 seen.add(p.name)
@@ -499,9 +504,23 @@ def assemble_preprocessed_from_mounts(root: Path, owner: str) -> bool:
                 if dst.exists() or dst.is_symlink():
                     dst.unlink()
                 os.symlink(p.resolve(), dst)
-    expected = {f"case_{i:03d}.{ext}" for i in range(EXPECTED_CASES) for ext in ("b2nd", "pkl")}
+    expected = {
+        name
+        for i in range(EXPECTED_CASES)
+        for name in (
+            f"case_{i:03d}.b2nd",
+            f"case_{i:03d}_seg.b2nd",
+            f"case_{i:03d}.pkl",
+        )
+    }
     if seen != expected:
-        raise RuntimeError(f"preprocessed mounted file set mismatch missing={len(expected-seen)} extra={len(seen-expected)}")
+        missing = sorted(expected - seen)
+        extra = sorted(seen - expected)
+        raise RuntimeError(
+            "preprocessed mounted file set mismatch "
+            f"missing_count={len(missing)} extra_count={len(extra)} "
+            f"missing_sample={missing[:10]} extra_sample={extra[:10]}"
+        )
     print(f"ASSEMBLED_PREPROCESSED=PASS files={len(seen)}")
     return True
 
@@ -782,6 +801,8 @@ def finalize_oof(root: Path, owner: str) -> dict[str, Any]:
     return result
 
 def auto(root: Path, owner: str) -> int:
+    os.environ["nnUNet_compile"] = "false"
+    print("NNUNET_COMPILE=false", flush=True)
     ensure_nnunet()
     paths = base_paths(root)
     for p in (paths["raw"], paths["preprocessed"], paths["results"], paths["work"]):
@@ -816,6 +837,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    os.environ["nnUNet_compile"] = "false"
     if args.mode == "auto":
         return auto(args.root, args.owner)
     ensure_nnunet()
