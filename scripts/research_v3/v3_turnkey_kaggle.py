@@ -817,7 +817,8 @@ def auto(root: Path, owner: str) -> int:
         print("After attaching the six private datasets above, rerun the SAME command.")
         return 0
     done = train_next_folds(root, owner, max_parallel=1)
-    print("SESSION_TRAINING_MODE=single_fold_singlethreaded_da", flush=True)\n    remaining = [f for f in range(5) if not remote_fold_complete(owner, f)]
+    print("SESSION_TRAINING_MODE=single_fold_singlethreaded_da", flush=True)
+    remaining = [f for f in range(5) if not remote_fold_complete(owner, f)]
     if remaining:
         print("TURNKEY_STATUS=SESSION_COMPLETE_MORE_FOLDS_REMAIN")
         print("REMAINING_FOLDS=" + json.dumps(remaining))
