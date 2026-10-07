@@ -103,18 +103,36 @@ def spacing_from_affine(affine: Any) -> tuple[float, float, float]:
     return tuple(float(x) for x in np.linalg.norm(np.asarray(affine, dtype=float)[:3, :3], axis=0))
 
 
-def semantic_source_lock(volumes: dict[int, Path], labels: dict[int, Path]) -> tuple[str, list[dict[str, Any]]]:
-    import nibabel as nib
+def _label_stats_streaming(label: Any) -> tuple[set[int], int]:
+    """Read a 3D label volume one z-slice at a time to bound peak RAM."""
     import numpy as np
 
+    unique: set[int] = set()
+    tumor_voxels = 0
+    if len(label.shape) != 3:
+        raise RuntimeError(f"expected 3D label, got shape={label.shape}")
+    for z in range(int(label.shape[2])):
+        slab = np.asanyarray(label.dataobj[:, :, z])
+        values, counts = np.unique(slab, return_counts=True)
+        unique.update(int(v) for v in values)
+        for value, count in zip(values, counts, strict=True):
+            if int(value) == 2:
+                tumor_voxels += int(count)
+        del slab, values, counts
+    return unique, tumor_voxels
+
+
+def semantic_source_lock(volumes: dict[int, Path], labels: dict[int, Path]) -> tuple[str, list[dict[str, Any]]]:
+    import nibabel as nib
+
     records: list[dict[str, Any]] = []
+    print("SOURCE_LOCK_SCAN=START cases=131", flush=True)
     for cid in range(EXPECTED_CASES):
         image = nib.load(str(volumes[cid]), mmap=True)
         label = nib.load(str(labels[cid]), mmap=True)
         if image.shape != label.shape:
             raise RuntimeError(f"shape mismatch {cid}")
-        arr = np.asanyarray(label.dataobj)
-        unique = set(int(x) for x in np.unique(arr))
+        unique, tumor_voxels = _label_stats_streaming(label)
         if not unique.issubset({0, 1, 2}):
             raise RuntimeError(f"invalid labels {cid}: {sorted(unique)}")
         records.append({
@@ -123,10 +141,13 @@ def semantic_source_lock(volumes: dict[int, Path], labels: dict[int, Path]) -> t
             "original_label_sha256": sha256_file(labels[cid]),
             "shape": list(image.shape),
             "spacing_mm": [round(float(x), 8) for x in spacing_from_affine(image.affine)],
-            "tumor_voxels": int(np.count_nonzero(arr == 2)),
+            "tumor_voxels": tumor_voxels,
             "label_policy": "header_repaired_no_resampling" if cid in REPAIR_IDS else "original",
         })
-        del arr, image, label
+        if cid % 10 == 0 or cid == EXPECTED_CASES - 1:
+            print(f"SOURCE_LOCK_SCAN_PROGRESS={cid + 1}/{EXPECTED_CASES}", flush=True)
+        del image, label
+    print("SOURCE_LOCK_SCAN=COMPLETE", flush=True)
     return canonical_sha256(records), records
 
 
@@ -223,7 +244,8 @@ def build_raw_dataset(root: Path) -> dict[str, Any]:
     observed_lock, source_records = semantic_source_lock(volumes, labels)
     if observed_lock != SOURCE_LOCK:
         raise RuntimeError(f"source semantic lock mismatch expected={SOURCE_LOCK} observed={observed_lock}")
-    print(f"SOURCE_SEMANTIC_LOCK=PASS {observed_lock}")
+    print(f"SOURCE_SEMANTIC_LOCK=PASS {observed_lock}", flush=True)
+    source_record_by_id = {int(rec["case_id"]): rec for rec in source_records}
     tmp = dataset.with_name(dataset.name + "__tmp")
     if tmp.exists():
         shutil.rmtree(tmp)
@@ -240,14 +262,17 @@ def build_raw_dataset(root: Path) -> dict[str, Any]:
         label = nib.load(str(label_path), mmap=True)
         if image.shape != label.shape:
             raise RuntimeError(f"shape mismatch {cid}")
-        arr = np.asanyarray(label.dataobj)
-        unique = set(int(x) for x in np.unique(arr))
-        if not unique.issubset({0, 1, 2}):
-            raise RuntimeError(f"invalid labels {cid}: {sorted(unique)}")
+        source_record = source_record_by_id[cid]
         dst_image = images_tr / f"{case}_0000.nii"
         os.symlink(image_path.resolve(), dst_image)
         dst_label = labels_tr / f"{case}.nii"
         if cid in REPAIR_IDS:
+            # Only the five preregistered header-repair cases are materialized
+            # in full. All other labels remain streaming/symlinked.
+            arr = np.asanyarray(label.dataobj)
+            unique = set(int(x) for x in np.unique(arr))
+            if not unique.issubset({0, 1, 2}):
+                raise RuntimeError(f"invalid labels {cid}: {sorted(unique)}")
             before_voxel_hash = _voxel_hash(arr)
             repaired = nib.Nifti1Image(arr, np.asarray(image.affine, dtype=float))
             repaired.set_data_dtype(label.get_data_dtype())
@@ -260,7 +285,7 @@ def build_raw_dataset(root: Path) -> dict[str, Any]:
             after_voxel_hash = _voxel_hash(np.asanyarray(repaired_check.dataobj))
             if before_voxel_hash != after_voxel_hash:
                 raise RuntimeError(f"repair changed voxel values: {cid}")
-            del repaired_check
+            del repaired_check, repaired, arr
         else:
             if not np.allclose(image.affine, label.affine, rtol=0.0, atol=1e-4):
                 raise RuntimeError(f"unexpected affine mismatch outside repair set: {cid}")
@@ -276,9 +301,11 @@ def build_raw_dataset(root: Path) -> dict[str, Any]:
             "original_label_sha256": sha256_file(label_path),
             "effective_label_sha256": sha256_file(dst_label),
             "label_source": "header_repaired_no_resampling" if cid in REPAIR_IDS else "original",
-            "tumor_voxels": int(np.count_nonzero(arr == 2)),
+            "tumor_voxels": int(source_record["tumor_voxels"]),
         })
-        del arr, image, label, check
+        if cid % 10 == 0 or cid == EXPECTED_CASES - 1:
+            print(f"RAW_DATASET_BUILD_PROGRESS={cid + 1}/{EXPECTED_CASES}", flush=True)
+        del image, label, check
     (tmp / "dataset.json").write_text(json.dumps({
         "channel_names": {"0": "CT"},
         "labels": {"background": 0, "liver": 1, "tumor": 2},
