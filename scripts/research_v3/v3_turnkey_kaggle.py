@@ -802,7 +802,9 @@ def finalize_oof(root: Path, owner: str) -> dict[str, Any]:
 
 def auto(root: Path, owner: str) -> int:
     os.environ["nnUNet_compile"] = "false"
+    os.environ["nnUNet_n_proc_DA"] = "1"
     print("NNUNET_COMPILE=false", flush=True)
+    print("NNUNET_N_PROC_DA=1", flush=True)
     ensure_nnunet()
     paths = base_paths(root)
     for p in (paths["raw"], paths["preprocessed"], paths["results"], paths["work"]):
@@ -838,6 +840,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     os.environ["nnUNet_compile"] = "false"
+    os.environ["nnUNet_n_proc_DA"] = "1"
     if args.mode == "auto":
         return auto(args.root, args.owner)
     ensure_nnunet()
